@@ -1,4 +1,4 @@
-import { PrismaClient, CategoryType } from '@prisma/client';
+import { PrismaClient, CategoryType, UserRole } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -62,7 +62,23 @@ async function main() {
     ),
   );
 
-  console.log('✅ Seed complete: cities and categories inserted/updated.');
+  // Admin user seed — for local / staging use only.
+  // kakaoId is a dev placeholder; replace it with the real Kakao numeric ID
+  // (via prisma studio or a one-off query) after the admin first logs in via Kakao OAuth.
+  // Set ADMIN_KAKAO_ID env var to override the placeholder in other environments.
+  const adminKakaoId = process.env.ADMIN_KAKAO_ID ?? 'seed-admin-placeholder';
+  const adminDisplayName = process.env.ADMIN_DISPLAY_NAME ?? 'nomadongho';
+  await prisma.user.upsert({
+    where: { kakaoId: adminKakaoId },
+    update: { role: UserRole.ADMIN },
+    create: {
+      kakaoId: adminKakaoId,
+      displayName: adminDisplayName,
+      role: UserRole.ADMIN,
+    },
+  });
+
+  console.log('✅ Seed complete: cities, categories, and admin user inserted/updated.');
 }
 
 main()
