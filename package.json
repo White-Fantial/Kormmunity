@@ -9,7 +9,8 @@
     "lint": "eslint",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "prisma db seed"
+    "prisma:seed": "prisma db seed",
+    "db:reset": "bash scripts/reset-db.sh"
   },
   "prisma": {
     "seed": "node prisma/seed.mjs"
