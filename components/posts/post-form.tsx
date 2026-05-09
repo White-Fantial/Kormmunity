@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useMemo, useState } from 'react';
 import { SALE_CATEGORY_SLUG } from '@/lib/posts/constants';
 
@@ -24,6 +25,10 @@ type PostFormProps = {
     categoryId?: string;
     cityId?: string;
     price?: string | null;
+    images?: {
+      id: string;
+      url: string;
+    }[];
   };
   errorMessage?: string;
 };
@@ -46,7 +51,12 @@ export function PostForm({
   const shouldShowPrice = selectedCategory?.slug === SALE_CATEGORY_SLUG;
 
   return (
-    <form action={action} className="space-y-4 rounded-lg border p-4 bg-white">
+    <form
+      action={action}
+      encType="multipart/form-data"
+      aria-label="게시글 작성 양식"
+      className="space-y-4 rounded-lg border bg-white p-4"
+    >
       {defaultValues?.postId ? (
         <input type="hidden" name="postId" value={defaultValues.postId} />
       ) : null}
@@ -146,7 +156,40 @@ export function PostForm({
         <input type="hidden" name="price" value="" />
       )}
 
-      {/* TODO(Phase 4): add external image uploader integration and bind PostImage records. */}
+      {defaultValues?.images?.length ? (
+        <div className="space-y-2">
+          <p className="text-sm font-medium">기존 사진</p>
+          <div className="grid grid-cols-3 gap-2">
+            {defaultValues.images.map((image, index) => (
+              <div key={image.id} className="relative h-24 overflow-hidden rounded-md border">
+                <Image
+                  src={image.url}
+                  alt={`기존 게시글 이미지 ${index + 1}`}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="space-y-1">
+        <label htmlFor="images" className="text-sm font-medium">
+          사진 추가
+        </label>
+        <input
+          id="images"
+          name="images"
+          type="file"
+          accept="image/*"
+          multiple
+          className="w-full rounded-md border px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-2"
+        />
+        <p className="text-xs text-zinc-500">
+          최대 5장, 각 8MB 이하 이미지를 올릴 수 있어요.
+        </p>
+      </div>
 
       <button
         type="submit"

@@ -13,11 +13,20 @@ type PermissionPost = {
   saleStatus: SaleStatus | null;
 };
 
+type PermissionComment = {
+  id: string;
+  authorId: string;
+};
+
 function isActiveWriter(user: PermissionUser | null | undefined) {
   return user?.status === 'ACTIVE';
 }
 
 export function canCreatePost(user: PermissionUser | null | undefined) {
+  return isActiveWriter(user);
+}
+
+export function canCreateComment(user: PermissionUser | null | undefined) {
   return isActiveWriter(user);
 }
 
@@ -41,6 +50,21 @@ export function canDeletePost(
   post: PermissionPost,
 ) {
   return canEditPost(user, post);
+}
+
+export function canDeleteComment(
+  user: PermissionUser | null | undefined,
+  comment: PermissionComment,
+) {
+  if (!user || user.status === 'SUSPENDED' || user.status === 'DELETED') {
+    return false;
+  }
+
+  if (user.role === 'COORDINATOR' || user.role === 'ADMIN') {
+    return true;
+  }
+
+  return user.id === comment.authorId;
 }
 
 export function canMarkPostAsSold(

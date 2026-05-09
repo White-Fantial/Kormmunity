@@ -13,6 +13,11 @@ import {
   canMarkPostAsSold,
 } from '@/lib/permissions';
 import { SALE_CATEGORY_SLUG } from '@/lib/posts/constants';
+import {
+  MAX_UPLOAD_IMAGE_COUNT,
+  uploadImageToCloudinary,
+  validateImageFiles,
+} from '@/lib/upload/cloudinary';
 
 function normalizeText(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value.trim() : '';
@@ -29,6 +34,15 @@ function parsePrice(rawPrice: string) {
   }
 
   return { value: new Decimal(rawPrice), invalid: false };
+}
+
+function getImageFiles(formData: FormData) {
+  return formData
+    .getAll('images')
+    .filter(
+      (entry): entry is File =>
+        entry instanceof File && entry.size > 0 && entry.name.length > 0,
+    );
 }
 
 async function validateCategoryAndPrice(categoryId: string, rawPrice: string) {
@@ -67,6 +81,7 @@ export async function createPostAction(formData: FormData) {
   const categoryId = normalizeText(formData.get('categoryId'));
   const cityId = normalizeText(formData.get('cityId'));
   const rawPrice = normalizeText(formData.get('price'));
+  const imageFiles = getImageFiles(formData);
 
   if (!body) {
     redirect('/posts/new?error=글 내용을 입력해 주세요.');
@@ -97,17 +112,53 @@ export async function createPostAction(formData: FormData) {
 
   const isSaleCategory = categoryResult.category.slug === SALE_CATEGORY_SLUG;
 
-  await prisma.post.create({
-    data: {
-      authorId: user.id,
-      title: title || null,
-      body,
-      categoryId,
-      cityId,
-      price: categoryResult.price,
-      status: 'PUBLISHED',
-      saleStatus: isSaleCategory ? 'AVAILABLE' : null,
-    },
+  const imageValidationResult = validateImageFiles(imageFiles);
+
+  if (!imageValidationResult.ok) {
+    redirect(`/posts/new?error=${encodeURIComponent(imageValidationResult.message)}`);
+  }
+
+  let uploadedImages: Awaited<ReturnType<typeof uploadImageToCloudinary>>[] = [];
+
+  if (imageFiles.length > 0) {
+    try {
+      uploadedImages = await Promise.all(
+        imageFiles.map((imageFile) => uploadImageToCloudinary(imageFile)),
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : '이미지 업로드 중 오류가 발생했어요.';
+      redirect(`/posts/new?error=${encodeURIComponent(message)}`);
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const post = await tx.post.create({
+      data: {
+        authorId: user.id,
+        title: title || null,
+        body,
+        categoryId,
+        cityId,
+        price: categoryResult.price,
+        status: 'PUBLISHED',
+        saleStatus: isSaleCategory ? 'AVAILABLE' : null,
+      },
+    });
+
+    if (uploadedImages.length > 0) {
+      await tx.postImage.createMany({
+        data: uploadedImages.map((image, index) => ({
+          postId: post.id,
+          url: image.url,
+          provider: image.provider,
+          providerPublicId: image.providerPublicId,
+          width: image.width,
+          height: image.height,
+          sortOrder: index,
+        })),
+      });
+    }
   });
 
   revalidatePath('/posts');
@@ -133,6 +184,7 @@ export async function updatePostAction(formData: FormData) {
   const categoryId = normalizeText(formData.get('categoryId'));
   const cityId = normalizeText(formData.get('cityId'));
   const rawPrice = normalizeText(formData.get('price'));
+  const imageFiles = getImageFiles(formData);
 
   if (!body) {
     redirect(`/posts/${postId}/edit?error=글 내용을 입력해 주세요.`);
@@ -165,17 +217,65 @@ export async function updatePostAction(formData: FormData) {
 
   const isSaleCategory = categoryResult.category.slug === SALE_CATEGORY_SLUG;
 
-  await prisma.post.update({
-    where: { id: postId },
-    data: {
-      title: title || null,
-      body,
-      categoryId,
-      cityId,
-      price: isSaleCategory ? categoryResult.price : null,
-      saleStatus: isSaleCategory ? post.saleStatus ?? 'AVAILABLE' : null,
-      status: 'PUBLISHED',
-    },
+  const existingImageCount = await prisma.postImage.count({
+    where: { postId },
+  });
+
+  const imageValidationResult = validateImageFiles(imageFiles);
+
+  if (!imageValidationResult.ok) {
+    redirect(
+      `/posts/${postId}/edit?error=${encodeURIComponent(imageValidationResult.message)}`,
+    );
+  }
+
+  if (existingImageCount + imageFiles.length > MAX_UPLOAD_IMAGE_COUNT) {
+    redirect(
+      `/posts/${postId}/edit?error=${encodeURIComponent(`기존 이미지 포함 최대 ${MAX_UPLOAD_IMAGE_COUNT}장까지 업로드할 수 있어요.`)}`,
+    );
+  }
+
+  let uploadedImages: Awaited<ReturnType<typeof uploadImageToCloudinary>>[] = [];
+
+  if (imageFiles.length > 0) {
+    try {
+      uploadedImages = await Promise.all(
+        imageFiles.map((imageFile) => uploadImageToCloudinary(imageFile)),
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : '이미지 업로드 중 오류가 발생했어요.';
+      redirect(`/posts/${postId}/edit?error=${encodeURIComponent(message)}`);
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.post.update({
+      where: { id: postId },
+      data: {
+        title: title || null,
+        body,
+        categoryId,
+        cityId,
+        price: isSaleCategory ? categoryResult.price : null,
+        saleStatus: isSaleCategory ? post.saleStatus ?? 'AVAILABLE' : null,
+        status: 'PUBLISHED',
+      },
+    });
+
+    if (uploadedImages.length > 0) {
+      await tx.postImage.createMany({
+        data: uploadedImages.map((image, index) => ({
+          postId,
+          url: image.url,
+          provider: image.provider,
+          providerPublicId: image.providerPublicId,
+          width: image.width,
+          height: image.height,
+          sortOrder: existingImageCount + index,
+        })),
+      });
+    }
   });
 
   revalidatePath('/posts');

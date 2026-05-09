@@ -39,6 +39,18 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
         price: true,
         category: { select: { name: true } },
         city: { select: { name: true } },
+        images: {
+          select: { url: true },
+          orderBy: { sortOrder: 'asc' },
+          take: 1,
+        },
+        _count: {
+          select: {
+            comments: {
+              where: { status: 'PUBLISHED' },
+            },
+          },
+        },
       },
     }),
   ]);
@@ -104,6 +116,8 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
               post={{
                 ...post,
                 price: post.price ? post.price.toString() : null,
+                thumbnailUrl: post.images[0]?.url ?? null,
+                commentCount: post._count.comments,
               }}
             />
           ))}

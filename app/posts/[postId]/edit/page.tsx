@@ -34,6 +34,15 @@ export default async function EditPostPage({
         price: true,
         status: true,
         saleStatus: true,
+        images: {
+          select: {
+            id: true,
+            url: true,
+          },
+          orderBy: {
+            sortOrder: 'asc',
+          },
+        },
       },
     }),
     prisma.category.findMany({
@@ -72,6 +81,7 @@ export default async function EditPostPage({
           categoryId: post.categoryId,
           cityId: post.cityId,
           price: post.price?.toString() ?? '',
+          images: post.images,
         }}
       />
     </section>

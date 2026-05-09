@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 type PostCardProps = {
   post: {
@@ -8,6 +9,8 @@ type PostCardProps = {
     saleStatus: 'SOLD' | 'AVAILABLE' | null;
     createdAt: Date;
     price: string | null;
+    thumbnailUrl: string | null;
+    commentCount: number;
     category: { name: string };
     city: { name: string };
   };
@@ -28,11 +31,26 @@ export function PostCard({ post }: PostCardProps) {
           <span className="rounded-full bg-zinc-900 px-2 py-1 text-white">판매완료</span>
         ) : null}
       </div>
+      {post.thumbnailUrl ? (
+        <div className="relative h-40 overflow-hidden rounded-md">
+          <Image
+            src={post.thumbnailUrl}
+            alt=""
+            fill
+            className="object-cover"
+          />
+        </div>
+      ) : null}
       <p className="text-base font-semibold">{preview}</p>
       <p className="line-clamp-2 text-sm text-zinc-700">{post.body}</p>
       <div className="flex items-center justify-between text-sm text-zinc-500">
         {post.price ? <span>NZD {post.price}</span> : <span />}
-        <span>{new Date(post.createdAt).toLocaleString('ko-KR')}</span>
+        <div className="flex items-center gap-2">
+          <span>댓글 {post.commentCount}</span>
+          <time dateTime={post.createdAt.toISOString()}>
+            {new Date(post.createdAt).toLocaleString('ko-KR')}
+          </time>
+        </div>
       </div>
     </Link>
   );
