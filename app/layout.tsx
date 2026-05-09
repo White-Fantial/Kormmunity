@@ -6,10 +6,18 @@ import { logoutAction } from '@/app/login/actions';
 import { getCurrentUser } from '@/lib/auth/session';
 import { canHoldPost, canMakeFinalUserDecision } from '@/lib/permissions';
 
+function getMetadataBaseUrl() {
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL;
+  }
+
+  return process.env.NODE_ENV === 'development'
+    ? 'http://localhost:3000'
+    : 'https://example.com';
+}
+
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
-  ),
+  metadataBase: new URL(getMetadataBaseUrl()),
   title: {
     default: 'NZ 한인 커뮤니티 보드',
     template: '%s | NZ 한인 커뮤니티 보드',
@@ -62,25 +70,25 @@ export default async function RootLayout({
               )}
             </div>
             <nav className="flex gap-2 overflow-x-auto text-sm [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <Link href="/posts" className="shrink-0 rounded-full border px-3 py-1.5">
+              <Link href="/posts" className="shrink-0 rounded-full border px-3 py-1.5 focus-visible:outline-2 focus-visible:outline-zinc-900 focus-visible:outline-offset-2">
                 홈
               </Link>
-              <Link href="/posts/new" className="shrink-0 rounded-full border px-3 py-1.5">
+              <Link href="/posts/new" className="shrink-0 rounded-full border px-3 py-1.5 focus-visible:outline-2 focus-visible:outline-zinc-900 focus-visible:outline-offset-2">
                 글쓰기
               </Link>
-              <Link href="/my/posts" className="shrink-0 rounded-full border px-3 py-1.5">
+              <Link href="/my/posts" className="shrink-0 rounded-full border px-3 py-1.5 focus-visible:outline-2 focus-visible:outline-zinc-900 focus-visible:outline-offset-2">
                 내 글
               </Link>
-              <Link href="/my/profile" className="shrink-0 rounded-full border px-3 py-1.5">
+              <Link href="/my/profile" className="shrink-0 rounded-full border px-3 py-1.5 focus-visible:outline-2 focus-visible:outline-zinc-900 focus-visible:outline-offset-2">
                 내 프로필
               </Link>
               {currentUser && canHoldPost(currentUser) ? (
-                <Link href="/coordinator" className="shrink-0 rounded-full border px-3 py-1.5">
+                <Link href="/coordinator" className="shrink-0 rounded-full border px-3 py-1.5 focus-visible:outline-2 focus-visible:outline-zinc-900 focus-visible:outline-offset-2">
                   운영 관리
                 </Link>
               ) : null}
               {currentUser && canMakeFinalUserDecision(currentUser) ? (
-                <Link href="/admin" className="shrink-0 rounded-full border px-3 py-1.5">
+                <Link href="/admin" className="shrink-0 rounded-full border px-3 py-1.5 focus-visible:outline-2 focus-visible:outline-zinc-900 focus-visible:outline-offset-2">
                   관리자
                 </Link>
               ) : null}

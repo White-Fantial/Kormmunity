@@ -21,6 +21,8 @@ import { canDeleteComment, canHoldPost, canRestorePost } from '@/lib/permissions
 import { SALE_CATEGORY_SLUG } from '@/lib/posts/constants';
 
 export const dynamic = 'force-dynamic';
+const TITLE_PREVIEW_LENGTH = 40;
+const DESCRIPTION_PREVIEW_LENGTH = 80;
 
 type PostDetailPageProps = {
   params: Promise<{ postId: string }>;
@@ -50,8 +52,8 @@ export async function generateMetadata({
     };
   }
 
-  const title = post.title ?? post.body.slice(0, 40);
-  const description = `${post.category.name} · ${post.city.name} · ${post.body.slice(0, 80)}`;
+  const title = post.title ?? post.body.slice(0, TITLE_PREVIEW_LENGTH);
+  const description = `${post.category.name} · ${post.city.name} · ${post.body.slice(0, DESCRIPTION_PREVIEW_LENGTH)}`;
 
   return {
     title,

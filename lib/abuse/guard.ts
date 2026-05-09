@@ -1,3 +1,5 @@
+import { SPAM_KEYWORDS } from '@/lib/abuse/config';
+
 type RateLimitOptions = {
   key: string;
   limit: number;
@@ -48,7 +50,6 @@ export function enforceRateLimit({
   buckets.set(key, current);
 }
 
-const SPAM_KEYWORDS = ['텔레그램', '코인', '투자', '먹튀', '도박', '카지노', '비트코인'];
 const URL_REGEX = /https?:\/\/[^\s]+/gi;
 const REPEATED_CHAR_REGEX = /(.)\1{8,}/;
 

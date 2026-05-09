@@ -20,7 +20,7 @@ function sendAnalytics(payload: Record<string, string | number>) {
 
 sendAnalytics({
   event: 'app_init',
-  path: typeof window === 'undefined' ? 'unknown' : window.location.pathname,
+  path: window.location.pathname,
 });
 
 export function onRouterTransitionStart(
