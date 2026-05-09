@@ -35,7 +35,7 @@ export function PostCard({ post }: PostCardProps) {
         <div className="relative h-40 overflow-hidden rounded-md">
           <Image
             src={post.thumbnailUrl}
-            alt="게시글 썸네일"
+            alt=""
             fill
             className="object-cover"
           />

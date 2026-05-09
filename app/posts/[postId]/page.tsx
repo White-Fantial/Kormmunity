@@ -97,7 +97,7 @@ export default async function PostDetailPage({
             <div key={image.id} className="relative h-36 overflow-hidden rounded-md border">
               <Image
                 src={image.url}
-                alt={`게시글 이미지 ${index + 1}`}
+                alt={`${post.title ?? '게시글'} 이미지 ${index + 1}`}
                 fill
                 className="object-cover"
               />
