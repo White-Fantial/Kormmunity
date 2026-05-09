@@ -4,6 +4,7 @@ import Link from 'next/link';
 import './globals.css';
 import { logoutAction } from '@/app/login/actions';
 import { getCurrentUser } from '@/lib/auth/session';
+import { canHoldPost, canMakeFinalUserDecision } from '@/lib/permissions';
 
 export const metadata: Metadata = {
   title: 'NZ 한인 커뮤니티 보드',
@@ -43,8 +44,12 @@ export default async function RootLayout({
               <Link href="/posts/new">글쓰기</Link>
               <Link href="/my/posts">내 글</Link>
               <Link href="/my/profile">내 프로필</Link>
-              <span className="text-zinc-400">운영 관리</span>
-              <span className="text-zinc-400">관리자</span>
+              {currentUser && canHoldPost(currentUser) ? (
+                <Link href="/coordinator">운영 관리</Link>
+              ) : null}
+              {currentUser && canMakeFinalUserDecision(currentUser) ? (
+                <Link href="/admin">관리자</Link>
+              ) : null}
             </nav>
           </header>
           <main className="flex-1 p-4">{children}</main>

@@ -10,9 +10,13 @@ import {
   createCommentAction,
   deleteCommentAction,
 } from '@/app/posts/[postId]/comments/actions';
+import {
+  holdPostAction,
+  restorePostAction,
+} from '@/app/coordinator/actions';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
-import { canDeleteComment } from '@/lib/permissions';
+import { canDeleteComment, canHoldPost, canRestorePost } from '@/lib/permissions';
 import { SALE_CATEGORY_SLUG } from '@/lib/posts/constants';
 
 export const dynamic = 'force-dynamic';
@@ -68,6 +72,13 @@ export default async function PostDetailPage({
     notFound();
   }
 
+  const isCoordinator = currentUser ? canHoldPost(currentUser) : false;
+
+  // Non-coordinators cannot view HELD posts
+  if (post.status === 'HELD' && !isCoordinator) {
+    notFound();
+  }
+
   const contactUrl = post.contactUrl ?? post.author.openChatUrl;
 
   const isOwner = currentUser?.id === post.authorId;
@@ -80,6 +91,12 @@ export default async function PostDetailPage({
     <article className="space-y-4 rounded-lg border bg-white p-4">
       {query.error ? (
         <p className="rounded-md bg-red-100 px-3 py-2 text-sm text-red-700">{query.error}</p>
+      ) : null}
+
+      {post.status === 'HELD' ? (
+        <div className="rounded-md bg-yellow-50 border border-yellow-200 px-3 py-2 text-sm text-yellow-800">
+          이 게시글은 현재 보류 상태입니다.{post.heldReason ? ` 사유: ${post.heldReason}` : ''}
+        </div>
       ) : null}
 
       <div className="flex flex-wrap gap-2 text-xs">
@@ -148,6 +165,39 @@ export default async function PostDetailPage({
               삭제하기
             </button>
           </form>
+        </div>
+      ) : null}
+
+      {isCoordinator ? (
+        <div className="flex flex-wrap gap-2 border-t pt-4">
+          <span className="w-full text-xs text-zinc-400">운영 관리</span>
+          {post.status === 'PUBLISHED' && currentUser && canHoldPost(currentUser) ? (
+            <details>
+              <summary className="cursor-pointer rounded-md border px-3 py-2 text-sm text-yellow-700">
+                보류 처리
+              </summary>
+              <form action={holdPostAction} className="mt-2 space-y-2">
+                <input type="hidden" name="postId" value={post.id} />
+                <input
+                  type="text"
+                  name="reason"
+                  placeholder="보류 사유 (선택)"
+                  className="w-full rounded-md border px-3 py-2 text-sm"
+                />
+                <button type="submit" className="rounded-md bg-yellow-600 px-3 py-1.5 text-sm text-white">
+                  보류 확정
+                </button>
+              </form>
+            </details>
+          ) : null}
+          {post.status === 'HELD' && currentUser && canRestorePost(currentUser) ? (
+            <form action={restorePostAction}>
+              <input type="hidden" name="postId" value={post.id} />
+              <button type="submit" className="rounded-md border border-green-600 px-3 py-2 text-sm text-green-700">
+                재게시
+              </button>
+            </form>
+          ) : null}
         </div>
       ) : null}
 
