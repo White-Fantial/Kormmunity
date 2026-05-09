@@ -25,6 +25,7 @@ type PostFormProps = {
     categoryId?: string;
     cityId?: string;
     price?: string | null;
+    contactUrl?: string | null;
     images?: {
       id: string;
       url: string;
@@ -155,6 +156,23 @@ export function PostForm({
       ) : (
         <input type="hidden" name="price" value="" />
       )}
+
+      <div className="space-y-1">
+        <label htmlFor="contactUrl" className="text-sm font-medium">
+          연락처 링크 (선택)
+        </label>
+        <input
+          id="contactUrl"
+          name="contactUrl"
+          type="url"
+          defaultValue={defaultValues?.contactUrl ?? ''}
+          placeholder="https://open.kakao.com/o/..."
+          className="w-full rounded-md border px-3 py-2"
+        />
+        <p className="text-xs text-zinc-500">
+          이 글에서만 사용할 카카오 오픈채팅 링크를 입력하세요. 비워두면 프로필 링크가 사용됩니다.
+        </p>
+      </div>
 
       {defaultValues?.images?.length ? (
         <div className="space-y-2">

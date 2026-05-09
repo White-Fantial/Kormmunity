@@ -68,6 +68,8 @@ export default async function PostDetailPage({
     notFound();
   }
 
+  const contactUrl = post.contactUrl ?? post.author.openChatUrl;
+
   const isOwner = currentUser?.id === post.authorId;
   const canMarkSold =
     isOwner &&
@@ -114,9 +116,9 @@ export default async function PostDetailPage({
         작성자: {post.author.displayName} · {new Date(post.createdAt).toLocaleString('ko-KR')}
       </p>
 
-      {post.author.openChatUrl ? (
+      {contactUrl ? (
         <a
-          href={post.author.openChatUrl}
+          href={contactUrl}
           target="_blank"
           rel="noreferrer"
           className="inline-block rounded-md border px-3 py-2 text-sm"

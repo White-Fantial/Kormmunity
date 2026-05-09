@@ -81,6 +81,7 @@ export async function createPostAction(formData: FormData) {
   const categoryId = normalizeText(formData.get('categoryId'));
   const cityId = normalizeText(formData.get('cityId'));
   const rawPrice = normalizeText(formData.get('price'));
+  const contactUrl = normalizeText(formData.get('contactUrl')) || null;
   const imageFiles = getImageFiles(formData);
 
   if (!body) {
@@ -143,6 +144,7 @@ export async function createPostAction(formData: FormData) {
         price: categoryResult.price,
         status: 'PUBLISHED',
         saleStatus: isSaleCategory ? 'AVAILABLE' : null,
+        contactUrl,
       },
     });
 
@@ -184,6 +186,7 @@ export async function updatePostAction(formData: FormData) {
   const categoryId = normalizeText(formData.get('categoryId'));
   const cityId = normalizeText(formData.get('cityId'));
   const rawPrice = normalizeText(formData.get('price'));
+  const contactUrl = normalizeText(formData.get('contactUrl')) || null;
   const imageFiles = getImageFiles(formData);
 
   if (!body) {
@@ -260,6 +263,7 @@ export async function updatePostAction(formData: FormData) {
         price: isSaleCategory ? categoryResult.price : null,
         saleStatus: isSaleCategory ? post.saleStatus ?? 'AVAILABLE' : null,
         status: 'PUBLISHED',
+        contactUrl,
       },
     });
 

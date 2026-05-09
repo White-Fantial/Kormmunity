@@ -34,6 +34,7 @@ export default async function EditPostPage({
         price: true,
         status: true,
         saleStatus: true,
+        contactUrl: true,
         images: {
           select: {
             id: true,
@@ -81,6 +82,7 @@ export default async function EditPostPage({
           categoryId: post.categoryId,
           cityId: post.cityId,
           price: post.price?.toString() ?? '',
+          contactUrl: post.contactUrl,
           images: post.images,
         }}
       />

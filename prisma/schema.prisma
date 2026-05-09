@@ -110,6 +110,7 @@ model Post {
   author        User         @relation(fields: [authorId], references: [id])
   city          City         @relation(fields: [cityId], references: [id])
   category      Category     @relation(fields: [categoryId], references: [id])
+  contactUrl    String?
   images        PostImage[]
   comments      Comment[]
   createdAt     DateTime     @default(now())
