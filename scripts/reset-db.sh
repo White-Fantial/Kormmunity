@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # reset-db.sh
-# Fully resets the database: drops all data, resets migration history,
-# re-applies every migration, and runs the seed script.
+# Fully resets the database: drops every table/object in the DB schema,
+# initializes migration metadata again, re-applies every migration,
+# and runs the seed script.
 #
 # Usage:
 #   bash scripts/reset-db.sh
@@ -20,8 +21,24 @@ case "$answer" in
 esac
 
 echo ""
-echo "🗑️  Resetting database and migration history..."
-npx prisma migrate reset --force
+if [[ -z "${DATABASE_URL:-}" ]]; then
+  echo "❌ DATABASE_URL is required."
+  exit 1
+fi
+
+echo "🗑️  Dropping all tables and schema objects..."
+cat <<'SQL' | npx prisma db execute --schema prisma/schema.prisma --stdin
+DROP SCHEMA IF EXISTS public CASCADE;
+CREATE SCHEMA public;
+SQL
+
+echo ""
+echo "🧱 Initializing and deploying migrations..."
+npx prisma migrate deploy
+
+echo ""
+echo "🌱 Seeding database..."
+npx prisma db seed
 
 echo ""
 echo "✅ Database reset complete."
