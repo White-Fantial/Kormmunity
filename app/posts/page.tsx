@@ -179,8 +179,16 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
                         value={city.id}
                         defaultChecked={selectedCityIds.includes(city.id)}
                         disabled={isProfileCity}
+                        aria-label={
+                          isProfileCity
+                            ? `${city.name} (프로필 기본 지역으로 항상 선택됨)`
+                            : city.name
+                        }
                       />
                       <span>{city.name}</span>
+                      {isProfileCity ? (
+                        <span className="text-xs text-zinc-500">(기본 지역)</span>
+                      ) : null}
                     </label>
                   );
                 })}
