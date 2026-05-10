@@ -16,6 +16,7 @@ import {
   restorePostAction,
 } from '@/app/coordinator/actions';
 import { PostMarkdown } from '@/components/posts/post-markdown';
+import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
@@ -272,9 +273,11 @@ export default async function PostDetailPage({
               placeholder="댓글을 남겨보세요."
               className="w-full rounded-md border px-3 py-2 text-sm"
             />
-            <button type="submit" className="rounded-md border px-3 py-2 text-sm">
-              댓글 작성
-            </button>
+            <FormSubmitButton
+              idleLabel="댓글 작성"
+              pendingLabel="등록 중..."
+              className="rounded-md border px-3 py-2 text-sm"
+            />
           </form>
         ) : (
           <p className="text-sm text-zinc-500">
