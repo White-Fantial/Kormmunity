@@ -2,7 +2,9 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 import { PostCard } from '@/components/posts/post-card';
+import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
+import { ALWAYS_INCLUDED_CATEGORY_SLUGS } from '@/lib/posts/constants';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
@@ -27,32 +29,73 @@ function toArray(value: string | string[] | undefined) {
 
 export default async function PostsPage({ searchParams }: PostsPageProps) {
   const params = await searchParams;
+  const currentUser = await getCurrentUser();
 
-  const [categories, cities] = await Promise.all([
+  const [categories, cities, dbUser] = await Promise.all([
     prisma.category.findMany({
       where: { isActive: true },
       orderBy: { sortOrder: 'asc' },
-      select: { id: true, name: true },
+      select: { id: true, name: true, slug: true },
     }),
     prisma.city.findMany({
       where: { isActive: true },
       orderBy: { sortOrder: 'asc' },
       select: { id: true, name: true },
     }),
+    currentUser
+      ? prisma.user.findUnique({
+          where: { id: currentUser.id },
+          select: { cityId: true },
+        })
+      : Promise.resolve(null),
   ]);
 
-  const categoryIds = new Set(categories.map((category) => category.id));
+  const alwaysIncludedCategorySlugSet = new Set(ALWAYS_INCLUDED_CATEGORY_SLUGS);
+  const alwaysIncludedCategories = categories.filter((category) =>
+    alwaysIncludedCategorySlugSet.has(category.slug),
+  );
+  const filterCategories = categories.filter(
+    (category) => !alwaysIncludedCategorySlugSet.has(category.slug),
+  );
+  const filterCategoryIds = new Set(filterCategories.map((category) => category.id));
   const cityIds = new Set(cities.map((city) => city.id));
-  const selectedCategoryIds = toArray(params.category).filter((id) => categoryIds.has(id));
-  const selectedCityIds = toArray(params.city).filter((id) => cityIds.has(id));
+  const profileCityId = dbUser?.cityId;
+  const selectedFilterCategoryIdsFromParams = Array.from(
+    new Set(toArray(params.category).filter((id) => filterCategoryIds.has(id))),
+  );
+  const selectedFilterCategoryIds =
+    selectedFilterCategoryIdsFromParams.length > 0
+      ? selectedFilterCategoryIdsFromParams
+      : filterCategories.map((category) => category.id);
+  const selectedCategoryIds = Array.from(
+    new Set([
+      ...selectedFilterCategoryIds,
+      ...alwaysIncludedCategories.map((category) => category.id),
+    ]),
+  );
+  const selectedCityIdsFromParams = Array.from(
+    new Set(toArray(params.city).filter((id) => cityIds.has(id))),
+  );
+  const selectedCityIdsBase =
+    selectedCityIdsFromParams.length > 0
+      ? selectedCityIdsFromParams
+      : cities.map((city) => city.id);
+  const selectedCityIds =
+    profileCityId &&
+    cityIds.has(profileCityId) &&
+    !selectedCityIdsBase.includes(profileCityId)
+      ? [...selectedCityIdsBase, profileCityId]
+      : selectedCityIdsBase;
+
+  const shouldFilterByCategory =
+    selectedFilterCategoryIds.length !== filterCategories.length;
+  const shouldFilterByCity = selectedCityIds.length !== cities.length;
 
   const posts = await prisma.post.findMany({
     where: {
       status: 'PUBLISHED',
-      categoryId: selectedCategoryIds.length
-        ? { in: selectedCategoryIds }
-        : undefined,
-      cityId: selectedCityIds.length ? { in: selectedCityIds } : undefined,
+      categoryId: shouldFilterByCategory ? { in: selectedCategoryIds } : undefined,
+      cityId: shouldFilterByCity ? { in: selectedCityIds } : undefined,
     },
     orderBy: { createdAt: 'desc' },
     select: {
@@ -79,7 +122,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     },
   });
 
-  const hasFilters = selectedCategoryIds.length > 0 || selectedCityIds.length > 0;
+  const hasFilters = shouldFilterByCategory || shouldFilterByCity;
 
   return (
     <section className="space-y-4">
@@ -90,55 +133,81 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
         </Link>
       </div>
 
-      <form className="grid grid-cols-1 gap-4 rounded-lg border bg-white p-3 sm:grid-cols-2">
-        <fieldset className="space-y-2 text-sm">
-          <legend className="font-medium">카테고리 선택</legend>
-          <div className="flex flex-wrap gap-2">
-            {categories.map((category) => (
-              <label
-                key={category.id}
-                className="flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5"
-              >
-                <input
-                  type="checkbox"
-                  name="category"
-                  value={category.id}
-                  defaultChecked={selectedCategoryIds.includes(category.id)}
-                />
-                <span>{category.name}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
+      <form>
+        <details className="group rounded-lg border bg-white p-3">
+          <summary className="flex cursor-pointer items-center justify-between text-sm font-medium sm:hidden">
+            <span>필터</span>
+            <span className="group-open:hidden">펼치기</span>
+            <span className="hidden group-open:inline">접기</span>
+          </summary>
 
-        <fieldset className="space-y-2 text-sm">
-          <legend className="font-medium">지역 선택</legend>
-          <div className="flex flex-wrap gap-2">
-            {cities.map((city) => (
-              <label
-                key={city.id}
-                className="flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5"
-              >
-                <input
-                  type="checkbox"
-                  name="city"
-                  value={city.id}
-                  defaultChecked={selectedCityIds.includes(city.id)}
-                />
-                <span>{city.name}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
+          <div className="mt-3 hidden grid-cols-1 gap-4 group-open:grid sm:mt-0 sm:grid sm:grid-cols-2">
+            <fieldset className="space-y-2 text-sm">
+              <legend className="font-medium">카테고리 선택</legend>
+              <div className="flex flex-wrap gap-2">
+                {filterCategories.map((category) => (
+                  <label
+                    key={category.id}
+                    className="flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5"
+                  >
+                    <input
+                      type="checkbox"
+                      name="category"
+                      value={category.id}
+                      defaultChecked={selectedFilterCategoryIds.includes(category.id)}
+                    />
+                    <span>{category.name}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
 
-        <div className="flex flex-wrap gap-2 sm:col-span-2">
-          <button type="submit" className="rounded-md bg-zinc-900 px-3 py-2 text-sm text-white">
-            필터 적용
-          </button>
-          <Link href="/posts" className="rounded-md border px-3 py-2 text-sm">
-            초기화
-          </Link>
-        </div>
+            <fieldset className="space-y-2 text-sm">
+              <legend className="font-medium">지역 선택</legend>
+              <div className="flex flex-wrap gap-2">
+                {cities.map((city) => {
+                  const isProfileCity = city.id === profileCityId;
+
+                  return (
+                    <label
+                      key={city.id}
+                      className="flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5"
+                    >
+                      <input
+                        type="checkbox"
+                        name="city"
+                        value={city.id}
+                        defaultChecked={selectedCityIds.includes(city.id)}
+                        disabled={isProfileCity}
+                        aria-label={
+                          isProfileCity
+                            ? `${city.name} (프로필 기본 지역으로 항상 선택됨)`
+                            : city.name
+                        }
+                      />
+                      <span>{city.name}</span>
+                      {isProfileCity ? (
+                        <span className="text-xs text-zinc-500">(기본 지역)</span>
+                      ) : null}
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+
+            <div className="flex flex-wrap gap-2 sm:col-span-2">
+              <button
+                type="submit"
+                className="rounded-md bg-zinc-900 px-3 py-2 text-sm text-white"
+              >
+                필터 적용
+              </button>
+              <Link href="/posts" className="rounded-md border px-3 py-2 text-sm">
+                초기화
+              </Link>
+            </div>
+          </div>
+        </details>
       </form>
 
       {posts.length === 0 ? (
