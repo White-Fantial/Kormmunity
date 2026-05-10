@@ -17,7 +17,9 @@ function normalizeAvatarUrl(profileImageUrl?: string | null) {
   if (!profileImageUrl) return null;
   try {
     const parsedUrl = new URL(profileImageUrl);
-    if (parsedUrl.protocol === 'http:' && parsedUrl.hostname.endsWith('kakaocdn.net')) {
+    const isKakaoCdnHost =
+      parsedUrl.hostname === 'kakaocdn.net' || parsedUrl.hostname.endsWith('.kakaocdn.net');
+    if (parsedUrl.protocol === 'http:' && isKakaoCdnHost) {
       parsedUrl.protocol = 'https:';
       return parsedUrl.toString();
     }
