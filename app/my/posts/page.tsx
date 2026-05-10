@@ -63,14 +63,14 @@ export default async function MyPostsPage({ searchParams }: MyPostsPageProps) {
                   <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-[#e8e8e8]">
                     <Image
                       src={post.images[0].url}
-                      alt={post.title?.trim() || '게시글 이미지'}
+                      alt={post.title?.trim() || post.body.slice(0, 40)}
                       fill
                       sizes="80px"
                       className="object-cover"
                     />
                   </div>
                 ) : null}
-                <div className="min-w-0 space-y-2">
+                <div className="min-w-0 flex-1 space-y-2">
                   <div className="flex flex-wrap gap-2 text-xs">
                     <span className="rounded-full bg-[#fffde7] px-2 py-1 font-medium text-[#7a6000]">{post.category.name}</span>
                     <span className="rounded-full bg-[#f5f5f5] px-2 py-1 text-[#555]">{post.city?.name ?? '전 지역'}</span>
