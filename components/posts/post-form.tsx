@@ -2,8 +2,9 @@
 
 import Image from 'next/image';
 import { useMemo, useState } from 'react';
-import { SALE_CATEGORY_TYPE } from '@/lib/posts/constants';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
+
+const SALE_CATEGORY_TYPE = 'SALE';
 
 type Option = {
   id: string;
