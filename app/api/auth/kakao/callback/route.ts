@@ -43,7 +43,8 @@ export async function GET(request: NextRequest) {
     kakaoId = userInfo.kakaoId;
     displayName = userInfo.displayName;
     profileImageUrl = userInfo.profileImageUrl;
-  } catch {
+  } catch (err) {
+    console.error('[kakao/callback] OAuth error:', err);
     redirect('/login?error=oauth');
   }
 

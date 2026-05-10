@@ -65,7 +65,7 @@ export async function getKakaoUserInfo(accessToken: string): Promise<KakaoUserIn
 
   const kakaoId = String(data.id);
   const profile = data.kakao_account?.profile;
-  const displayName = profile?.nickname ?? `카카오 사용자 ${kakaoId.slice(-4)}`;
+  const displayName = profile?.nickname ?? '카카오 사용자';
   const profileImageUrl = profile?.profile_image_url ?? null;
 
   return { kakaoId, displayName, profileImageUrl };

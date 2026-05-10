@@ -27,7 +27,7 @@ const demoUsers = [
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
-  const errorMessage = params.error ? (ERROR_MESSAGES[params.error] ?? '로그인이 필요해요.') : null;
+  const errorMessage = params.error ? (ERROR_MESSAGES[params.error] ?? '알 수 없는 오류가 발생했어요.') : null;
 
   return (
     <section className="space-y-4">
