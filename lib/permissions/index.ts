@@ -18,12 +18,28 @@ type PermissionComment = {
   authorId: string;
 };
 
+type PermissionCategory = {
+  minRole: UserRole;
+};
+
+const ROLE_RANK: Record<UserRole, number> = { USER: 0, COORDINATOR: 1, ADMIN: 2 };
+
+export { ROLE_RANK };
+
 function isActiveWriter(user: PermissionUser | null | undefined) {
   return user?.status === 'ACTIVE';
 }
 
 export function canCreatePost(user: PermissionUser | null | undefined) {
   return isActiveWriter(user);
+}
+
+export function canPostToCategory(
+  user: PermissionUser | null | undefined,
+  category: PermissionCategory,
+) {
+  if (!user) return false;
+  return ROLE_RANK[user.role] >= ROLE_RANK[category.minRole];
 }
 
 export function canCreateComment(user: PermissionUser | null | undefined) {

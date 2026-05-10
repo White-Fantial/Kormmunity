@@ -54,7 +54,7 @@ export default async function MyPostsPage({ searchParams }: MyPostsPageProps) {
             <li key={post.id} className="space-y-3 rounded-lg border bg-white p-4">
               <div className="flex flex-wrap gap-2 text-xs">
                 <span className="rounded-full bg-zinc-100 px-2 py-1">{post.category.name}</span>
-                <span className="rounded-full bg-zinc-100 px-2 py-1">{post.city.name}</span>
+                <span className="rounded-full bg-zinc-100 px-2 py-1">{post.city?.name ?? '전 지역'}</span>
                 {post.saleStatus === 'SOLD' ? (
                   <span className="rounded-full bg-zinc-900 px-2 py-1 text-white">판매완료</span>
                 ) : null}

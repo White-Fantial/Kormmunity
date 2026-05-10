@@ -12,19 +12,24 @@ type Option = {
 
 type CategoryOption = Option & {
   slug: string;
+  ignoreCity: boolean;
+  supportsAllCities: boolean;
 };
 
 type PostFormProps = {
   action: (formData: FormData) => void | Promise<void>;
   categories: CategoryOption[];
+  cities: { id: string; name: string }[];
   cityLabel: string;
+  defaultCityId: string | null;
+  canSelectAllCities: boolean;
   submitLabel: string;
   defaultValues?: {
     postId?: string;
     title?: string | null;
     body?: string;
     categoryId?: string;
-    cityId?: string;
+    cityId?: string | null;
     price?: string | null;
     contactUrl?: string | null;
     images?: {
@@ -38,12 +43,16 @@ type PostFormProps = {
 export function PostForm({
   action,
   categories,
+  cities,
   cityLabel,
+  defaultCityId,
+  canSelectAllCities,
   submitLabel,
   defaultValues,
   errorMessage,
 }: PostFormProps) {
   const [categoryId, setCategoryId] = useState(defaultValues?.categoryId ?? '');
+  const [selectedCityId, setSelectedCityId] = useState(defaultValues?.cityId ?? '');
 
   const selectedCategory = useMemo(
     () => categories.find((category) => category.id === categoryId),
@@ -51,6 +60,11 @@ export function PostForm({
   );
 
   const shouldShowPrice = selectedCategory?.slug === SALE_CATEGORY_SLUG;
+  const isCityIgnored = selectedCategory?.ignoreCity ?? false;
+  // Show a city selector only when the category permits all-city posts AND the user
+  // has at least coordinator privileges (coordinators choose the target city per post).
+  const showCitySelector =
+    !isCityIgnored && (selectedCategory?.supportsAllCities ?? false) && canSelectAllCities;
 
   return (
     <form
@@ -124,10 +138,33 @@ export function PostForm({
 
       <div className="space-y-1">
         <span className="text-sm font-medium">지역</span>
-        <div className="rounded-md border bg-zinc-50 px-3 py-2 text-sm">{cityLabel}</div>
-        {defaultValues?.cityId ? (
-          <input type="hidden" name="cityId" value={defaultValues.cityId} />
-        ) : null}
+        {isCityIgnored ? (
+          <>
+            <div className="rounded-md border bg-zinc-50 px-3 py-2 text-sm text-zinc-500">
+              전 지역 공개
+            </div>
+            <input type="hidden" name="cityId" value="" />
+          </>
+        ) : showCitySelector ? (
+          <select
+            name="cityId"
+            value={selectedCityId}
+            onChange={(e) => setSelectedCityId(e.target.value)}
+            className="w-full rounded-md border px-3 py-2 text-sm"
+          >
+            <option value="">전 지역</option>
+            {cities.map((city) => (
+              <option key={city.id} value={city.id}>
+                {city.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <>
+            <div className="rounded-md border bg-zinc-50 px-3 py-2 text-sm">{cityLabel}</div>
+            <input type="hidden" name="cityId" value={defaultCityId ?? ''} />
+          </>
+        )}
       </div>
 
       {shouldShowPrice ? (

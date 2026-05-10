@@ -89,19 +89,22 @@ model City {
 }
 
 model Category {
-  id        String       @id @default(cuid())
-  name      String
-  slug      String       @unique
-  type      CategoryType @default(GENERAL)
-  isActive  Boolean      @default(true)
-  sortOrder Int          @default(0)
-  posts     Post[]
+  id                String       @id @default(cuid())
+  name              String
+  slug              String       @unique
+  type              CategoryType @default(GENERAL)
+  isActive          Boolean      @default(true)
+  sortOrder         Int          @default(0)
+  minRole           UserRole     @default(USER)
+  ignoreCity        Boolean      @default(false)
+  supportsAllCities Boolean      @default(false)
+  posts             Post[]
 }
 
 model Post {
   id            String       @id @default(cuid())
   authorId      String
-  cityId        String
+  cityId        String?
   categoryId    String
   title         String?
   body          String
@@ -111,7 +114,7 @@ model Post {
   heldReason    String?
   deletedReason String?
   author        User         @relation(fields: [authorId], references: [id])
-  city          City         @relation(fields: [cityId], references: [id])
+  city          City?        @relation(fields: [cityId], references: [id])
   category      Category     @relation(fields: [categoryId], references: [id])
   contactUrl    String?
   images        PostImage[]

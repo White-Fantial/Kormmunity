@@ -56,7 +56,7 @@ export async function generateMetadata({
   }
 
   const title = post.title ?? post.body.slice(0, TITLE_PREVIEW_LENGTH);
-  const description = `${post.category.name} · ${post.city.name} · ${post.body.slice(0, DESCRIPTION_PREVIEW_LENGTH)}`;
+  const description = `${post.category.name} · ${post.city?.name ?? '전 지역'} · ${post.body.slice(0, DESCRIPTION_PREVIEW_LENGTH)}`;
 
   return {
     title,
@@ -147,7 +147,7 @@ export default async function PostDetailPage({
 
       <div className="flex flex-wrap gap-2 text-xs">
         <span className="rounded-full bg-zinc-100 px-2 py-1">{post.category.name}</span>
-        <span className="rounded-full bg-zinc-100 px-2 py-1">{post.city.name}</span>
+        <span className="rounded-full bg-zinc-100 px-2 py-1">{post.city?.name ?? '전 지역'}</span>
         {post.saleStatus === 'SOLD' ? (
           <span className="rounded-full bg-zinc-900 px-2 py-1 text-white">판매완료</span>
         ) : null}

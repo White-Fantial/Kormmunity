@@ -88,10 +88,12 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     where: {
       status: 'PUBLISHED',
       categoryId: shouldFilterByCategory ? { in: selectedCategoryIds } : undefined,
-      cityId: shouldFilterByCity ? { in: selectedCityIds } : undefined,
+      ...(shouldFilterByCity
+        ? { OR: [{ cityId: { in: selectedCityIds } }, { cityId: null }] }
+        : {}),
     },
     orderBy: { createdAt: 'desc' },
-    take: 30,
+    take: 50,
     select: {
       id: true,
       title: true,

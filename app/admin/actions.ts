@@ -274,6 +274,35 @@ export async function toggleCategoryActiveAction(formData: FormData) {
   redirect('/admin/categories');
 }
 
+export async function updateCategorySettingsAction(formData: FormData) {
+  const user = await requireUser();
+  requireAdmin(user);
+
+  const categoryId = normalizeText(formData.get('categoryId'));
+  const minRole = normalizeText(formData.get('minRole')) as UserRole;
+  const ignoreCity = formData.get('ignoreCity') === 'true';
+  const supportsAllCities = formData.get('supportsAllCities') === 'true';
+
+  if (!categoryId) {
+    redirect('/admin/categories?error=카테고리 ID가 없습니다.');
+  }
+
+  const validRoles: UserRole[] = ['USER', 'COORDINATOR', 'ADMIN'];
+  if (!validRoles.includes(minRole)) {
+    redirect('/admin/categories?error=유효하지 않은 역할입니다.');
+  }
+
+  await prisma.category.update({
+    where: { id: categoryId },
+    data: { minRole, ignoreCity, supportsAllCities },
+  });
+
+  await logModerationAction(user.id, 'CATEGORY', categoryId, 'SETTINGS_UPDATE');
+
+  revalidatePath('/admin/categories');
+  redirect('/admin/categories');
+}
+
 export async function createCityAction(formData: FormData) {
   const user = await requireUser();
   requireAdmin(user);

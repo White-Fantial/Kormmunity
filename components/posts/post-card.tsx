@@ -13,7 +13,7 @@ type PostCardProps = {
     thumbnailUrl: string | null;
     commentCount: number;
     category: { name: string };
-    city: { name: string };
+    city: { name: string } | null;
     author: {
       displayName: string;
       profileImageUrl: string | null;
@@ -31,7 +31,7 @@ export function PostCard({ post }: PostCardProps) {
     >
       <div className="flex flex-wrap gap-2 text-xs">
         <span className="rounded-full bg-zinc-100 px-2 py-1">{post.category.name}</span>
-        <span className="rounded-full bg-zinc-100 px-2 py-1">{post.city.name}</span>
+        <span className="rounded-full bg-zinc-100 px-2 py-1">{post.city?.name ?? '전 지역'}</span>
         {post.saleStatus === 'SOLD' ? (
           <span className="rounded-full bg-zinc-900 px-2 py-1 text-white">판매완료</span>
         ) : null}
