@@ -82,6 +82,9 @@ export default async function RootLayout({
               <Link href="/my/posts" className="shrink-0 rounded-full border border-[#e8e8e8] bg-white px-3 py-1.5 font-medium text-[#1a1a1a] hover:border-[#fee500] hover:bg-[#fffde7]">
                 내 글
               </Link>
+              <Link href="/my/saved" className="shrink-0 rounded-full border border-[#e8e8e8] bg-white px-3 py-1.5 font-medium text-[#1a1a1a] hover:border-[#fee500] hover:bg-[#fffde7]">
+                저장한 글
+              </Link>
               <Link href="/my/profile" className="shrink-0 rounded-full border border-[#e8e8e8] bg-white px-3 py-1.5 font-medium text-[#1a1a1a] hover:border-[#fee500] hover:bg-[#fffde7]">
                 내 프로필
               </Link>

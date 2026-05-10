@@ -9,6 +9,7 @@ import {
   markPostAsAvailableAction,
   reportPostAction,
 } from '@/app/posts/actions';
+import { savePostAction, unsavePostAction } from '@/app/posts/saved-actions';
 import {
   createCommentAction,
   deleteCommentAction,
@@ -136,24 +137,44 @@ export default async function PostDetailPage({
   const canSubmitReport = currentUser ? canReportPost(currentUser, post) : false;
   let reportOptions: { id: string; label: string }[] = [];
   let myReport: { optionId: string; additionalReason: string | null } | null = null;
+  let isSaved = false;
 
-  if (canSubmitReport && currentUser) {
-    [reportOptions, myReport] = await Promise.all([
-      prisma.reportOption.findMany({
-        where: { isActive: true },
-        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-        select: { id: true, label: true },
-      }),
-      prisma.postReport.findUnique({
-        where: {
-          postId_reporterId: {
-            postId: post.id,
-            reporterId: currentUser.id,
-          },
+  if (currentUser) {
+    const savedPostPromise = prisma.savedPost.findUnique({
+      where: {
+        userId_postId: {
+          userId: currentUser.id,
+          postId: post.id,
         },
-        select: { optionId: true, additionalReason: true },
-      }),
-    ]);
+      },
+      select: { id: true },
+    });
+
+    if (canSubmitReport) {
+      const [savedPost, options, report] = await Promise.all([
+        savedPostPromise,
+        prisma.reportOption.findMany({
+          where: { isActive: true },
+          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+          select: { id: true, label: true },
+        }),
+        prisma.postReport.findUnique({
+          where: {
+            postId_reporterId: {
+              postId: post.id,
+              reporterId: currentUser.id,
+            },
+          },
+          select: { optionId: true, additionalReason: true },
+        }),
+      ]);
+
+      isSaved = Boolean(savedPost);
+      reportOptions = options;
+      myReport = report;
+    } else {
+      isSaved = Boolean(await savedPostPromise);
+    }
   }
 
   const isOwner = currentUser?.id === post.authorId;
@@ -230,6 +251,18 @@ export default async function PostDetailPage({
       ) : (
         <p className="text-sm text-[#888]">작성자가 연락 링크를 등록하지 않았어요.</p>
       )}
+
+      {currentUser ? (
+        <form action={isSaved ? unsavePostAction : savePostAction}>
+          <input type="hidden" name="postId" value={post.id} />
+          <input type="hidden" name="returnTo" value={`/posts/${post.id}`} />
+          <FormSubmitButton
+            idleLabel={isSaved ? '저장 취소' : '글 저장'}
+            pendingLabel="처리 중..."
+            className="rounded-xl border border-[#e8e8e8] px-3 py-2 text-sm font-medium hover:bg-[#f9f9f9]"
+          />
+        </form>
+      ) : null}
 
       {isOwner ? (
         <div className="flex flex-wrap gap-2 border-t border-[#e8e8e8] pt-4">

@@ -69,6 +69,7 @@ model User {
   reviewedRestrictions UserRestriction[]  @relation("RestrictionReviewedBy")
   searchAlerts         SearchAlert[]
   postReports          PostReport[]
+  savedPosts           SavedPost[]
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 }
@@ -127,6 +128,7 @@ model Post {
   images        PostImage[]
   comments      Comment[]
   reports       PostReport[]
+  savedBy       SavedPost[]
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   publishedAt   DateTime?    @default(now())
@@ -135,6 +137,19 @@ model Post {
 
   @@index([cityId, categoryId, status, createdAt])
   @@index([authorId, createdAt])
+}
+
+model SavedPost {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([userId, createdAt])
+  @@index([postId, createdAt])
 }
 
 model ReportOption {
