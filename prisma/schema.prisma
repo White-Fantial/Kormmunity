@@ -52,8 +52,10 @@ model User {
   displayName          String
   profileImageUrl      String?
   openChatUrl          String?
+  cityId               String?
   role                 UserRole           @default(USER)
   status               UserStatus         @default(ACTIVE)
+  city                 City?              @relation(fields: [cityId], references: [id])
   posts                Post[]
   comments             Comment[]
   sessions             Session[]
@@ -82,6 +84,7 @@ model City {
   slug      String   @unique
   isActive  Boolean  @default(true)
   sortOrder Int      @default(0)
+  users     User[]
   posts     Post[]
 }
 

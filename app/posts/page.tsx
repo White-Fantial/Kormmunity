@@ -11,13 +11,24 @@ export const metadata: Metadata = {
 };
 
 type PostsPageProps = {
-  searchParams: Promise<{ category?: string; city?: string }>;
+  searchParams: Promise<{
+    category?: string | string[];
+    city?: string | string[];
+  }>;
 };
+
+function toArray(value: string | string[] | undefined) {
+  if (!value) {
+    return [];
+  }
+
+  return Array.isArray(value) ? value : [value];
+}
 
 export default async function PostsPage({ searchParams }: PostsPageProps) {
   const params = await searchParams;
 
-  const [categories, cities, posts] = await Promise.all([
+  const [categories, cities] = await Promise.all([
     prisma.category.findMany({
       where: { isActive: true },
       orderBy: { sortOrder: 'asc' },
@@ -28,37 +39,47 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
       orderBy: { sortOrder: 'asc' },
       select: { id: true, name: true },
     }),
-    prisma.post.findMany({
-      where: {
-        status: 'PUBLISHED',
-        categoryId: params.category || undefined,
-        cityId: params.city || undefined,
+  ]);
+
+  const categoryIds = new Set(categories.map((category) => category.id));
+  const cityIds = new Set(cities.map((city) => city.id));
+  const selectedCategoryIds = toArray(params.category).filter((id) => categoryIds.has(id));
+  const selectedCityIds = toArray(params.city).filter((id) => cityIds.has(id));
+
+  const posts = await prisma.post.findMany({
+    where: {
+      status: 'PUBLISHED',
+      categoryId: selectedCategoryIds.length
+        ? { in: selectedCategoryIds }
+        : undefined,
+      cityId: selectedCityIds.length ? { in: selectedCityIds } : undefined,
+    },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      title: true,
+      body: true,
+      createdAt: true,
+      saleStatus: true,
+      price: true,
+      category: { select: { name: true } },
+      city: { select: { name: true } },
+      images: {
+        select: { url: true },
+        orderBy: { sortOrder: 'asc' },
+        take: 1,
       },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        title: true,
-        body: true,
-        createdAt: true,
-        saleStatus: true,
-        price: true,
-        category: { select: { name: true } },
-        city: { select: { name: true } },
-        images: {
-          select: { url: true },
-          orderBy: { sortOrder: 'asc' },
-          take: 1,
-        },
-        _count: {
-          select: {
-            comments: {
-              where: { status: 'PUBLISHED' },
-            },
+      _count: {
+        select: {
+          comments: {
+            where: { status: 'PUBLISHED' },
           },
         },
       },
-    }),
-  ]);
+    },
+  });
+
+  const hasFilters = selectedCategoryIds.length > 0 || selectedCityIds.length > 0;
 
   return (
     <section className="space-y-4">
@@ -69,47 +90,60 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
         </Link>
       </div>
 
-      <form className="grid grid-cols-1 gap-2 rounded-lg border bg-white p-3 sm:grid-cols-2">
-        <label className="text-sm">
-          <span className="mb-1 block">카테고리 선택</span>
-          <select
-            name="category"
-            defaultValue={params.category ?? ''}
-            className="w-full rounded-md border px-3 py-2"
-          >
-            <option value="">전체</option>
+      <form className="grid grid-cols-1 gap-4 rounded-lg border bg-white p-3 sm:grid-cols-2">
+        <fieldset className="space-y-2 text-sm">
+          <legend className="font-medium">카테고리 선택</legend>
+          <div className="flex flex-wrap gap-2">
             {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
+              <label
+                key={category.id}
+                className="flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5"
+              >
+                <input
+                  type="checkbox"
+                  name="category"
+                  value={category.id}
+                  defaultChecked={selectedCategoryIds.includes(category.id)}
+                />
+                <span>{category.name}</span>
+              </label>
             ))}
-          </select>
-        </label>
+          </div>
+        </fieldset>
 
-        <label className="text-sm">
-          <span className="mb-1 block">지역 선택</span>
-          <select
-            name="city"
-            defaultValue={params.city ?? ''}
-            className="w-full rounded-md border px-3 py-2"
-          >
-            <option value="">전체</option>
+        <fieldset className="space-y-2 text-sm">
+          <legend className="font-medium">지역 선택</legend>
+          <div className="flex flex-wrap gap-2">
             {cities.map((city) => (
-              <option key={city.id} value={city.id}>
-                {city.name}
-              </option>
+              <label
+                key={city.id}
+                className="flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5"
+              >
+                <input
+                  type="checkbox"
+                  name="city"
+                  value={city.id}
+                  defaultChecked={selectedCityIds.includes(city.id)}
+                />
+                <span>{city.name}</span>
+              </label>
             ))}
-          </select>
-        </label>
+          </div>
+        </fieldset>
 
-        <button type="submit" className="rounded-md bg-zinc-900 px-3 py-2 text-sm text-white sm:col-span-2">
-          필터 적용
-        </button>
+        <div className="flex flex-wrap gap-2 sm:col-span-2">
+          <button type="submit" className="rounded-md bg-zinc-900 px-3 py-2 text-sm text-white">
+            필터 적용
+          </button>
+          <Link href="/posts" className="rounded-md border px-3 py-2 text-sm">
+            초기화
+          </Link>
+        </div>
       </form>
 
       {posts.length === 0 ? (
         <div className="rounded-lg border bg-white p-6 text-center text-sm text-zinc-600">
-          {params.city || params.category
+          {hasFilters
             ? '선택한 조건에 맞는 글이 없어요.'
             : '아직 올라온 글이 없어요. 첫 글을 남겨보세요.'}
         </div>

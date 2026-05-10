@@ -14,6 +14,7 @@ import {
   canEditPost,
   canMarkPostAsSold,
 } from '@/lib/permissions';
+import { getProfileCityRequiredHref } from '@/lib/posts/profile-city';
 import { SALE_CATEGORY_SLUG } from '@/lib/posts/constants';
 import {
   MAX_UPLOAD_IMAGE_COUNT,
@@ -86,7 +87,6 @@ export async function createPostAction(formData: FormData) {
   const title = normalizeText(formData.get('title'));
   const body = normalizeText(formData.get('body'));
   const categoryId = normalizeText(formData.get('categoryId'));
-  const cityId = normalizeText(formData.get('cityId'));
   const rawPrice = normalizeText(formData.get('price'));
   const contactUrl = normalizeText(formData.get('contactUrl')) || null;
   const imageFiles = getImageFiles(formData);
@@ -119,18 +119,21 @@ export async function createPostAction(formData: FormData) {
     redirect('/posts/new?error=카테고리를 선택해 주세요.');
   }
 
-  if (!cityId) {
-    redirect('/posts/new?error=지역을 선택해 주세요.');
-  }
-
-  const city = await prisma.city.findUnique({
-    where: { id: cityId },
-    select: { id: true },
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: {
+      cityId: true,
+      city: {
+        select: { id: true },
+      },
+    },
   });
 
-  if (!city) {
-    redirect('/posts/new?error=지역을 선택해 주세요.');
+  if (!dbUser?.cityId || !dbUser.city) {
+    redirect(getProfileCityRequiredHref('/posts/new'));
   }
+
+  const profileCityId = dbUser.cityId;
 
   const categoryResult = await validateCategoryAndPrice(categoryId, rawPrice);
 
@@ -167,7 +170,7 @@ export async function createPostAction(formData: FormData) {
         title: title || null,
         body,
         categoryId,
-        cityId,
+        cityId: profileCityId,
         price: categoryResult.price,
         status: 'PUBLISHED',
         saleStatus: isSaleCategory ? 'AVAILABLE' : null,
@@ -196,7 +199,7 @@ export async function createPostAction(formData: FormData) {
     userId: user.id,
     postId,
     categoryId,
-    cityId,
+    cityId: profileCityId,
     imageCount: uploadedImages.length,
     isSaleCategory,
   });

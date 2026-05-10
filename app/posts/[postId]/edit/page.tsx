@@ -21,7 +21,7 @@ export default async function EditPostPage({
   const { postId } = await params;
   const query = await searchParams;
 
-  const [post, categories, cities] = await Promise.all([
+  const [post, categories] = await Promise.all([
     prisma.post.findUnique({
       where: { id: postId },
       select: {
@@ -35,6 +35,11 @@ export default async function EditPostPage({
         status: true,
         saleStatus: true,
         contactUrl: true,
+        city: {
+          select: {
+            name: true,
+          },
+        },
         images: {
           select: {
             id: true,
@@ -51,14 +56,9 @@ export default async function EditPostPage({
       orderBy: { sortOrder: 'asc' },
       select: { id: true, name: true, slug: true },
     }),
-    prisma.city.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: 'asc' },
-      select: { id: true, name: true },
-    }),
   ]);
 
-  if (!post || !canEditPost(user, post)) {
+  if (!post || !post.city || !canEditPost(user, post)) {
     notFound();
   }
 
@@ -72,7 +72,7 @@ export default async function EditPostPage({
           label: category.name,
           slug: category.slug,
         }))}
-        cities={cities.map((city) => ({ id: city.id, label: city.name }))}
+        cityLabel={post.city.name}
         submitLabel="수정하기"
         errorMessage={query.error}
         defaultValues={{

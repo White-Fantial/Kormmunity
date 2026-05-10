@@ -16,7 +16,7 @@ type CategoryOption = Option & {
 type PostFormProps = {
   action: (formData: FormData) => void | Promise<void>;
   categories: CategoryOption[];
-  cities: Option[];
+  cityLabel: string;
   submitLabel: string;
   defaultValues?: {
     postId?: string;
@@ -37,7 +37,7 @@ type PostFormProps = {
 export function PostForm({
   action,
   categories,
-  cities,
+  cityLabel,
   submitLabel,
   defaultValues,
   errorMessage,
@@ -122,23 +122,11 @@ export function PostForm({
       </div>
 
       <div className="space-y-1">
-        <label htmlFor="cityId" className="text-sm font-medium">
-          지역 선택
-        </label>
-        <select
-          id="cityId"
-          name="cityId"
-          defaultValue={defaultValues?.cityId ?? ''}
-          required
-          className="w-full rounded-md border px-3 py-2"
-        >
-          <option value="">지역을 선택해 주세요.</option>
-          {cities.map((city) => (
-            <option key={city.id} value={city.id}>
-              {city.label}
-            </option>
-          ))}
-        </select>
+        <span className="text-sm font-medium">지역</span>
+        <div className="rounded-md border bg-zinc-50 px-3 py-2 text-sm">{cityLabel}</div>
+        {defaultValues?.cityId ? (
+          <input type="hidden" name="cityId" value={defaultValues.cityId} />
+        ) : null}
       </div>
 
       {shouldShowPrice ? (
