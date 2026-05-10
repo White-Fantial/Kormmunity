@@ -5,6 +5,7 @@ import { Suspense } from 'react';
 import './globals.css';
 import { HeaderAuthButton } from '@/components/ui/header-auth-button';
 import { HeaderNavConditional } from '@/components/ui/header-nav-conditional';
+import { HeaderNavLink } from '@/components/ui/header-nav-link';
 
 function getMetadataBaseUrl() {
   if (process.env.NEXT_PUBLIC_SITE_URL) {
@@ -73,21 +74,11 @@ export default async function RootLayout({
               </Suspense>
             </div>
             <nav className="flex gap-2 overflow-x-auto text-sm [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <Link href="/posts" className="shrink-0 rounded-full border border-[#e8e8e8] bg-white px-3 py-1.5 font-medium text-[#1a1a1a] hover:border-[#fee500] hover:bg-[#fffde7]">
-                홈
-              </Link>
-              <Link href="/posts/new" className="shrink-0 rounded-full bg-[#fee500] px-3 py-1.5 font-semibold text-[#3c1e1e] hover:bg-[#f5db00]">
-                글쓰기
-              </Link>
-              <Link href="/my/posts" className="shrink-0 rounded-full border border-[#e8e8e8] bg-white px-3 py-1.5 font-medium text-[#1a1a1a] hover:border-[#fee500] hover:bg-[#fffde7]">
-                내 글
-              </Link>
-              <Link href="/my/saved" className="shrink-0 rounded-full border border-[#e8e8e8] bg-white px-3 py-1.5 font-medium text-[#1a1a1a] hover:border-[#fee500] hover:bg-[#fffde7]">
-                저장한 글
-              </Link>
-              <Link href="/my/profile" className="shrink-0 rounded-full border border-[#e8e8e8] bg-white px-3 py-1.5 font-medium text-[#1a1a1a] hover:border-[#fee500] hover:bg-[#fffde7]">
-                내 프로필
-              </Link>
+              <HeaderNavLink href="/posts">홈</HeaderNavLink>
+              <HeaderNavLink href="/posts/new">글쓰기</HeaderNavLink>
+              <HeaderNavLink href="/my/posts">내 글</HeaderNavLink>
+              <HeaderNavLink href="/my/saved">저장한 글</HeaderNavLink>
+              <HeaderNavLink href="/my/profile">내 프로필</HeaderNavLink>
               <Suspense fallback={null}>
                 <HeaderNavConditional />
               </Suspense>
