@@ -17,12 +17,12 @@ const cities = [
 ];
 
 const categories = [
-  { name: '공지사항', slug: 'notice', type: CategoryType.GENERAL, minRole: UserRole.COORDINATOR, ignoreCity: true, supportsAllCities: false },
-  { name: '피쳐드', slug: 'featured', type: CategoryType.GENERAL, minRole: UserRole.COORDINATOR, ignoreCity: false, supportsAllCities: true },
-  { name: '궁금해요', slug: 'question', type: CategoryType.QUESTION, minRole: UserRole.USER, ignoreCity: false, supportsAllCities: false },
-  { name: '도와주세요', slug: 'help', type: CategoryType.HELP, minRole: UserRole.USER, ignoreCity: false, supportsAllCities: false },
-  { name: '팔아요', slug: 'sale', type: CategoryType.SALE, minRole: UserRole.USER, ignoreCity: false, supportsAllCities: false },
-  { name: '무료나눔', slug: 'giveaway', type: CategoryType.GIVEAWAY, minRole: UserRole.USER, ignoreCity: false, supportsAllCities: false },
+  { name: '공지사항', slug: 'notice', type: CategoryType.GENERAL, minRole: UserRole.COORDINATOR, isAlwaysIncluded: true, ignoreCity: true, supportsAllCities: false },
+  { name: '피쳐드', slug: 'featured', type: CategoryType.GENERAL, minRole: UserRole.COORDINATOR, isAlwaysIncluded: true, ignoreCity: false, supportsAllCities: true },
+  { name: '궁금해요', slug: 'question', type: CategoryType.QUESTION, minRole: UserRole.USER, isAlwaysIncluded: false, ignoreCity: false, supportsAllCities: false },
+  { name: '도와주세요', slug: 'help', type: CategoryType.HELP, minRole: UserRole.USER, isAlwaysIncluded: false, ignoreCity: false, supportsAllCities: false },
+  { name: '팔아요', slug: 'sale', type: CategoryType.SALE, minRole: UserRole.USER, isAlwaysIncluded: false, ignoreCity: false, supportsAllCities: false },
+  { name: '무료나눔', slug: 'giveaway', type: CategoryType.GIVEAWAY, minRole: UserRole.USER, isAlwaysIncluded: false, ignoreCity: false, supportsAllCities: false },
 ];
 
 function slugifyCity(city) {
@@ -55,6 +55,7 @@ async function main() {
           isActive: true,
           sortOrder: index,
           minRole: category.minRole,
+          isAlwaysIncluded: category.isAlwaysIncluded,
           ignoreCity: category.ignoreCity,
           supportsAllCities: category.supportsAllCities,
         },

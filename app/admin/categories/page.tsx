@@ -34,14 +34,15 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
 
   const categories = await prisma.category.findMany({
     orderBy: { sortOrder: 'asc' },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      isActive: true,
-      sortOrder: true,
-      minRole: true,
-      ignoreCity: true,
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        isActive: true,
+        isAlwaysIncluded: true,
+        sortOrder: true,
+        minRole: true,
+        ignoreCity: true,
       supportsAllCities: true,
       _count: { select: { posts: true } },
     },
@@ -120,6 +121,7 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
                 <details className="text-sm">
                   <summary className="cursor-pointer text-xs text-zinc-500">
                     작성 권한 및 지역 설정 (현재: {MIN_ROLE_LABELS[cat.minRole]}
+                    {cat.isAlwaysIncluded ? ' · 필터항상포함' : ''}
                     {cat.ignoreCity ? ' · 전지역강제' : ''}
                     {cat.supportsAllCities ? ' · 전지역선택가능' : ''})
                   </summary>
@@ -140,6 +142,18 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
                     </div>
 
                     <div className="flex flex-wrap gap-4">
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-zinc-600">사용자 필터에서 항상 포함 (isAlwaysIncluded)</label>
+                        <select
+                          name="isAlwaysIncluded"
+                          defaultValue={String(cat.isAlwaysIncluded)}
+                          className="w-full rounded-md border px-2 py-1 text-xs"
+                        >
+                          <option value="false">꺼짐</option>
+                          <option value="true">켜짐</option>
+                        </select>
+                      </div>
+
                       <div className="space-y-1">
                         <label className="text-xs font-medium text-zinc-600">전 지역 강제 공개 (ignoreCity)</label>
                         <select

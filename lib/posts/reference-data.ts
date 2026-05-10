@@ -7,7 +7,7 @@ export const getActiveCategories = unstable_cache(
     prisma.category.findMany({
       where: { isActive: true },
       orderBy: { sortOrder: 'asc' },
-      select: { id: true, name: true, slug: true },
+      select: { id: true, name: true, slug: true, isAlwaysIncluded: true },
     }),
   ['reference-categories'],
   { revalidate: 3600 },

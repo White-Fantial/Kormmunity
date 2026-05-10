@@ -280,6 +280,7 @@ export async function updateCategorySettingsAction(formData: FormData) {
 
   const categoryId = normalizeText(formData.get('categoryId'));
   const minRole = normalizeText(formData.get('minRole')) as UserRole;
+  const isAlwaysIncluded = formData.get('isAlwaysIncluded') === 'true';
   const ignoreCity = formData.get('ignoreCity') === 'true';
   const supportsAllCities = formData.get('supportsAllCities') === 'true';
 
@@ -294,7 +295,7 @@ export async function updateCategorySettingsAction(formData: FormData) {
 
   await prisma.category.update({
     where: { id: categoryId },
-    data: { minRole, ignoreCity, supportsAllCities },
+    data: { minRole, isAlwaysIncluded, ignoreCity, supportsAllCities },
   });
 
   await logModerationAction(user.id, 'CATEGORY', categoryId, 'SETTINGS_UPDATE');

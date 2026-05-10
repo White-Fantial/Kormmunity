@@ -4,7 +4,6 @@ import type { Metadata } from 'next';
 import { PostCard } from '@/components/posts/post-card';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
-import { ALWAYS_INCLUDED_CATEGORY_SLUGS } from '@/lib/posts/constants';
 import { getActiveCategories, getActiveCities } from '@/lib/posts/reference-data';
 
 export const dynamic = 'force-dynamic';
@@ -43,13 +42,8 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
       : Promise.resolve(null),
   ]);
 
-  const alwaysIncludedCategorySlugSet = new Set<string>(ALWAYS_INCLUDED_CATEGORY_SLUGS);
-  const alwaysIncludedCategories = categories.filter((category) =>
-    alwaysIncludedCategorySlugSet.has(category.slug),
-  );
-  const filterCategories = categories.filter(
-    (category) => !alwaysIncludedCategorySlugSet.has(category.slug),
-  );
+  const alwaysIncludedCategories = categories.filter((category) => category.isAlwaysIncluded);
+  const filterCategories = categories.filter((category) => !category.isAlwaysIncluded);
   const filterCategoryIds = new Set(filterCategories.map((category) => category.id));
   const cityIds = new Set(cities.map((city) => city.id));
   const profileCityId = dbUser?.cityId;

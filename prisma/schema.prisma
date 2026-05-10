@@ -94,6 +94,7 @@ model Category {
   slug              String       @unique
   type              CategoryType @default(GENERAL)
   isActive          Boolean      @default(true)
+  isAlwaysIncluded  Boolean      @default(false)
   sortOrder         Int          @default(0)
   minRole           UserRole     @default(USER)
   ignoreCity        Boolean      @default(false)
