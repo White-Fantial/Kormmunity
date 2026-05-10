@@ -70,12 +70,14 @@ async function main() {
   // Set ADMIN_KAKAO_ID env var to override the placeholder in other environments.
   const adminKakaoId = process.env.ADMIN_KAKAO_ID ?? 'seed-admin-placeholder';
   const adminDisplayName = process.env.ADMIN_DISPLAY_NAME ?? 'nomadongho';
+  const profileImageUrl = process.env.ADMIN_PROFILE_IMAGE_URL ?? null;
   await prisma.user.upsert({
     where: { kakaoId: adminKakaoId },
     update: { role: UserRole.ADMIN },
     create: {
       kakaoId: adminKakaoId,
       displayName: adminDisplayName,
+      profileImageUrl: profileImageUrl,
       role: UserRole.ADMIN,
     },
   });
