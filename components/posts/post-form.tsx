@@ -1,10 +1,15 @@
 'use client';
 
 import Image from 'next/image';
-import { useMemo, useState } from 'react';
-import { FormSubmitButton } from '@/components/ui/form-submit-button';
+import { useRef, useMemo, useState, useTransition } from 'react';
+import {
+  validateClientImageFiles,
+  uploadImagesToCloudinary,
+  MAX_CLIENT_IMAGES,
+} from '@/lib/upload/cloudinary-client';
 
 const SALE_CATEGORY_TYPE = 'SALE';
+const DISABLED_STATE_CLASSES = 'disabled:cursor-not-allowed disabled:opacity-60';
 
 type Option = {
   id: string;
@@ -52,9 +57,17 @@ export function PostForm({
   defaultValues,
   errorMessage,
 }: PostFormProps) {
+  const [isPending, startTransition] = useTransition();
   const [categoryId, setCategoryId] = useState(defaultValues?.categoryId ?? '');
   const [selectedCityId, setSelectedCityId] = useState(defaultValues?.cityId ?? '');
   const [deletedImageIds, setDeletedImageIds] = useState<Set<string>>(new Set());
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isSubmitting = isPending || isUploading;
 
   function toggleDeleteImage(id: string) {
     setDeletedImageIds((prev) => {
@@ -66,6 +79,53 @@ export function PostForm({
       }
       return next;
     });
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setFileError(null);
+    setUploadError(null);
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) {
+      setSelectedFiles([]);
+      return;
+    }
+    const validation = validateClientImageFiles(files);
+    if (!validation.ok) {
+      setFileError(validation.message);
+      setSelectedFiles([]);
+      e.target.value = '';
+    } else {
+      setSelectedFiles(files);
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    setUploadError(null);
+
+    const formData = new FormData(e.currentTarget);
+    // Remove the raw file entries – images are uploaded directly to Cloudinary
+    // from the browser so no file bytes should pass through the Next.js server.
+    formData.delete('images');
+
+    if (selectedFiles.length > 0) {
+      setIsUploading(true);
+      try {
+        const uploaded = await uploadImagesToCloudinary(selectedFiles);
+        formData.append('uploadedImages', JSON.stringify(uploaded));
+      } catch (err) {
+        setUploadError(
+          err instanceof Error ? err.message : '이미지 업로드 중 오류가 발생했어요.',
+        );
+        setIsUploading(false);
+        return;
+      }
+      setIsUploading(false);
+    }
+
+    startTransition(() => action(formData));
   }
 
   const selectedCategory = useMemo(
@@ -80,9 +140,15 @@ export function PostForm({
   const showCitySelector =
     !isCityIgnored && (selectedCategory?.supportsAllCities ?? false) && canSelectAllCities;
 
+  const submitButtonLabel = isUploading
+    ? '이미지 업로드 중...'
+    : isPending
+      ? '처리 중...'
+      : submitLabel;
+
   return (
     <form
-      action={action}
+      onSubmit={handleSubmit}
       encType="multipart/form-data"
       aria-label="게시글 작성 양식"
       className="space-y-4 rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm"
@@ -94,6 +160,12 @@ export function PostForm({
       {errorMessage ? (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
           {errorMessage}
+        </p>
+      ) : null}
+
+      {uploadError ? (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {uploadError}
         </p>
       ) : null}
 
@@ -260,23 +332,32 @@ export function PostForm({
           사진 추가
         </label>
         <input
+          ref={fileInputRef}
           id="images"
           name="images"
           type="file"
           accept="image/*"
           multiple
+          onChange={handleFileChange}
           className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#fee500] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-[#3c1e1e]"
         />
-        <p className="text-xs text-[#888]">
-          최대 5장, 각 8MB 이하 이미지를 올릴 수 있어요.
-        </p>
+        {fileError ? (
+          <p className="text-xs text-red-600">{fileError}</p>
+        ) : (
+          <p className="text-xs text-[#888]">
+            최대 {MAX_CLIENT_IMAGES}장, 각 10MB 이하 이미지를 올릴 수 있어요.
+          </p>
+        )}
       </div>
 
-      <FormSubmitButton
-        idleLabel={submitLabel}
-        pendingLabel="처리 중..."
-        className="w-full rounded-xl bg-[#fee500] px-4 py-3 text-base font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
-      />
+      <button
+        type="submit"
+        disabled={isSubmitting || !!fileError}
+        aria-busy={isSubmitting}
+        className={`w-full rounded-xl bg-[#fee500] px-4 py-3 text-base font-bold text-[#3c1e1e] hover:bg-[#f5db00] ${DISABLED_STATE_CLASSES}`}
+      >
+        {submitButtonLabel}
+      </button>
     </form>
   );
 }

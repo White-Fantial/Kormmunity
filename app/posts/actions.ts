@@ -20,9 +20,8 @@ import {
 } from '@/lib/permissions';
 import {
   MAX_UPLOAD_IMAGE_COUNT,
-  uploadImageToCloudinary,
   deleteImageFromCloudinary,
-  validateImageFiles,
+  type PreUploadedImage,
 } from '@/lib/upload/cloudinary';
 
 const CREATE_POST_RATE_LIMIT = {
@@ -47,13 +46,27 @@ function parsePrice(rawPrice: string) {
   return { value: new Decimal(rawPrice), invalid: false };
 }
 
-function getImageFiles(formData: FormData) {
-  return formData
-    .getAll('images')
-    .filter(
-      (entry): entry is File =>
-        entry instanceof File && entry.size > 0 && entry.name.length > 0,
-    );
+function getUploadedImages(formData: FormData): PreUploadedImage[] {
+  const raw = formData.get('uploadedImages');
+  if (typeof raw !== 'string' || !raw) return [];
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+
+  if (!Array.isArray(parsed)) return [];
+
+  return parsed.filter(
+    (item): item is PreUploadedImage =>
+      item !== null &&
+      typeof item === 'object' &&
+      typeof (item as Record<string, unknown>).url === 'string' &&
+      // Accept only Cloudinary-hosted URLs as a basic server-side safety check.
+      ((item as Record<string, unknown>).url as string).startsWith('https://res.cloudinary.com/'),
+  );
 }
 
 async function validateCategoryAndPrice(categoryId: string, rawPrice: string) {
@@ -121,7 +134,7 @@ export async function createPostAction(formData: FormData) {
   const rawCityId = normalizeText(formData.get('cityId'));
   const rawPrice = normalizeText(formData.get('price'));
   const contactUrl = normalizeText(formData.get('contactUrl')) || null;
-  const imageFiles = getImageFiles(formData);
+  const uploadedImages = getUploadedImages(formData);
 
   try {
     enforceRateLimit({
@@ -169,24 +182,8 @@ export async function createPostAction(formData: FormData) {
 
   const isSaleCategory = categoryResult.category.type === CategoryType.SALE;
 
-  const imageValidationResult = validateImageFiles(imageFiles);
-
-  if (!imageValidationResult.ok) {
-    redirect(`/posts/new?error=${encodeURIComponent(imageValidationResult.message)}`);
-  }
-
-  let uploadedImages: Awaited<ReturnType<typeof uploadImageToCloudinary>>[] = [];
-
-  if (imageFiles.length > 0) {
-    try {
-      uploadedImages = await Promise.all(
-        imageFiles.map((imageFile) => uploadImageToCloudinary(imageFile)),
-      );
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : '이미지 업로드 중 오류가 발생했어요.';
-      redirect(`/posts/new?error=${encodeURIComponent(message)}`);
-    }
+  if (uploadedImages.length > MAX_UPLOAD_IMAGE_COUNT) {
+    redirect(`/posts/new?error=${encodeURIComponent(`이미지는 최대 ${MAX_UPLOAD_IMAGE_COUNT}장까지 업로드할 수 있어요.`)}`);
   }
 
   const postId = await prisma.$transaction(async (tx) => {
@@ -209,8 +206,8 @@ export async function createPostAction(formData: FormData) {
         data: uploadedImages.map((image, index) => ({
           postId: post.id,
           url: image.url,
-          provider: image.provider,
-          providerPublicId: image.providerPublicId,
+          provider: 'cloudinary',
+          providerPublicId: image.publicId,
           width: image.width,
           height: image.height,
           sortOrder: index,
@@ -254,7 +251,7 @@ export async function updatePostAction(formData: FormData) {
   const rawCityId = normalizeText(formData.get('cityId'));
   const rawPrice = normalizeText(formData.get('price'));
   const contactUrl = normalizeText(formData.get('contactUrl')) || null;
-  const imageFiles = getImageFiles(formData);
+  const uploadedImages = getUploadedImages(formData);
   const deleteImageIds = formData.getAll('deleteImageIds').filter((v): v is string => typeof v === 'string');
 
   if (!body) {
@@ -291,32 +288,16 @@ export async function updatePostAction(formData: FormData) {
 
   const remainingImageCount = existingImageCount - deleteImageIds.length;
 
-  const imageValidationResult = validateImageFiles(imageFiles);
-
-  if (!imageValidationResult.ok) {
+  if (uploadedImages.length > MAX_UPLOAD_IMAGE_COUNT) {
     redirect(
-      `/posts/${postId}/edit?error=${encodeURIComponent(imageValidationResult.message)}`,
+      `/posts/${postId}/edit?error=${encodeURIComponent(`이미지는 최대 ${MAX_UPLOAD_IMAGE_COUNT}장까지 업로드할 수 있어요.`)}`,
     );
   }
 
-  if (remainingImageCount + imageFiles.length > MAX_UPLOAD_IMAGE_COUNT) {
+  if (remainingImageCount + uploadedImages.length > MAX_UPLOAD_IMAGE_COUNT) {
     redirect(
       `/posts/${postId}/edit?error=${encodeURIComponent(`기존 이미지 포함 최대 ${MAX_UPLOAD_IMAGE_COUNT}장까지 업로드할 수 있어요.`)}`,
     );
-  }
-
-  let uploadedImages: Awaited<ReturnType<typeof uploadImageToCloudinary>>[] = [];
-
-  if (imageFiles.length > 0) {
-    try {
-      uploadedImages = await Promise.all(
-        imageFiles.map((imageFile) => uploadImageToCloudinary(imageFile)),
-      );
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : '이미지 업로드 중 오류가 발생했어요.';
-      redirect(`/posts/${postId}/edit?error=${encodeURIComponent(message)}`);
-    }
   }
 
   let cloudinaryPublicIdsToDelete: string[] = [];
@@ -357,8 +338,8 @@ export async function updatePostAction(formData: FormData) {
         data: uploadedImages.map((image, index) => ({
           postId,
           url: image.url,
-          provider: image.provider,
-          providerPublicId: image.providerPublicId,
+          provider: 'cloudinary',
+          providerPublicId: image.publicId,
           width: image.width,
           height: image.height,
           sortOrder: remainingImageCount + index,
