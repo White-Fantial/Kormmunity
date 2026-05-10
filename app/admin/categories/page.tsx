@@ -119,9 +119,9 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
 
                 <details className="text-sm">
                   <summary className="cursor-pointer text-xs text-zinc-500">
-                    작성 권한 및 지역 설정 (현재: 작성권한={MIN_ROLE_LABELS[cat.minRole]},
-                    전지역강제={cat.ignoreCity ? '켜짐' : '꺼짐'},
-                    전지역선택가능={cat.supportsAllCities ? '켜짐' : '꺼짐'})
+                    작성 권한 및 지역 설정 (현재: {MIN_ROLE_LABELS[cat.minRole]}
+                    {cat.ignoreCity ? ' · 전지역강제' : ''}
+                    {cat.supportsAllCities ? ' · 전지역선택가능' : ''})
                   </summary>
                   <form action={updateCategorySettingsAction} className="mt-2 space-y-2">
                     <input type="hidden" name="categoryId" value={cat.id} />

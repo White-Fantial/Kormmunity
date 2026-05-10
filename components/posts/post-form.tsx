@@ -52,9 +52,7 @@ export function PostForm({
   errorMessage,
 }: PostFormProps) {
   const [categoryId, setCategoryId] = useState(defaultValues?.categoryId ?? '');
-  const [selectedCityId, setSelectedCityId] = useState(
-    defaultValues?.cityId === null ? '' : (defaultValues?.cityId ?? ''),
-  );
+  const [selectedCityId, setSelectedCityId] = useState(defaultValues?.cityId ?? '');
 
   const selectedCategory = useMemo(
     () => categories.find((category) => category.id === categoryId),

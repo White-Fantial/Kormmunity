@@ -86,7 +86,7 @@ async function resolveCityId(
     return null;
   }
 
-  if (!rawCityId) {
+  if (rawCityId === '') {
     if (category.supportsAllCities) {
       return null;
     }
