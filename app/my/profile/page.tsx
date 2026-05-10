@@ -1,6 +1,7 @@
 import { requireUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { UserAvatar } from '@/components/ui/user-avatar';
+import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { updateProfileAction } from './actions';
 
 export const dynamic = 'force-dynamic';
@@ -89,12 +90,11 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
             등록하면 게시글 상세 페이지에서 연락 버튼이 표시됩니다.
           </p>
         </div>
-        <button
-          type="submit"
+        <FormSubmitButton
+          idleLabel="저장하기"
+          pendingLabel="저장 중..."
           className="rounded-md bg-black px-4 py-2 text-sm text-white"
-        >
-          저장하기
-        </button>
+        />
       </form>
     </section>
   );

@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useMemo, useState } from 'react';
 import { SALE_CATEGORY_SLUG } from '@/lib/posts/constants';
+import { FormSubmitButton } from '@/components/ui/form-submit-button';
 
 type Option = {
   id: string;
@@ -201,12 +202,11 @@ export function PostForm({
         </p>
       </div>
 
-      <button
-        type="submit"
+      <FormSubmitButton
+        idleLabel={submitLabel}
+        pendingLabel="처리 중..."
         className="w-full rounded-md bg-black px-4 py-2 text-white"
-      >
-        {submitLabel}
-      </button>
+      />
     </form>
   );
 }
