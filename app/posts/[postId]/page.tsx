@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { CategoryType } from '@prisma/client';
@@ -18,6 +17,7 @@ import {
   restorePostAction,
 } from '@/app/coordinator/actions';
 import { DeletePostButton } from '@/components/posts/delete-post-button';
+import { PostImageGallery } from '@/components/posts/post-image-gallery';
 import { PostMarkdown } from '@/components/posts/post-markdown';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { UserAvatar } from '@/components/ui/user-avatar';
@@ -165,19 +165,7 @@ export default async function PostDetailPage({
       <PostMarkdown body={post.body} />
 
       {post.images.length > 0 ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {post.images.map((image, index) => (
-            <div key={image.id} className="relative h-36 overflow-hidden rounded-lg border border-[#e8e8e8]">
-              <Image
-                src={image.url}
-                alt={`${post.title ?? '게시글'} 이미지 ${index + 1}`}
-                fill
-                sizes="(max-width: 640px) 50vw, 33vw"
-                className="object-cover"
-              />
-            </div>
-          ))}
-        </div>
+        <PostImageGallery images={post.images} postTitle={post.title} />
       ) : null}
 
       {post.price ? (
