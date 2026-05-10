@@ -122,13 +122,6 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
 
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">홈</h1>
-        <Link href="/posts/new" className="rounded-xl bg-[#fee500] px-4 py-2 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]">
-          글쓰기
-        </Link>
-      </div>
-
       <form>
         <details className="group rounded-xl border border-[#e8e8e8] bg-white p-3 shadow-sm">
           <summary className="flex cursor-pointer items-center justify-between text-sm font-medium">

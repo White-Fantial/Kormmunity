@@ -48,7 +48,6 @@ export default async function MyPostsPage({ searchParams }: MyPostsPageProps) {
 
   return (
     <section className="space-y-4">
-      <h1 className="text-xl font-bold">내 글</h1>
       {params.error ? (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{params.error}</p>
       ) : null}
