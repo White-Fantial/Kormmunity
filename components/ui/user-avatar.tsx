@@ -13,9 +13,23 @@ function getInitial(displayName: string) {
   return firstChar ? firstChar.toUpperCase() : '?';
 }
 
+function normalizeAvatarUrl(profileImageUrl?: string | null) {
+  if (!profileImageUrl) return null;
+  try {
+    const parsedUrl = new URL(profileImageUrl);
+    if (parsedUrl.protocol === 'http:' && parsedUrl.hostname.endsWith('kakaocdn.net')) {
+      parsedUrl.protocol = 'https:';
+      return parsedUrl.toString();
+    }
+    return profileImageUrl;
+  } catch {
+    return profileImageUrl;
+  }
+}
+
 export function UserAvatar({ displayName, profileImageUrl, className, sizes }: UserAvatarProps) {
   const avatarClassName = className ?? 'h-8 w-8';
-  const resolvedProfileImageUrl = profileImageUrl?.replace(/^http:\/\/k\.kakaocdn\.net/i, 'https://k.kakaocdn.net');
+  const resolvedProfileImageUrl = normalizeAvatarUrl(profileImageUrl);
 
   if (resolvedProfileImageUrl) {
     return (
