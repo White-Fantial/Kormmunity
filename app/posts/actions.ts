@@ -1,5 +1,6 @@
 'use server';
 
+import { CategoryType } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -15,7 +16,6 @@ import {
   canMarkPostAsSold,
   canPostToCategory,
 } from '@/lib/permissions';
-import { SALE_CATEGORY_TYPE } from '@/lib/posts/constants';
 import {
   MAX_UPLOAD_IMAGE_COUNT,
   uploadImageToCloudinary,
@@ -64,7 +64,7 @@ async function validateCategoryAndPrice(categoryId: string, rawPrice: string) {
   }
 
   const { value: price, invalid } = parsePrice(rawPrice);
-  const isSaleCategory = category.type === SALE_CATEGORY_TYPE;
+  const isSaleCategory = category.type === CategoryType.SALE;
 
   if (invalid) {
     return { ok: false as const, message: '가격을 올바르게 입력해 주세요.' };
@@ -164,7 +164,7 @@ export async function createPostAction(formData: FormData) {
     '/posts/new',
   );
 
-  const isSaleCategory = categoryResult.category.type === SALE_CATEGORY_TYPE;
+  const isSaleCategory = categoryResult.category.type === CategoryType.SALE;
 
   const imageValidationResult = validateImageFiles(imageFiles);
 
@@ -279,7 +279,7 @@ export async function updatePostAction(formData: FormData) {
     `/posts/${postId}/edit`,
   );
 
-  const isSaleCategory = categoryResult.category.type === SALE_CATEGORY_TYPE;
+  const isSaleCategory = categoryResult.category.type === CategoryType.SALE;
 
   const existingImageCount = await prisma.postImage.count({
     where: { postId },
@@ -395,7 +395,7 @@ export async function markPostAsSoldAction(formData: FormData) {
     redirect('/my/posts?error=권한이 없습니다.');
   }
 
-  if (post.category.type !== SALE_CATEGORY_TYPE) {
+  if (post.category.type !== CategoryType.SALE) {
     redirect('/my/posts?error=판매글만 판매완료 처리할 수 있어요.');
   }
 

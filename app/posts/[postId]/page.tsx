@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { CategoryType } from '@prisma/client';
 
 import {
   deletePostAction,
@@ -21,7 +22,6 @@ import { UserAvatar } from '@/components/ui/user-avatar';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { canDeleteComment, canHoldPost, canRestorePost } from '@/lib/permissions';
-import { SALE_CATEGORY_TYPE } from '@/lib/posts/constants';
 
 export const dynamic = 'force-dynamic';
 const TITLE_PREVIEW_LENGTH = 40;
@@ -129,7 +129,7 @@ export default async function PostDetailPage({
   const isOwner = currentUser?.id === post.authorId;
   const canMarkSold =
     isOwner &&
-    post.category.type === SALE_CATEGORY_TYPE &&
+    post.category.type === CategoryType.SALE &&
     post.saleStatus !== 'SOLD';
 
   return (

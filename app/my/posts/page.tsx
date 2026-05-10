@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { CategoryType } from '@prisma/client';
 
 import {
   deletePostAction,
@@ -7,7 +8,6 @@ import {
 } from '@/app/posts/actions';
 import { requireUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
-import { SALE_CATEGORY_TYPE } from '@/lib/posts/constants';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
@@ -69,7 +69,7 @@ export default async function MyPostsPage({ searchParams }: MyPostsPageProps) {
                 <Link href={`/posts/${post.id}/edit`} className="rounded-xl border border-[#e8e8e8] px-3 py-2 text-sm font-medium hover:bg-[#f9f9f9]">
                   수정
                 </Link>
-                {post.category.type === SALE_CATEGORY_TYPE &&
+                {post.category.type === CategoryType.SALE &&
                 post.saleStatus !== 'SOLD' ? (
                   <form action={markPostAsSoldAction}>
                     <input type="hidden" name="postId" value={post.id} />
