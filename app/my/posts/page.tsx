@@ -56,14 +56,22 @@ export default async function MyPostsPage({ searchParams }: MyPostsPageProps) {
         </p>
       ) : (
         <ul className="space-y-3">
-          {posts.map((post) => (
+          {posts.map((post) => {
+            const titleText = post.title?.trim() ?? '';
+            const bodyPreview = post.body.slice(0, 40);
+            const postHeading = titleText || bodyPreview;
+            const thumbnailAlt = titleText
+              ? `게시글 썸네일: ${titleText}`
+              : '게시글 썸네일: 제목 없는 게시글';
+
+            return (
             <li key={post.id} className="space-y-3 rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
               <div className="flex gap-3">
                 {post.images[0]?.url ? (
                   <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-[#e8e8e8]">
                     <Image
                       src={post.images[0].url}
-                      alt={`게시글 썸네일: ${post.title?.trim() || post.body.slice(0, 40)}`}
+                      alt={thumbnailAlt}
                       fill
                       sizes="(max-width: 640px) 80px, 80px"
                       className="object-cover"
@@ -78,7 +86,7 @@ export default async function MyPostsPage({ searchParams }: MyPostsPageProps) {
                       <span className="rounded-full bg-[#3c1e1e] px-2 py-1 text-white">판매완료</span>
                     ) : null}
                   </div>
-                  <h2 className="text-base font-semibold">{post.title || post.body.slice(0, 40)}</h2>
+                  <h2 className="text-base font-semibold">{postHeading}</h2>
                   <p className="line-clamp-2 text-sm text-[#555]">{post.body}</p>
                 </div>
               </div>
@@ -107,7 +115,8 @@ export default async function MyPostsPage({ searchParams }: MyPostsPageProps) {
                 </form>
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </section>
