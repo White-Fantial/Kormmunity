@@ -14,9 +14,8 @@ export function FormSubmitButton({
   className = '',
 }: FormSubmitButtonProps) {
   const { pending } = useFormStatus();
-  const composedClassName = className
-    ? `${className} disabled:cursor-not-allowed disabled:opacity-60`
-    : 'disabled:cursor-not-allowed disabled:opacity-60';
+  const composedClassName =
+    `${className} disabled:cursor-not-allowed disabled:opacity-60`.trim();
 
   return (
     <button
