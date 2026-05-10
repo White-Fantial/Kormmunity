@@ -53,6 +53,7 @@ export function PostCard({ post }: PostCardProps) {
           displayName={post.author.displayName}
           profileImageUrl={post.author.profileImageUrl}
           className="h-6 w-6"
+          sizes="24px"
         />
         <span>{post.author.displayName}</span>
       </div>

@@ -33,6 +33,7 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
           displayName={user.displayName}
           profileImageUrl={dbUser?.profileImageUrl}
           className="h-14 w-14"
+          sizes="56px"
         />
         <p className="text-sm">이름: {user.displayName}</p>
       </div>

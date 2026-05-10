@@ -179,6 +179,7 @@ export default async function PostDetailPage({
           displayName={post.author.displayName}
           profileImageUrl={post.author.profileImageUrl}
           className="h-7 w-7"
+          sizes="28px"
         />
         <span>
           작성자: {post.author.displayName} · {new Date(post.createdAt).toLocaleString('ko-KR')}
@@ -301,6 +302,7 @@ export default async function PostDetailPage({
                         displayName={comment.author.displayName}
                         profileImageUrl={comment.author.profileImageUrl}
                         className="h-6 w-6"
+                        sizes="24px"
                       />
                       <span>
                         {comment.author.displayName} ·{' '}

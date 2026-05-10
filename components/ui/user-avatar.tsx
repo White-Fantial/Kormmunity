@@ -4,6 +4,7 @@ type UserAvatarProps = {
   displayName: string;
   profileImageUrl?: string | null;
   className?: string;
+  sizes?: string;
 };
 
 function getInitial(displayName: string) {
@@ -11,7 +12,7 @@ function getInitial(displayName: string) {
   return trimmed ? trimmed[0]!.toUpperCase() : '?';
 }
 
-export function UserAvatar({ displayName, profileImageUrl, className }: UserAvatarProps) {
+export function UserAvatar({ displayName, profileImageUrl, className, sizes }: UserAvatarProps) {
   const sizeClassName = className ?? 'h-8 w-8';
 
   if (profileImageUrl) {
@@ -21,7 +22,7 @@ export function UserAvatar({ displayName, profileImageUrl, className }: UserAvat
           src={profileImageUrl}
           alt={`${displayName} 프로필 이미지`}
           fill
-          sizes="64px"
+          sizes={sizes ?? '32px'}
           className="object-cover"
         />
       </span>
