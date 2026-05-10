@@ -326,7 +326,7 @@ export default async function PostDetailPage({
                         <input type="hidden" name="commentId" value={comment.id} />
                         <FormSubmitButton
                           idleLabel="삭제"
-                          pendingLabel="..."
+                          pendingLabel="삭제 중..."
                           className="text-red-500"
                         />
                       </form>
