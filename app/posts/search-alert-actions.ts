@@ -96,6 +96,7 @@ export async function updateSearchAlertAction(formData: FormData) {
   });
 
   revalidatePath('/posts');
+  revalidatePath('/my/profile');
   redirect(returnTo);
 }
 
@@ -113,5 +114,6 @@ export async function deleteSearchAlertAction(formData: FormData) {
   });
 
   revalidatePath('/posts');
+  revalidatePath('/my/profile');
   redirect(returnTo);
 }

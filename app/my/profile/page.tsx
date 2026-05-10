@@ -3,6 +3,10 @@ import { prisma } from '@/lib/db/prisma';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { updateProfileAction } from './actions';
+import {
+  deleteSearchAlertAction,
+  updateSearchAlertAction,
+} from '@/app/posts/search-alert-actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +18,7 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
   const user = await requireUser();
   const params = await searchParams;
 
-  const [dbUser, cities] = await Promise.all([
+  const [dbUser, cities, searchAlerts] = await Promise.all([
     prisma.user.findUnique({
       where: { id: user.id },
       select: { openChatUrl: true, cityId: true, profileImageUrl: true },
@@ -23,6 +27,16 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
       where: { isActive: true },
       orderBy: { sortOrder: 'asc' },
       select: { id: true, name: true },
+    }),
+    prisma.searchAlert.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        query: true,
+        notifyOnKakao: true,
+        isActive: true,
+      },
     }),
   ]);
 
@@ -96,6 +110,57 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
           className="w-full rounded-xl bg-[#fee500] px-4 py-3 text-base font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
         />
       </form>
+
+      {searchAlerts.length > 0 ? (
+        <div className="space-y-3 border-t border-[#e8e8e8] pt-4">
+          <h2 className="text-sm font-semibold">저장된 검색 조건</h2>
+          <ul className="space-y-2">
+            {searchAlerts.map((alert) => (
+              <li key={alert.id} className="rounded-lg border border-[#efefef] p-3">
+                <p className="mb-2 text-sm font-medium">
+                  &quot;{alert.query}&quot;
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <form action={updateSearchAlertAction} className="flex items-center gap-2">
+                    <input type="hidden" name="alertId" value={alert.id} />
+                    <input type="hidden" name="returnTo" value="/my/profile" />
+                    <label htmlFor={`alert-active-${alert.id}`} className="flex items-center gap-1 text-xs text-[#555]">
+                      <input
+                        id={`alert-active-${alert.id}`}
+                        type="checkbox"
+                        name="isActive"
+                        defaultChecked={alert.isActive}
+                        className="accent-[#fee500]"
+                      />
+                      사용
+                    </label>
+                    <label htmlFor={`alert-notify-${alert.id}`} className="flex items-center gap-1 text-xs text-[#555]">
+                      <input
+                        id={`alert-notify-${alert.id}`}
+                        type="checkbox"
+                        name="notifyOnKakao"
+                        defaultChecked={alert.notifyOnKakao}
+                        className="accent-[#fee500]"
+                      />
+                      카카오 알림
+                    </label>
+                    <button type="submit" className="rounded-md border border-[#e8e8e8] px-2 py-1 text-xs hover:bg-[#f9f9f9]">
+                      저장
+                    </button>
+                  </form>
+                  <form action={deleteSearchAlertAction}>
+                    <input type="hidden" name="alertId" value={alert.id} />
+                    <input type="hidden" name="returnTo" value="/my/profile" />
+                    <button type="submit" className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50">
+                      삭제
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </section>
   );
 }

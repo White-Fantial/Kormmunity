@@ -2,11 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 import { PostCard } from '@/components/posts/post-card';
-import {
-  deleteSearchAlertAction,
-  saveSearchAlertAction,
-  updateSearchAlertAction,
-} from '@/app/posts/search-alert-actions';
+import { saveSearchAlertAction } from '@/app/posts/search-alert-actions';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { canMakeFinalUserDecision } from '@/lib/permissions';
@@ -44,19 +40,12 @@ function toSingle(value: string | string[] | undefined) {
   return (Array.isArray(value) ? value[0] : value).trim();
 }
 
-function truncateText(value: string, maxLength: number) {
-  if (value.length <= maxLength) {
-    return value;
-  }
-  return `${value.slice(0, maxLength).trimEnd()}…`;
-}
-
 export default async function PostsPage({ searchParams }: PostsPageProps) {
   const params = await searchParams;
   const currentUser = await getCurrentUser();
   const keyword = toSingle(params.q);
 
-  const [categories, cities, dbUser, searchAlerts] = await Promise.all([
+  const [categories, cities, dbUser] = await Promise.all([
     getActiveCategories(),
     getActiveCities(),
     currentUser
@@ -65,18 +54,6 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
           select: { cityId: true },
         })
       : Promise.resolve(null),
-    currentUser
-      ? prisma.searchAlert.findMany({
-          where: { userId: currentUser.id },
-          orderBy: { createdAt: 'desc' },
-          select: {
-            id: true,
-            query: true,
-            notifyOnKakao: true,
-            isActive: true,
-          },
-        })
-      : Promise.resolve([]),
   ]);
 
   const alwaysIncludedCategories = categories.filter((category) => category.isAlwaysIncluded);
@@ -367,7 +344,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
         </details>
       </form>
 
-      {currentUser ? (
+      {currentUser && hasKeyword ? (
         <section className="space-y-3 rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
           <h2 className="text-sm font-semibold">검색 조건 저장</h2>
           <form action={saveSearchAlertAction} className="space-y-2">
@@ -382,60 +359,11 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
             </label>
             <button
               type="submit"
-              disabled={!keyword}
-              className="rounded-xl border border-[#e8e8e8] px-3 py-2 text-sm font-medium hover:bg-[#f9f9f9] disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-xl border border-[#e8e8e8] px-3 py-2 text-sm font-medium hover:bg-[#f9f9f9]"
             >
               현재 검색 조건 저장
             </button>
           </form>
-
-          {searchAlerts.length > 0 ? (
-            <ul className="space-y-2 border-t border-[#f0f0f0] pt-3">
-              {searchAlerts.map((alert) => (
-                <li key={alert.id} className="rounded-lg border border-[#efefef] p-3">
-                  <p className="mb-2 text-sm font-medium">
-                    &quot;{truncateText(alert.query, 40)}&quot;
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <form action={updateSearchAlertAction} className="flex items-center gap-2">
-                      <input type="hidden" name="alertId" value={alert.id} />
-                      <input type="hidden" name="returnTo" value={returnTo} />
-                      <label htmlFor={`alert-active-${alert.id}`} className="flex items-center gap-1 text-xs text-[#555]">
-                        <input
-                          id={`alert-active-${alert.id}`}
-                          type="checkbox"
-                          name="isActive"
-                          defaultChecked={alert.isActive}
-                          className="accent-[#fee500]"
-                        />
-                        사용
-                      </label>
-                      <label htmlFor={`alert-notify-${alert.id}`} className="flex items-center gap-1 text-xs text-[#555]">
-                        <input
-                          id={`alert-notify-${alert.id}`}
-                          type="checkbox"
-                          name="notifyOnKakao"
-                          defaultChecked={alert.notifyOnKakao}
-                          className="accent-[#fee500]"
-                        />
-                        카카오 알림
-                      </label>
-                      <button type="submit" className="rounded-md border border-[#e8e8e8] px-2 py-1 text-xs hover:bg-[#f9f9f9]">
-                        저장
-                      </button>
-                    </form>
-                    <form action={deleteSearchAlertAction}>
-                      <input type="hidden" name="alertId" value={alert.id} />
-                      <input type="hidden" name="returnTo" value={returnTo} />
-                      <button type="submit" className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50">
-                        삭제
-                      </button>
-                    </form>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : null}
         </section>
       ) : null}
 
