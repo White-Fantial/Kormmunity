@@ -61,7 +61,11 @@ CREATE TABLE "Category" (
     "slug" TEXT NOT NULL,
     "type" "CategoryType" NOT NULL DEFAULT 'GENERAL',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "isAlwaysIncluded" BOOLEAN NOT NULL DEFAULT false,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "minRole" "UserRole" NOT NULL DEFAULT 'USER',
+    "ignoreCity" BOOLEAN NOT NULL DEFAULT false,
+    "supportsAllCities" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "Category_pkey" PRIMARY KEY ("id")
 );
@@ -70,7 +74,7 @@ CREATE TABLE "Category" (
 CREATE TABLE "Post" (
     "id" TEXT NOT NULL,
     "authorId" TEXT NOT NULL,
-    "cityId" TEXT NOT NULL,
+    "cityId" TEXT,
     "categoryId" TEXT NOT NULL,
     "title" TEXT,
     "body" TEXT NOT NULL,
@@ -185,7 +189,7 @@ ALTER TABLE "Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId"
 ALTER TABLE "Post" ADD CONSTRAINT "Post_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Post" ADD CONSTRAINT "Post_cityId_fkey" FOREIGN KEY ("cityId") REFERENCES "City"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Post" ADD CONSTRAINT "Post_cityId_fkey" FOREIGN KEY ("cityId") REFERENCES "City"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Post" ADD CONSTRAINT "Post_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
