@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
@@ -10,7 +11,7 @@ export function getSessionCookieName() {
   return SESSION_COOKIE;
 }
 
-export async function getCurrentUser(): Promise<SessionUser | null> {
+export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
 
@@ -39,7 +40,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   }
 
   return session.user;
-}
+});
 
 export async function requireUser() {
   const user = await getCurrentUser();

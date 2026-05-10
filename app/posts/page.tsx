@@ -5,6 +5,7 @@ import { PostCard } from '@/components/posts/post-card';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { ALWAYS_INCLUDED_CATEGORY_SLUGS } from '@/lib/posts/constants';
+import { getActiveCategories, getActiveCities } from '@/lib/posts/reference-data';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
@@ -32,16 +33,8 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
   const currentUser = await getCurrentUser();
 
   const [categories, cities, dbUser] = await Promise.all([
-    prisma.category.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: 'asc' },
-      select: { id: true, name: true, slug: true },
-    }),
-    prisma.city.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: 'asc' },
-      select: { id: true, name: true },
-    }),
+    getActiveCategories(),
+    getActiveCities(),
     currentUser
       ? prisma.user.findUnique({
           where: { id: currentUser.id },
