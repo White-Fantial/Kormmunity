@@ -75,6 +75,7 @@ export default async function MyPostsPage({ searchParams }: MyPostsPageProps) {
             const isSalePost = post.category.type === CategoryType.SALE;
             const isRecruitPost = post.category.type === CategoryType.RECRUIT;
             const isRecruitCompleted = isRecruitPost && post.saleStatus === 'SOLD';
+            const isRecruitInProgress = isRecruitPost && post.saleStatus === 'AVAILABLE';
 
             return (
               <li key={post.id} className="space-y-3 rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
@@ -100,7 +101,7 @@ export default async function MyPostsPage({ searchParams }: MyPostsPageProps) {
                       {isSalePost && post.saleStatus === 'SOLD' ? (
                         <span className="rounded-full bg-[#3c1e1e] px-2 py-1 text-white">판매완료</span>
                       ) : null}
-                      {isRecruitPost && !isRecruitCompleted ? (
+                      {isRecruitInProgress ? (
                         <span className="rounded-full bg-[#e8f5e9] px-2 py-1 text-[#2e7d32]">진행중</span>
                       ) : null}
                       {isRecruitCompleted ? (
