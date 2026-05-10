@@ -11,7 +11,11 @@
 - Next.js App Router 프로젝트 기본 구조
 - Prisma 스키마 (User, City, Category, Post, PostImage, Comment, ModerationAction, UserRestriction)
 - 도시/카테고리 seed 데이터
-- Kakao OAuth 교체 가능한 로그인 placeholder
+- 실제 Kakao OAuth 연동 (Phase 11)
+  - `/api/auth/kakao` → 카카오 인증 URL로 리다이렉트 (state CSRF 보호)
+  - `/api/auth/kakao/callback` → 코드 교환, 사용자 정보 조회, 세션 생성
+  - 환경 변수 미설정 시 개발용 임시 로그인 폴백
+  - 카카오 프로필 이미지 자동 동기화
 - 권한 helper (USER, COORDINATOR, ADMIN)
 - 게시글 MVP
   - 글 작성 (제목 optional, 본문/카테고리/지역 required)
@@ -47,7 +51,8 @@
 - 한국어 UI 라벨/메시지 반영
 
 ## Not Yet Implemented
-- 실제 Kakao OAuth/NextAuth 연동
+- 분석 이벤트 외부 대시보드 연동
+- 검색 고도화 및 운영 자동화
 
 ## Local Setup
 1. 의존성 설치
@@ -89,10 +94,10 @@
 - `CLOUDINARY_API_SECRET`
 
 ## Important Notes
-- 로그인은 현재 placeholder로 구현되어 있으며, `app/login/actions.ts`의 TODO 지점에서 Kakao OAuth로 교체하도록 설계했습니다.
+- 카카오 로그인은 `KAKAO_CLIENT_ID`와 `KAKAO_REDIRECT_URI` 환경 변수가 설정된 경우 실제 OAuth 흐름을 사용합니다. 미설정 시 개발용 임시 로그인으로 폴백됩니다.
+- 카카오 개발자 콘솔(https://developers.kakao.com)에서 앱을 등록하고, `KAKAO_REDIRECT_URI`에 `/api/auth/kakao/callback` 경로를 등록해야 합니다.
 - 이미지 업로드는 현재 Cloudinary API 환경 변수 설정이 필요합니다.
 
 ## Next Focus
-- 실제 Kakao OAuth/NextAuth 연동
 - 분석 이벤트 외부 대시보드 연동
 - 검색 고도화 및 운영 자동화
