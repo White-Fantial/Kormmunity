@@ -19,6 +19,7 @@ import {
 import {
   MAX_UPLOAD_IMAGE_COUNT,
   uploadImageToCloudinary,
+  deleteImageFromCloudinary,
   validateImageFiles,
 } from '@/lib/upload/cloudinary';
 
@@ -252,6 +253,7 @@ export async function updatePostAction(formData: FormData) {
   const rawPrice = normalizeText(formData.get('price'));
   const contactUrl = normalizeText(formData.get('contactUrl')) || null;
   const imageFiles = getImageFiles(formData);
+  const deleteImageIds = formData.getAll('deleteImageIds').filter((v): v is string => typeof v === 'string');
 
   if (!body) {
     redirect(`/posts/${postId}/edit?error=글 내용을 입력해 주세요.`);
@@ -285,6 +287,8 @@ export async function updatePostAction(formData: FormData) {
     where: { postId },
   });
 
+  const remainingImageCount = existingImageCount - deleteImageIds.length;
+
   const imageValidationResult = validateImageFiles(imageFiles);
 
   if (!imageValidationResult.ok) {
@@ -293,7 +297,7 @@ export async function updatePostAction(formData: FormData) {
     );
   }
 
-  if (existingImageCount + imageFiles.length > MAX_UPLOAD_IMAGE_COUNT) {
+  if (remainingImageCount + imageFiles.length > MAX_UPLOAD_IMAGE_COUNT) {
     redirect(
       `/posts/${postId}/edit?error=${encodeURIComponent(`기존 이미지 포함 최대 ${MAX_UPLOAD_IMAGE_COUNT}장까지 업로드할 수 있어요.`)}`,
     );
@@ -313,6 +317,18 @@ export async function updatePostAction(formData: FormData) {
     }
   }
 
+  let cloudinaryPublicIdsToDelete: string[] = [];
+
+  if (deleteImageIds.length > 0) {
+    const imagesToDelete = await prisma.postImage.findMany({
+      where: { id: { in: deleteImageIds }, postId },
+      select: { providerPublicId: true },
+    });
+    cloudinaryPublicIdsToDelete = imagesToDelete
+      .filter((img): img is { providerPublicId: string } => img.providerPublicId !== null)
+      .map((img) => img.providerPublicId);
+  }
+
   await prisma.$transaction(async (tx) => {
     await tx.post.update({
       where: { id: postId },
@@ -328,6 +344,12 @@ export async function updatePostAction(formData: FormData) {
       },
     });
 
+    if (deleteImageIds.length > 0) {
+      await tx.postImage.deleteMany({
+        where: { id: { in: deleteImageIds }, postId },
+      });
+    }
+
     if (uploadedImages.length > 0) {
       await tx.postImage.createMany({
         data: uploadedImages.map((image, index) => ({
@@ -337,11 +359,18 @@ export async function updatePostAction(formData: FormData) {
           providerPublicId: image.providerPublicId,
           width: image.width,
           height: image.height,
-          sortOrder: existingImageCount + index,
+          sortOrder: remainingImageCount + index,
         })),
       });
     }
   });
+
+  // Best-effort: delete removed images from Cloudinary after the DB transaction succeeds.
+  if (cloudinaryPublicIdsToDelete.length > 0) {
+    await Promise.allSettled(
+      cloudinaryPublicIdsToDelete.map((id) => deleteImageFromCloudinary(id)),
+    );
+  }
 
   revalidatePath('/posts');
   revalidatePath('/my/posts');

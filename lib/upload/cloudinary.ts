@@ -64,6 +64,29 @@ export function validateImageFiles(imageFiles: File[]) {
   return { ok: true as const };
 }
 
+export async function deleteImageFromCloudinary(publicId: string): Promise<void> {
+  const { cloudName, apiKey, apiSecret } = getCloudinaryConfig();
+
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const signature = createSignature({ public_id: publicId, timestamp }, apiSecret);
+
+  const payload = new FormData();
+  payload.append('public_id', publicId);
+  payload.append('api_key', apiKey);
+  payload.append('timestamp', timestamp);
+  payload.append('signature', signature);
+
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/destroy`, {
+    method: 'POST',
+    body: payload,
+  });
+
+  if (!response.ok) {
+    const data = (await response.json().catch(() => ({}))) as { error?: { message?: string } };
+    throw new Error(data.error?.message ?? '이미지 삭제에 실패했습니다.');
+  }
+}
+
 export async function uploadImageToCloudinary(file: File): Promise<UploadedImage> {
   const { cloudName, apiKey, apiSecret } = getCloudinaryConfig();
 

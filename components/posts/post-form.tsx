@@ -54,6 +54,19 @@ export function PostForm({
 }: PostFormProps) {
   const [categoryId, setCategoryId] = useState(defaultValues?.categoryId ?? '');
   const [selectedCityId, setSelectedCityId] = useState(defaultValues?.cityId ?? '');
+  const [deletedImageIds, setDeletedImageIds] = useState<Set<string>>(new Set());
+
+  function toggleDeleteImage(id: string) {
+    setDeletedImageIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
 
   const selectedCategory = useMemo(
     () => categories.find((category) => category.id === categoryId),
@@ -210,7 +223,14 @@ export function PostForm({
           <p className="text-sm font-medium">기존 사진</p>
           <div className="grid grid-cols-3 gap-2">
             {defaultValues.images.map((image, index) => (
-              <div key={image.id} className="relative h-24 overflow-hidden rounded-lg border border-[#e8e8e8]">
+              <div
+                key={image.id}
+                className={`relative h-24 overflow-hidden rounded-lg border ${
+                  deletedImageIds.has(image.id)
+                    ? 'border-red-400 opacity-40'
+                    : 'border-[#e8e8e8]'
+                }`}
+              >
                 <Image
                   src={image.url}
                   alt={`기존 게시글 이미지 ${index + 1}`}
@@ -218,9 +238,20 @@ export function PostForm({
                   sizes="(max-width: 768px) 33vw, 120px"
                   className="object-cover"
                 />
+                <button
+                  type="button"
+                  onClick={() => toggleDeleteImage(image.id)}
+                  aria-label={deletedImageIds.has(image.id) ? '삭제 취소' : '사진 삭제'}
+                  className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                >
+                  {deletedImageIds.has(image.id) ? '↩' : '×'}
+                </button>
               </div>
             ))}
           </div>
+          {Array.from(deletedImageIds).map((id) => (
+            <input key={id} type="hidden" name="deleteImageIds" value={id} />
+          ))}
         </div>
       ) : null}
 
