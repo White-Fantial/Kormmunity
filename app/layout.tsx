@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { Suspense } from 'react';
 
 import './globals.css';
-import { logoutAction } from '@/app/login/actions';
-import { getCurrentUser } from '@/lib/auth/session';
-import { canHoldPost, canMakeFinalUserDecision } from '@/lib/permissions';
+import { HeaderAuthButton } from '@/components/ui/header-auth-button';
+import { HeaderNavConditional } from '@/components/ui/header-nav-conditional';
 
 function getMetadataBaseUrl() {
   if (process.env.NEXT_PUBLIC_SITE_URL) {
@@ -58,8 +58,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const currentUser = await getCurrentUser();
-
   return (
     <html lang="ko" className="h-full antialiased">
       <body className="min-h-full bg-zinc-50 text-zinc-900">
@@ -69,17 +67,9 @@ export default async function RootLayout({
               <Link href="/posts" className="text-lg font-bold">
                 NZ 한인 커뮤니티 보드
               </Link>
-              {currentUser ? (
-                <form action={logoutAction}>
-                  <button type="submit" className="text-sm text-zinc-600 underline">
-                    로그아웃
-                  </button>
-                </form>
-              ) : (
-                <Link href="/login" className="text-sm text-zinc-600 underline">
-                  로그인
-                </Link>
-              )}
+              <Suspense fallback={<div className="w-16" />}>
+                <HeaderAuthButton />
+              </Suspense>
             </div>
             <nav className="flex gap-2 overflow-x-auto text-sm [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <Link href="/posts" className="shrink-0 rounded-full border px-3 py-1.5 focus-visible:outline-2 focus-visible:outline-zinc-900 focus-visible:outline-offset-2">
@@ -94,16 +84,9 @@ export default async function RootLayout({
               <Link href="/my/profile" className="shrink-0 rounded-full border px-3 py-1.5 focus-visible:outline-2 focus-visible:outline-zinc-900 focus-visible:outline-offset-2">
                 내 프로필
               </Link>
-              {currentUser && canHoldPost(currentUser) ? (
-                <Link href="/coordinator" className="shrink-0 rounded-full border px-3 py-1.5 focus-visible:outline-2 focus-visible:outline-zinc-900 focus-visible:outline-offset-2">
-                  운영 관리
-                </Link>
-              ) : null}
-              {currentUser && canMakeFinalUserDecision(currentUser) ? (
-                <Link href="/admin" className="shrink-0 rounded-full border px-3 py-1.5 focus-visible:outline-2 focus-visible:outline-zinc-900 focus-visible:outline-offset-2">
-                  관리자
-                </Link>
-              ) : null}
+              <Suspense fallback={null}>
+                <HeaderNavConditional />
+              </Suspense>
             </nav>
           </header>
           <main className="flex-1 p-4">{children}</main>

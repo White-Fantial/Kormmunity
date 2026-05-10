@@ -5,6 +5,7 @@ import { updatePostAction } from '@/app/posts/actions';
 import { requireUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { canEditPost } from '@/lib/permissions';
+import { getActiveCategories } from '@/lib/posts/reference-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,11 +52,7 @@ export default async function EditPostPage({
         },
       },
     }),
-    prisma.category.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: 'asc' },
-      select: { id: true, name: true, slug: true },
-    }),
+    getActiveCategories(),
   ]);
 
   if (!post || !post.city || !canEditPost(user, post)) {

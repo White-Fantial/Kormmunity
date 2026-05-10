@@ -6,6 +6,7 @@ import { createPostAction } from '@/app/posts/actions';
 import { requireUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { getProfileCityRequiredHref } from '@/lib/posts/profile-city';
+import { getActiveCategories } from '@/lib/posts/reference-data';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
@@ -22,11 +23,7 @@ export default async function NewPostPage({ searchParams }: NewPostPageProps) {
   const params = await searchParams;
 
   const [categories, dbUser] = await Promise.all([
-    prisma.category.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: 'asc' },
-      select: { id: true, name: true, slug: true },
-    }),
+    getActiveCategories(),
     prisma.user.findUnique({
       where: { id: user.id },
       select: {
