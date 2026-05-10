@@ -141,13 +141,13 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
 
       <form>
         <details className="group rounded-lg border bg-white p-3">
-          <summary className="flex cursor-pointer items-center justify-between text-sm font-medium sm:hidden">
+          <summary className="flex cursor-pointer items-center justify-between text-sm font-medium">
             <span>필터</span>
             <span className="group-open:hidden">펼치기</span>
             <span className="hidden group-open:inline">접기</span>
           </summary>
 
-          <div className="mt-3 hidden grid-cols-1 gap-4 group-open:grid sm:mt-0 sm:!grid sm:grid-cols-2">
+          <div className="mt-3 hidden grid-cols-1 gap-4 group-open:grid sm:grid-cols-2">
             <fieldset className="space-y-2 text-sm">
               <legend className="font-medium">카테고리 선택</legend>
               <div className="flex flex-wrap gap-2">
