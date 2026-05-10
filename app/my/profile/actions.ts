@@ -5,19 +5,21 @@ import { redirect } from 'next/navigation';
 
 import { requireUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
+import {
+  PROFILE_CITY_REQUIRED_MESSAGE,
+  normalizeInternalPath,
+} from '@/lib/posts/profile-city';
 
 function normalizeText(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
 function normalizeReturnTo(value: FormDataEntryValue | null) {
-  const returnTo = normalizeText(value);
-
-  if (!returnTo.startsWith('/') || returnTo.startsWith('//')) {
+  if (typeof value !== 'string') {
     return null;
   }
 
-  return returnTo;
+  return normalizeInternalPath(value);
 }
 
 export async function updateProfileAction(formData: FormData) {
@@ -39,7 +41,7 @@ export async function updateProfileAction(formData: FormData) {
 
   if (returnTo && !cityId) {
     redirect(
-      `/my/profile?returnTo=${encodeURIComponent(returnTo)}&error=${encodeURIComponent('글을 쓰기 전에 지역을 먼저 설정해 주세요.')}`,
+      `/my/profile?returnTo=${encodeURIComponent(returnTo)}&error=${encodeURIComponent(PROFILE_CITY_REQUIRED_MESSAGE)}`,
     );
   }
 

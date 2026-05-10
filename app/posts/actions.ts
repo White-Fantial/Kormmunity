@@ -14,6 +14,7 @@ import {
   canEditPost,
   canMarkPostAsSold,
 } from '@/lib/permissions';
+import { getProfileCityRequiredHref } from '@/lib/posts/profile-city';
 import { SALE_CATEGORY_SLUG } from '@/lib/posts/constants';
 import {
   MAX_UPLOAD_IMAGE_COUNT,
@@ -129,12 +130,10 @@ export async function createPostAction(formData: FormData) {
   });
 
   if (!dbUser?.cityId || !dbUser.city) {
-    redirect(
-      `/my/profile?returnTo=${encodeURIComponent('/posts/new')}&error=${encodeURIComponent('글을 쓰기 전에 지역을 먼저 설정해 주세요.')}`,
-    );
+    redirect(getProfileCityRequiredHref('/posts/new'));
   }
 
-  const cityId = dbUser.cityId;
+  const profileCityId = dbUser.cityId;
 
   const categoryResult = await validateCategoryAndPrice(categoryId, rawPrice);
 
@@ -171,7 +170,7 @@ export async function createPostAction(formData: FormData) {
         title: title || null,
         body,
         categoryId,
-        cityId,
+        cityId: profileCityId,
         price: categoryResult.price,
         status: 'PUBLISHED',
         saleStatus: isSaleCategory ? 'AVAILABLE' : null,
@@ -200,7 +199,7 @@ export async function createPostAction(formData: FormData) {
     userId: user.id,
     postId,
     categoryId,
-    cityId,
+    cityId: profileCityId,
     imageCount: uploadedImages.length,
     isSaleCategory,
   });

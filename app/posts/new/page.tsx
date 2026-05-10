@@ -5,6 +5,7 @@ import { PostForm } from '@/components/posts/post-form';
 import { createPostAction } from '@/app/posts/actions';
 import { requireUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
+import { getProfileCityRequiredHref } from '@/lib/posts/profile-city';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
@@ -38,9 +39,7 @@ export default async function NewPostPage({ searchParams }: NewPostPageProps) {
   ]);
 
   if (!dbUser?.cityId || !dbUser.city) {
-    redirect(
-      `/my/profile?returnTo=${encodeURIComponent('/posts/new')}&error=${encodeURIComponent('글을 쓰기 전에 지역을 먼저 설정해 주세요.')}`,
-    );
+    redirect(getProfileCityRequiredHref('/posts/new'));
   }
 
   return (
