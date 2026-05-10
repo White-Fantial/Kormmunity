@@ -7,7 +7,7 @@ import {
 } from '@/app/posts/actions';
 import { requireUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
-import { SALE_CATEGORY_SLUG } from '@/lib/posts/constants';
+import { SALE_CATEGORY_TYPE } from '@/lib/posts/constants';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
@@ -33,7 +33,7 @@ export default async function MyPostsPage({ searchParams }: MyPostsPageProps) {
     orderBy: { createdAt: 'desc' },
     include: {
       city: { select: { name: true } },
-      category: { select: { name: true, slug: true } },
+      category: { select: { name: true, type: true } },
     },
   });
 
@@ -69,7 +69,7 @@ export default async function MyPostsPage({ searchParams }: MyPostsPageProps) {
                 <Link href={`/posts/${post.id}/edit`} className="rounded-md border px-3 py-2 text-sm">
                   수정
                 </Link>
-                {post.category.slug === SALE_CATEGORY_SLUG &&
+                {post.category.type === SALE_CATEGORY_TYPE &&
                 post.saleStatus !== 'SOLD' ? (
                   <form action={markPostAsSoldAction}>
                     <input type="hidden" name="postId" value={post.id} />

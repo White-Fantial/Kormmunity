@@ -21,7 +21,7 @@ import { UserAvatar } from '@/components/ui/user-avatar';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { canDeleteComment, canHoldPost, canRestorePost } from '@/lib/permissions';
-import { SALE_CATEGORY_SLUG } from '@/lib/posts/constants';
+import { SALE_CATEGORY_TYPE } from '@/lib/posts/constants';
 
 export const dynamic = 'force-dynamic';
 const TITLE_PREVIEW_LENGTH = 40;
@@ -88,7 +88,7 @@ export default async function PostDetailPage({
           openChatUrl: true,
         },
       },
-      category: { select: { name: true, slug: true } },
+      category: { select: { name: true, type: true } },
       city: { select: { name: true } },
       images: {
         select: { id: true, url: true },
@@ -129,7 +129,7 @@ export default async function PostDetailPage({
   const isOwner = currentUser?.id === post.authorId;
   const canMarkSold =
     isOwner &&
-    post.category.slug === SALE_CATEGORY_SLUG &&
+    post.category.type === SALE_CATEGORY_TYPE &&
     post.saleStatus !== 'SOLD';
 
   return (

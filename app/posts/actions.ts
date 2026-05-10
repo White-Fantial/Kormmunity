@@ -15,7 +15,7 @@ import {
   canMarkPostAsSold,
   canPostToCategory,
 } from '@/lib/permissions';
-import { SALE_CATEGORY_SLUG } from '@/lib/posts/constants';
+import { SALE_CATEGORY_TYPE } from '@/lib/posts/constants';
 import {
   MAX_UPLOAD_IMAGE_COUNT,
   uploadImageToCloudinary,
@@ -56,7 +56,7 @@ function getImageFiles(formData: FormData) {
 async function validateCategoryAndPrice(categoryId: string, rawPrice: string) {
   const category = await prisma.category.findUnique({
     where: { id: categoryId },
-    select: { id: true, slug: true, type: true, minRole: true, ignoreCity: true, supportsAllCities: true },
+    select: { id: true, type: true, minRole: true, ignoreCity: true, supportsAllCities: true },
   });
 
   if (!category) {
@@ -64,7 +64,7 @@ async function validateCategoryAndPrice(categoryId: string, rawPrice: string) {
   }
 
   const { value: price, invalid } = parsePrice(rawPrice);
-  const isSaleCategory = category.slug === SALE_CATEGORY_SLUG;
+  const isSaleCategory = category.type === SALE_CATEGORY_TYPE;
 
   if (invalid) {
     return { ok: false as const, message: '가격을 올바르게 입력해 주세요.' };
@@ -164,7 +164,7 @@ export async function createPostAction(formData: FormData) {
     '/posts/new',
   );
 
-  const isSaleCategory = categoryResult.category.slug === SALE_CATEGORY_SLUG;
+  const isSaleCategory = categoryResult.category.type === SALE_CATEGORY_TYPE;
 
   const imageValidationResult = validateImageFiles(imageFiles);
 
@@ -279,7 +279,7 @@ export async function updatePostAction(formData: FormData) {
     `/posts/${postId}/edit`,
   );
 
-  const isSaleCategory = categoryResult.category.slug === SALE_CATEGORY_SLUG;
+  const isSaleCategory = categoryResult.category.type === SALE_CATEGORY_TYPE;
 
   const existingImageCount = await prisma.postImage.count({
     where: { postId },
@@ -387,7 +387,7 @@ export async function markPostAsSoldAction(formData: FormData) {
       authorId: true,
       status: true,
       saleStatus: true,
-      category: { select: { slug: true } },
+      category: { select: { type: true } },
     },
   });
 
@@ -395,7 +395,7 @@ export async function markPostAsSoldAction(formData: FormData) {
     redirect('/my/posts?error=권한이 없습니다.');
   }
 
-  if (post.category.slug !== SALE_CATEGORY_SLUG) {
+  if (post.category.type !== SALE_CATEGORY_TYPE) {
     redirect('/my/posts?error=판매글만 판매완료 처리할 수 있어요.');
   }
 

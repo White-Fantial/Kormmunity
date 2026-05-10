@@ -1,4 +1,5 @@
 export const SALE_CATEGORY_SLUG = 'sale';
+export const SALE_CATEGORY_TYPE = 'SALE';
 
 export const POST_PREVIEW_LENGTH = 80;
 

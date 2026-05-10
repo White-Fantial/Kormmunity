@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useMemo, useState } from 'react';
-import { SALE_CATEGORY_SLUG } from '@/lib/posts/constants';
+import { SALE_CATEGORY_TYPE } from '@/lib/posts/constants';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 
 type Option = {
@@ -11,7 +11,7 @@ type Option = {
 };
 
 type CategoryOption = Option & {
-  slug: string;
+  type: string;
   ignoreCity: boolean;
   supportsAllCities: boolean;
 };
@@ -59,7 +59,7 @@ export function PostForm({
     [categories, categoryId],
   );
 
-  const shouldShowPrice = selectedCategory?.slug === SALE_CATEGORY_SLUG;
+  const shouldShowPrice = selectedCategory?.type === SALE_CATEGORY_TYPE;
   const isCityIgnored = selectedCategory?.ignoreCity ?? false;
   // Show a city selector only when the category permits all-city posts AND the user
   // has at least coordinator privileges (coordinators choose the target city per post).

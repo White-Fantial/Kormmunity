@@ -45,7 +45,7 @@ export default async function EditPostPage({
     prisma.category.findMany({
       where: { isActive: true },
       orderBy: { sortOrder: 'asc' },
-      select: { id: true, name: true, slug: true, minRole: true, ignoreCity: true, supportsAllCities: true },
+      select: { id: true, name: true, type: true, minRole: true, ignoreCity: true, supportsAllCities: true },
     }),
     prisma.city.findMany({
       where: { isActive: true },
@@ -68,12 +68,12 @@ export default async function EditPostPage({
       <PostForm
         action={updatePostAction}
         categories={categories.map((category) => ({
-          id: category.id,
-          label: category.name,
-          slug: category.slug,
-          ignoreCity: category.ignoreCity,
-          supportsAllCities: category.supportsAllCities,
-        }))}
+           id: category.id,
+           label: category.name,
+           type: category.type,
+           ignoreCity: category.ignoreCity,
+           supportsAllCities: category.supportsAllCities,
+         }))}
         cities={cities}
         cityLabel={cityLabel}
         defaultCityId={post.cityId}
