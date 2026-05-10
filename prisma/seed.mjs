@@ -17,6 +17,8 @@ const cities = [
 ];
 
 const categories = [
+  { name: '공지사항', slug: 'notice', type: CategoryType.GENERAL },
+  { name: '피쳐드', slug: 'featured', type: CategoryType.GENERAL },
   { name: '궁금해요', slug: 'question', type: CategoryType.QUESTION },
   { name: '도와주세요', slug: 'help', type: CategoryType.HELP },
   { name: '팔아요', slug: 'sale', type: CategoryType.SALE },
