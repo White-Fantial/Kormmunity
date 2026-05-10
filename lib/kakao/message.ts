@@ -25,11 +25,28 @@ function truncateText(value: string, maxLength: number) {
 }
 
 function getSiteBaseUrl() {
-  const base =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    process.env.NEXTAUTH_URL ??
-    'http://localhost:3000';
-  return base.replace(/\/$/, '');
+  const explicitSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  if (explicitSiteUrl) {
+    return explicitSiteUrl.replace(/\/$/, '');
+  }
+
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`.replace(/\/$/, '');
+  }
+
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`.replace(/\/$/, '');
+  }
+
+  if (process.env.NEXTAUTH_URL) {
+    return process.env.NEXTAUTH_URL.replace(/\/$/, '');
+  }
+
+  if (process.env.NODE_ENV === 'development') {
+    return 'http://localhost:3000';
+  }
+
+  return null;
 }
 
 function matchesAlertQuery(post: NotifyPostInput, query: string) {
@@ -135,7 +152,13 @@ export async function notifySearchAlertsForPost(post: NotifyPostInput) {
     return;
   }
 
-  const postUrl = `${getSiteBaseUrl()}/posts/${post.id}`;
+  const siteBaseUrl = getSiteBaseUrl();
+  if (!siteBaseUrl) {
+    console.error('[kakao/message] site base URL is not configured');
+    return;
+  }
+
+  const postUrl = `${siteBaseUrl}/posts/${post.id}`;
   const previewSource = post.title?.trim() || post.body.trim();
   const preview = truncateText(previewSource, PREVIEW_LENGTH);
   const bodyPreview = truncateText(post.body.trim(), PREVIEW_LENGTH);
