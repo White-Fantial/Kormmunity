@@ -58,6 +58,7 @@ export function PostShareButton({ title, body, imageUrl }: PostShareButtonProps)
       } catch (error) {
         console.error('[post-share] clipboard copy failed', error);
         setMessage('공유 내용을 클립보드에 복사하지 못했어요.');
+        return;
       }
     }
 

@@ -251,7 +251,7 @@ export default async function PostDetailPage({
       <PostShareButton
         title={post.title}
         body={post.body}
-        imageUrl={post.images[0]?.url ?? null}
+        imageUrl={post.images?.[0]?.url ?? null}
       />
 
       {contactUrl ? (
