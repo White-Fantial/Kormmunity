@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import type { CategoryType } from '@prisma/client';
 
 import { PostCard } from '@/components/posts/post-card';
 import { saveSearchAlertAction } from '@/app/posts/search-alert-actions';
@@ -132,7 +133,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     thumbnailUrl: string | null;
     commentCount: number;
     reportCount?: number;
-    category: { name: string };
+    category: { name: string; type: CategoryType };
     city: { name: string } | null;
     author: { displayName: string; profileImageUrl: string | null };
   }> = [];
@@ -149,7 +150,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
         createdAt: true,
         saleStatus: true,
         price: true,
-        category: { select: { name: true } },
+        category: { select: { name: true, type: true } },
         city: { select: { name: true } },
         author: {
           select: {
@@ -199,7 +200,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
         createdAt: true,
         saleStatus: true,
         price: true,
-        category: { select: { name: true } },
+        category: { select: { name: true, type: true } },
         city: { select: { name: true } },
         author: {
           select: {

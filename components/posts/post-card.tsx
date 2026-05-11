@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import type { CategoryType } from '@prisma/client';
 import { UserAvatar } from '@/components/ui/user-avatar';
 
 type PostCardProps = {
@@ -13,7 +14,7 @@ type PostCardProps = {
     thumbnailUrl: string | null;
     commentCount: number;
     reportCount?: number;
-    category: { name: string };
+    category: { name: string; type: CategoryType };
     city: { name: string } | null;
     author: {
       displayName: string;
@@ -26,6 +27,9 @@ export function PostCard({ post }: PostCardProps) {
   const hasTitle = Boolean(post.title?.trim());
   const preview = post.title?.trim() || post.body.split('\n')[0] || '내용 없음';
 
+  const isRecruitPost = post.category.type === 'RECRUIT';
+  const isSalePost = post.category.type === 'SALE';
+
   return (
     <Link
       href={`/posts/${post.id}`}
@@ -34,11 +38,17 @@ export function PostCard({ post }: PostCardProps) {
       <div className="flex flex-wrap gap-2 text-xs">
         <span className="rounded-full bg-[#fffde7] px-2 py-1 font-medium text-[#7a6000]">{post.category.name}</span>
         <span className="rounded-full bg-[#f5f5f5] px-2 py-1 text-[#555]">{post.city?.name ?? '전 지역'}</span>
-        {post.saleStatus === 'RESERVED' ? (
+        {isSalePost && post.saleStatus === 'RESERVED' ? (
           <span className="rounded-full bg-[#e8f0fe] px-2 py-1 text-[#1a56db]">예약중</span>
         ) : null}
-        {post.saleStatus === 'SOLD' ? (
+        {isSalePost && post.saleStatus === 'SOLD' ? (
           <span className="rounded-full bg-[#3c1e1e] px-2 py-1 text-white">판매완료</span>
+        ) : null}
+        {isRecruitPost && post.saleStatus === 'AVAILABLE' ? (
+          <span className="rounded-full bg-[#e8f5e9] px-2 py-1 text-[#2e7d32]">진행중</span>
+        ) : null}
+        {isRecruitPost && post.saleStatus === 'SOLD' ? (
+          <span className="rounded-full bg-[#3c1e1e] px-2 py-1 text-white">진행완료</span>
         ) : null}
         {typeof post.reportCount === 'number' ? (
           <span

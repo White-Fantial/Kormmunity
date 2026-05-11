@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Metadata } from 'next';
+import { CategoryType } from '@prisma/client';
 
 import { unsavePostAction } from '@/app/posts/saved-actions';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
@@ -46,7 +47,7 @@ export default async function MySavedPostsPage({ searchParams }: MySavedPostsPag
               displayName: true,
             },
           },
-          category: { select: { name: true } },
+          category: { select: { name: true, type: true } },
           city: { select: { name: true } },
           images: {
             select: { url: true },
@@ -84,6 +85,10 @@ export default async function MySavedPostsPage({ searchParams }: MySavedPostsPag
             const thumbnailAlt = titleText
               ? `게시글 썸네일: ${titleText}`
               : '게시글 썸네일: 제목 없는 게시글';
+            const isSalePost = post.category.type === CategoryType.SALE;
+            const isRecruitPost = post.category.type === CategoryType.RECRUIT;
+            const isRecruitCompleted = isRecruitPost && post.saleStatus === 'SOLD';
+            const isRecruitInProgress = isRecruitPost && post.saleStatus === 'AVAILABLE';
 
             return (
               <li key={postId} className="space-y-3 rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
@@ -103,11 +108,17 @@ export default async function MySavedPostsPage({ searchParams }: MySavedPostsPag
                     <div className="flex flex-wrap gap-2 text-xs">
                       <span className="rounded-full bg-[#fffde7] px-2 py-1 font-medium text-[#7a6000]">{post.category.name}</span>
                       <span className="rounded-full bg-[#f5f5f5] px-2 py-1 text-[#555]">{post.city?.name ?? '전 지역'}</span>
-                      {post.saleStatus === 'RESERVED' ? (
+                      {isSalePost && post.saleStatus === 'RESERVED' ? (
                         <span className="rounded-full bg-[#e8f0fe] px-2 py-1 text-[#1a56db]">예약중</span>
                       ) : null}
-                      {post.saleStatus === 'SOLD' ? (
+                      {isSalePost && post.saleStatus === 'SOLD' ? (
                         <span className="rounded-full bg-[#3c1e1e] px-2 py-1 text-white">판매완료</span>
+                      ) : null}
+                      {isRecruitInProgress ? (
+                        <span className="rounded-full bg-[#e8f5e9] px-2 py-1 text-[#2e7d32]">진행중</span>
+                      ) : null}
+                      {isRecruitCompleted ? (
+                        <span className="rounded-full bg-[#3c1e1e] px-2 py-1 text-white">진행완료</span>
                       ) : null}
                     </div>
                     <h2 className="text-base font-semibold">{postHeading}</h2>

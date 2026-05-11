@@ -179,12 +179,17 @@ export default async function PostDetailPage({
 
   const isOwner = currentUser?.id === post.authorId;
   const isSalePost = post.category.type === CategoryType.SALE;
+  const isRecruitPost = post.category.type === CategoryType.RECRUIT;
+  const isRecruitCompleted = isRecruitPost && post.saleStatus === 'SOLD';
+  const isRecruitInProgress = isRecruitPost && post.saleStatus === 'AVAILABLE';
   const canMarkReserved = isOwner && isSalePost && post.saleStatus === 'AVAILABLE';
   const canMarkSold =
     isOwner &&
     isSalePost &&
     (post.saleStatus === 'AVAILABLE' || post.saleStatus === 'RESERVED');
   const canMarkAvailable = isOwner && isSalePost && post.saleStatus !== 'AVAILABLE';
+  const canMarkRecruitCompleted = isOwner && isRecruitPost && !isRecruitCompleted;
+  const canMarkRecruitInProgress = isOwner && isRecruitCompleted;
 
   return (
     <article className="space-y-4 rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
@@ -205,11 +210,17 @@ export default async function PostDetailPage({
       <div className="flex flex-wrap gap-2 text-xs">
         <span className="rounded-full bg-[#fffde7] px-2 py-1 font-medium text-[#7a6000]">{post.category.name}</span>
         <span className="rounded-full bg-[#f5f5f5] px-2 py-1 text-[#555]">{post.city?.name ?? '전 지역'}</span>
-        {post.saleStatus === 'RESERVED' ? (
+        {isSalePost && post.saleStatus === 'RESERVED' ? (
           <span className="rounded-full bg-[#e8f0fe] px-2 py-1 text-[#1a56db]">예약중</span>
         ) : null}
-        {post.saleStatus === 'SOLD' ? (
+        {isSalePost && post.saleStatus === 'SOLD' ? (
           <span className="rounded-full bg-[#3c1e1e] px-2 py-1 text-white">판매완료</span>
+        ) : null}
+        {isRecruitInProgress ? (
+          <span className="rounded-full bg-[#e8f5e9] px-2 py-1 text-[#2e7d32]">진행중</span>
+        ) : null}
+        {isRecruitCompleted ? (
+          <span className="rounded-full bg-[#3c1e1e] px-2 py-1 text-white">진행완료</span>
         ) : null}
       </div>
 
@@ -292,6 +303,24 @@ export default async function PostDetailPage({
               <input type="hidden" name="postId" value={post.id} />
               <button type="submit" className="rounded-xl border border-[#e8e8e8] px-3 py-2 text-sm font-medium hover:bg-[#f9f9f9]">
                 판매중으로 변경
+              </button>
+            </form>
+          ) : null}
+          {canMarkRecruitCompleted ? (
+            <form action={markPostAsSoldAction}>
+              <input type="hidden" name="postId" value={post.id} />
+              <FormSubmitButton
+                idleLabel="진행완료로 변경"
+                pendingLabel="처리 중..."
+                className="rounded-xl border border-[#e8e8e8] px-3 py-2 text-sm font-medium hover:bg-[#f9f9f9]"
+              />
+            </form>
+          ) : null}
+          {canMarkRecruitInProgress ? (
+            <form action={markPostAsAvailableAction}>
+              <input type="hidden" name="postId" value={post.id} />
+              <button type="submit" className="rounded-xl border border-[#e8e8e8] px-3 py-2 text-sm font-medium hover:bg-[#f9f9f9]">
+                진행중으로 변경
               </button>
             </form>
           ) : null}

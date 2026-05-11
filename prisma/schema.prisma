@@ -42,6 +42,7 @@ enum CommentStatus {
 enum CategoryType {
   GENERAL
   SALE
+  RECRUIT
   GIVEAWAY
   HELP
   QUESTION

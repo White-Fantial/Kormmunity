@@ -1,4 +1,4 @@
-import type { UserRole } from '@prisma/client';
+import type { CategoryType, UserRole } from '@prisma/client';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
@@ -24,6 +24,15 @@ const MIN_ROLE_LABELS: Record<UserRole, string> = {
   ADMIN: '어드민만',
 };
 
+const CATEGORY_TYPE_LABELS: Record<CategoryType, string> = {
+  GENERAL: '일반',
+  SALE: '판매',
+  RECRUIT: '구인구직',
+  GIVEAWAY: '나눔',
+  HELP: '도움',
+  QUESTION: '질문',
+};
+
 export default async function AdminCategoriesPage({ searchParams }: AdminCategoriesPageProps) {
   const currentUser = await getCurrentUser();
 
@@ -39,6 +48,7 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
         id: true,
         name: true,
         slug: true,
+        type: true,
         isActive: true,
         isAlwaysIncluded: true,
         sortOrder: true,
@@ -84,6 +94,18 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
             pattern="[a-z0-9-]+"
             className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
           />
+          <select
+            name="type"
+            defaultValue="GENERAL"
+            className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
+          >
+            <option value="GENERAL">일반 (GENERAL)</option>
+            <option value="SALE">판매 (SALE)</option>
+            <option value="RECRUIT">구인구직 (RECRUIT)</option>
+            <option value="GIVEAWAY">나눔 (GIVEAWAY)</option>
+            <option value="HELP">도움 (HELP)</option>
+            <option value="QUESTION">질문 (QUESTION)</option>
+          </select>
           <FormSubmitButton
             idleLabel="추가"
             pendingLabel="처리 중..."
@@ -104,7 +126,7 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
                   <div className="flex-1">
                     <p className="text-sm font-medium">{cat.name}</p>
                     <p className="text-xs text-[#aaa]">
-                      슬러그: {cat.slug} · 게시글 {cat._count.posts}개
+                      슬러그: {cat.slug} · 타입: {CATEGORY_TYPE_LABELS[cat.type]} · 게시글 {cat._count.posts}개
                     </p>
                   </div>
                   <span
@@ -126,14 +148,30 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
                 </div>
 
                 <details className="text-sm">
-                  <summary className="cursor-pointer text-xs text-[#888]">
-                    작성 권한 및 지역 설정 (현재: {MIN_ROLE_LABELS[cat.minRole]}
-                    {cat.isAlwaysIncluded ? ' · 필터항상포함' : ''}
-                    {cat.ignoreCity ? ' · 전지역강제' : ''}
-                    {cat.supportsAllCities ? ' · 전지역선택가능' : ''})
+                    <summary className="cursor-pointer text-xs text-[#888]">
+                     작성 권한 및 지역 설정 (현재: {CATEGORY_TYPE_LABELS[cat.type]} · {MIN_ROLE_LABELS[cat.minRole]}
+                     {cat.isAlwaysIncluded ? ' · 필터항상포함' : ''}
+                     {cat.ignoreCity ? ' · 전지역강제' : ''}
+                     {cat.supportsAllCities ? ' · 전지역선택가능' : ''})
                   </summary>
                   <form action={updateCategorySettingsAction} className="mt-2 space-y-2">
                     <input type="hidden" name="categoryId" value={cat.id} />
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-[#555]">카테고리 타입</label>
+                      <select
+                        name="type"
+                        defaultValue={cat.type}
+                        className="w-full rounded-lg border border-[#e8e8e8] px-2 py-1 text-xs focus:border-[#fee500] focus:outline-none"
+                      >
+                        <option value="GENERAL">일반 (GENERAL)</option>
+                        <option value="SALE">판매 (SALE)</option>
+                        <option value="RECRUIT">구인구직 (RECRUIT)</option>
+                        <option value="GIVEAWAY">나눔 (GIVEAWAY)</option>
+                        <option value="HELP">도움 (HELP)</option>
+                        <option value="QUESTION">질문 (QUESTION)</option>
+                      </select>
+                    </div>
 
                     <div className="space-y-1">
                       <label className="text-xs font-medium text-[#555]">작성 최소 역할</label>
