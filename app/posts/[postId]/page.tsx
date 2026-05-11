@@ -260,7 +260,7 @@ export default async function PostDetailPage({
             <input type="hidden" name="postId" value={post.id} />
             <input type="hidden" name="returnTo" value={`/posts/${post.id}`} />
             <FormSubmitButton
-              idleLabel={isSaved ? '저장 취소' : '글 저장'}
+              idleLabel={isSaved ? '저장 취소' : '저장'}
               pendingLabel="처리 중..."
               className={outlineActionButtonClass}
             />

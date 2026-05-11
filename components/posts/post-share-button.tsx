@@ -66,10 +66,10 @@ export function PostShareButton({ title, body, className }: PostShareButtonProps
       <button
         type="button"
         onClick={onShare}
-        aria-label="게시글 공유하기"
-
+        aria-label="공유"
+        className={className}
       >
-        게시글 공유하기
+        공유
       </button>
       {message ? <p aria-live="polite" className="text-xs text-[#666]">{message}</p> : null}
     </div>
