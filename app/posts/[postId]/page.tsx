@@ -20,6 +20,7 @@ import {
 } from '@/app/coordinator/actions';
 import { DeletePostButton } from '@/components/posts/delete-post-button';
 import { PostImageGallery } from '@/components/posts/post-image-gallery';
+import { PostShareButton } from '@/components/posts/post-share-button';
 import { PostMarkdown } from '@/components/posts/post-markdown';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { UserAvatar } from '@/components/ui/user-avatar';
@@ -246,6 +247,12 @@ export default async function PostDetailPage({
           작성자: {post.author.displayName} · {new Date(post.createdAt).toLocaleString('ko-KR')}
         </span>
       </div>
+
+      <PostShareButton
+        title={post.title}
+        body={post.body}
+        imageUrl={post.images?.[0]?.url ?? null}
+      />
 
       {contactUrl ? (
         <a
