@@ -166,7 +166,7 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
 
                 <details className="text-sm">
                      <summary className="cursor-pointer text-xs text-[#888]">
-                     작성 권한 및 지역 설정 (현재: {CATEGORY_TYPE_LABELS[cat.type]}
+                     작성 권한(역할별 상세는 펼침에서 확인) 및 지역 설정 (현재: {CATEGORY_TYPE_LABELS[cat.type]}
                      {cat.isAlwaysIncluded ? ' · 필터항상포함' : ''}
                      {cat.ignoreCity ? ' · 전지역강제' : ''}
                      {cat.supportsAllCities ? ' · 전지역선택가능' : ''}

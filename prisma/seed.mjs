@@ -109,34 +109,30 @@ async function main() {
   );
 
   const allUserRoles = Object.values(UserRole);
-  await Promise.all(
-    categoryRecords.flatMap((categoryRecord) => {
-      const category = categories.find((entry) => entry.slug === categoryRecord.slug);
-      if (!category) {
-        throw new Error(`Missing seed policy definition for category slug: ${categoryRecord.slug}`);
-      }
-      return allUserRoles.map((role) =>
-        prisma.roleWritePermissionPolicy.upsert({
-          where: {
-            role_resourceType_resourceId: {
-              role,
-              resourceType: PermissionResourceType.CATEGORY,
-              resourceId: categoryRecord.id,
-            },
-          },
-          update: {
-            effect: category.allowedRoles.includes(role) ? PermissionEffect.ALLOW : PermissionEffect.DENY,
-          },
-          create: {
-            role,
-            resourceType: PermissionResourceType.CATEGORY,
-            resourceId: categoryRecord.id,
-            effect: category.allowedRoles.includes(role) ? PermissionEffect.ALLOW : PermissionEffect.DENY,
-          },
-        }),
-      );
-    }),
-  );
+  const rolePolicyRows = categoryRecords.flatMap((categoryRecord) => {
+    const category = categories.find((entry) => entry.slug === categoryRecord.slug);
+    if (!category) {
+      throw new Error(`Missing seed policy definition for category slug: ${categoryRecord.slug}`);
+    }
+
+    return allUserRoles.map((role) => ({
+      role,
+      resourceType: PermissionResourceType.CATEGORY,
+      resourceId: categoryRecord.id,
+      effect: category.allowedRoles.includes(role) ? PermissionEffect.ALLOW : PermissionEffect.DENY,
+    }));
+  });
+
+  await prisma.roleWritePermissionPolicy.deleteMany({
+    where: {
+      resourceType: PermissionResourceType.CATEGORY,
+      resourceId: { in: categoryRecords.map((category) => category.id) },
+    },
+  });
+  await prisma.roleWritePermissionPolicy.createMany({
+    data: rolePolicyRows,
+    skipDuplicates: true,
+  });
 
   await Promise.all(
     reportOptions.map((label, index) =>

@@ -155,7 +155,7 @@ export async function filterPostableCategoriesForUser<T extends PostableCategory
       ? [userCountryId]
       : [];
 
-  const [userCatPolicies, roleCatPolicies, userCtryPolicies, roleCtryPolicies] = await Promise.all([
+  const [userCategoryPolicies, roleCategoryPolicies, userCountryPolicies, roleCountryPolicies] = await Promise.all([
     prisma.userWritePermissionPolicy.findMany({
       where: {
         userId: user.id,
@@ -191,13 +191,13 @@ export async function filterPostableCategoriesForUser<T extends PostableCategory
   ]);
 
   const userPolicyMap = new Map(
-    [...userCatPolicies, ...userCtryPolicies].map((policy) => [
+    [...userCategoryPolicies, ...userCountryPolicies].map((policy) => [
       `${policy.resourceType}:${policy.resourceId}`,
       policy.effect,
     ]),
   );
   const rolePolicyMap = new Map(
-    [...roleCatPolicies, ...roleCtryPolicies].map((policy) => [
+    [...roleCategoryPolicies, ...roleCountryPolicies].map((policy) => [
       `${policy.resourceType}:${policy.resourceId}`,
       policy.effect,
     ]),
