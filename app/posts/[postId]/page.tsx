@@ -191,6 +191,12 @@ export default async function PostDetailPage({
   const canMarkAvailable = isOwner && isSalePost && post.saleStatus !== 'AVAILABLE';
   const canMarkRecruitCompleted = isOwner && isRecruitPost && !isRecruitCompleted;
   const canMarkRecruitInProgress = isOwner && isRecruitCompleted;
+  const outlineActionButtonClass =
+    'inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#e8e8e8] px-4 py-2 text-sm font-medium hover:bg-[#f9f9f9]';
+  const primaryActionButtonClass =
+    'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#fee500] px-4 py-2 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]';
+  const dangerActionButtonClass =
+    'inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50';
 
   return (
     <article className="space-y-4 rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
@@ -258,7 +264,7 @@ export default async function PostDetailPage({
           href={contactUrl}
           target="_blank"
           rel="noreferrer"
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#fee500] px-4 py-3 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
+          className={primaryActionButtonClass}
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
             <path fill="currentColor" d="M12 3C6.477 3 2 6.477 2 10.8c0 2.7 1.62 5.085 4.073 6.525L5.1 21l4.89-2.925c.65.09 1.32.135 2.01.135 5.523 0 10-3.477 10-7.8S17.523 3 12 3z" />
@@ -276,20 +282,20 @@ export default async function PostDetailPage({
           <FormSubmitButton
             idleLabel={isSaved ? '저장 취소' : '글 저장'}
             pendingLabel="처리 중..."
-            className="rounded-xl border border-[#e8e8e8] px-3 py-2 text-sm font-medium hover:bg-[#f9f9f9]"
+            className={outlineActionButtonClass}
           />
         </form>
       ) : null}
 
       {isOwner ? (
-        <div className="flex flex-wrap gap-2 border-t border-[#e8e8e8] pt-4">
-          <Link href={`/posts/${post.id}/edit`} className="rounded-xl border border-[#e8e8e8] px-3 py-2 text-sm font-medium hover:bg-[#f9f9f9]">
+        <div className="grid grid-cols-2 gap-2 border-t border-[#e8e8e8] pt-4">
+          <Link href={`/posts/${post.id}/edit`} className={outlineActionButtonClass}>
             수정
           </Link>
           {canMarkReserved ? (
             <form action={markPostAsReservedAction}>
               <input type="hidden" name="postId" value={post.id} />
-              <button type="submit" className="rounded-xl border border-[#e8e8e8] px-3 py-2 text-sm font-medium hover:bg-[#f9f9f9]">
+              <button type="submit" className={outlineActionButtonClass}>
                 예약중으로 변경
               </button>
             </form>
@@ -300,14 +306,14 @@ export default async function PostDetailPage({
               <FormSubmitButton
                 idleLabel="판매 완료로 변경"
                 pendingLabel="처리 중..."
-                className="rounded-xl border border-[#e8e8e8] px-3 py-2 text-sm font-medium hover:bg-[#f9f9f9]"
+                className={outlineActionButtonClass}
               />
             </form>
           ) : null}
           {canMarkAvailable ? (
             <form action={markPostAsAvailableAction}>
               <input type="hidden" name="postId" value={post.id} />
-              <button type="submit" className="rounded-xl border border-[#e8e8e8] px-3 py-2 text-sm font-medium hover:bg-[#f9f9f9]">
+              <button type="submit" className={outlineActionButtonClass}>
                 판매중으로 변경
               </button>
             </form>
@@ -318,21 +324,21 @@ export default async function PostDetailPage({
               <FormSubmitButton
                 idleLabel="진행완료로 변경"
                 pendingLabel="처리 중..."
-                className="rounded-xl border border-[#e8e8e8] px-3 py-2 text-sm font-medium hover:bg-[#f9f9f9]"
+                className={outlineActionButtonClass}
               />
             </form>
           ) : null}
           {canMarkRecruitInProgress ? (
             <form action={markPostAsAvailableAction}>
               <input type="hidden" name="postId" value={post.id} />
-              <button type="submit" className="rounded-xl border border-[#e8e8e8] px-3 py-2 text-sm font-medium hover:bg-[#f9f9f9]">
+              <button type="submit" className={outlineActionButtonClass}>
                 진행중으로 변경
               </button>
             </form>
           ) : null}
           <DeletePostButton
             postId={post.id}
-            className="rounded-xl border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+            className={dangerActionButtonClass}
           />
         </div>
       ) : null}

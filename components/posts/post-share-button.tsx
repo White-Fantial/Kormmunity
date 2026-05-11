@@ -66,7 +66,7 @@ export function PostShareButton({ title, body }: PostShareButtonProps) {
         type="button"
         onClick={onShare}
         aria-label="게시글 공유하기"
-        className="rounded-xl border border-[#e8e8e8] px-3 py-2 text-sm font-medium hover:bg-[#f9f9f9]"
+        className={className}
       >
         게시글 공유하기
       </button>
