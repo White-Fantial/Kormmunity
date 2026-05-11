@@ -116,7 +116,7 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
               id="notifyOnKakaoForSearchAlert"
               type="checkbox"
               name="notifyOnKakaoForSearchAlert"
-              defaultChecked={dbUser?.notifyOnKakaoForSearchAlert ?? false}
+              defaultChecked={dbUser?.notifyOnKakaoForSearchAlert ?? true}
               className="accent-[#fee500]"
             />
             저장된 검색 조건에 맞는 글이 올라오면 카카오톡 메시지 받기
@@ -126,7 +126,7 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
               id="notifyOnKakaoForComment"
               type="checkbox"
               name="notifyOnKakaoForComment"
-              defaultChecked={dbUser?.notifyOnKakaoForComment ?? false}
+              defaultChecked={dbUser?.notifyOnKakaoForComment ?? true}
               className="accent-[#fee500]"
             />
             내 게시글에 댓글이 달리면 카카오톡 메시지 받기

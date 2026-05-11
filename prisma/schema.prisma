@@ -68,8 +68,8 @@ model User {
   restrictions         UserRestriction[]  @relation("RestrictedUser")
   createdRestrictions  UserRestriction[]  @relation("RestrictionCreatedBy")
   reviewedRestrictions UserRestriction[]  @relation("RestrictionReviewedBy")
-  notifyOnKakaoForSearchAlert Boolean            @default(false)
-  notifyOnKakaoForComment     Boolean            @default(false)
+  notifyOnKakaoForSearchAlert Boolean            @default(true)
+  notifyOnKakaoForComment     Boolean            @default(true)
   searchAlerts         SearchAlert[]
   postReports          PostReport[]
   savedPosts           SavedPost[]
