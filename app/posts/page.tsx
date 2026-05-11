@@ -110,28 +110,28 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
   const returnTo = `/posts${returnToParams.toString() ? `?${returnToParams.toString()}` : ''}`;
   const canViewReportStats = currentUser ? canMakeFinalUserDecision(currentUser) : false;
 
-  const countryCondition = shouldFilterByCountry
-    ? [{ OR: [{ countryId: userCountryId }, { countryId: null }] }]
-    : [];
-  const cityCondition = shouldFilterByCity
-    ? [{ OR: [{ cityId: { in: selectedCityIds } }, { cityId: null }] }]
-    : [];
-  const keywordCondition = hasKeyword
-    ? [
-        {
-          OR: [
-            { title: { contains: keyword, mode: 'insensitive' as const } },
-            { body: { contains: keyword, mode: 'insensitive' as const } },
-            { author: { displayName: { contains: keyword, mode: 'insensitive' as const } } },
-          ],
-        },
-      ]
-    : [];
+  const andConditions: object[] = [];
+
+  if (shouldFilterByCountry) {
+    andConditions.push({ OR: [{ countryId: userCountryId }, { countryId: null }] });
+  }
+  if (shouldFilterByCity) {
+    andConditions.push({ OR: [{ cityId: { in: selectedCityIds } }, { cityId: null }] });
+  }
+  if (hasKeyword) {
+    andConditions.push({
+      OR: [
+        { title: { contains: keyword, mode: 'insensitive' as const } },
+        { body: { contains: keyword, mode: 'insensitive' as const } },
+        { author: { displayName: { contains: keyword, mode: 'insensitive' as const } } },
+      ],
+    });
+  }
 
   const postWhere = {
     status: 'PUBLISHED' as const,
     categoryId: shouldFilterByCategory ? { in: selectedCategoryIds } : undefined,
-    AND: [...countryCondition, ...cityCondition, ...keywordCondition],
+    AND: andConditions.length > 0 ? andConditions : undefined,
   };
 
   let normalizedPosts: Array<{
