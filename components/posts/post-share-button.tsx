@@ -58,7 +58,6 @@ export function PostShareButton({ title, body, imageUrl }: PostShareButtonProps)
       } catch (error) {
         console.error('[post-share] clipboard copy failed', error);
         setMessage('공유 내용을 클립보드에 복사하지 못했어요.');
-        return;
       }
     }
 
@@ -70,11 +69,12 @@ export function PostShareButton({ title, body, imageUrl }: PostShareButtonProps)
       <button
         type="button"
         onClick={onShare}
+        aria-label="게시글 공유하기"
         className="rounded-xl border border-[#e8e8e8] px-3 py-2 text-sm font-medium hover:bg-[#f9f9f9]"
       >
         게시글 공유하기
       </button>
-      {message ? <p className="text-xs text-[#666]">{message}</p> : null}
+      {message ? <p aria-live="polite" className="text-xs text-[#666]">{message}</p> : null}
     </div>
   );
 }
