@@ -119,6 +119,10 @@ async function validateCategoryPriceAndTags(
   const availableTagOptionIds = new Set(availableTagOptions.map((option) => option.id));
   const selectedTagOptionIds = Array.from(new Set(rawPostTagOptionIds));
 
+  if (selectedTagOptionIds.length > 1) {
+    return { ok: false as const, message: '태그는 최대 1개만 선택할 수 있어요.' };
+  }
+
   if (selectedTagOptionIds.some((optionId) => !availableTagOptionIds.has(optionId))) {
     return { ok: false as const, message: '카테고리 타입에 맞는 활성 태그만 선택해 주세요.' };
   }

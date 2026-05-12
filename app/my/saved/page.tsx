@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 
 import { unsavePostAction } from '@/app/posts/saved-actions';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
-import { PostTagBadge, withPostTagPrefix } from '@/components/posts/post-tag-badge';
+import { PostTagBadge } from '@/components/posts/post-tag-badge';
 import { requireUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 
@@ -53,7 +53,7 @@ export default async function MySavedPostsPage({ searchParams }: MySavedPostsPag
               displayName: true,
             },
           },
-            category: { select: { name: true, type: true } },
+            category: { select: { name: true } },
           city: { select: { name: true } },
           images: {
             select: { url: true },
@@ -87,7 +87,7 @@ export default async function MySavedPostsPage({ searchParams }: MySavedPostsPag
           {savedPosts.map(({ postId, post }) => {
             const titleText = post.title?.trim() ?? '';
             const bodyPreview = post.body.slice(0, BODY_PREVIEW_LENGTH);
-            const postHeading = withPostTagPrefix(titleText || bodyPreview, post.tags[0]?.postTagOption.label);
+            const postHeading = titleText || bodyPreview;
             const thumbnailAlt = titleText
               ? `게시글 썸네일: ${titleText}`
               : '게시글 썸네일: 제목 없는 게시글';
@@ -109,7 +109,6 @@ export default async function MySavedPostsPage({ searchParams }: MySavedPostsPag
                   <div className="min-w-0 flex-1 space-y-2">
                     <div className="flex flex-wrap gap-2 text-xs">
                       <span className="rounded-full bg-[#fffde7] px-2 py-1 font-medium text-[#7a6000]">{post.category.name}</span>
-                      <span className="rounded-full bg-[#eef2ff] px-2 py-1 text-[#3730a3]">{post.category.type}</span>
                       <span className="rounded-full bg-[#f5f5f5] px-2 py-1 text-[#555]">{post.city?.name ?? '전 지역'}</span>
                       {post.tags.map((tag) => (
                         <PostTagBadge
