@@ -7,6 +7,7 @@ import { requireUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 
 const DEFAULT_SNOOZE_DAYS = 30;
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
 function normalizeText(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value.trim() : '';
@@ -72,7 +73,7 @@ export async function dismissCountrySuggestionAction(formData: FormData) {
   }
 
   const snoozeDays = getCountrySwitchSuggestionSnoozeDays();
-  const dismissedUntil = new Date(Date.now() + snoozeDays * 24 * 60 * 60 * 1000);
+  const dismissedUntil = new Date(Date.now() + snoozeDays * MILLISECONDS_PER_DAY);
 
   await prisma.user.update({
     where: { id: user.id },

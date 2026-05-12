@@ -56,8 +56,12 @@ export async function updateProfileAction(formData: FormData) {
       select: { id: true, countryId: true },
     });
 
-    if (!city || city.countryId !== selectedCountryId) {
-      redirect('/my/profile?error=유효한 지역을 선택해 주세요.');
+    if (!city) {
+      redirect('/my/profile?error=선택한 지역을 찾을 수 없어요.');
+    }
+
+    if (city.countryId !== selectedCountryId) {
+      redirect('/my/profile?error=선택한 지역은 현재 국가에 속하지 않아요.');
     }
   }
 

@@ -12,6 +12,12 @@ export function getProfileCityRequiredHref(returnTo: string, message = PROFILE_C
   return `/my/profile?returnTo=${encodeURIComponent(safeReturnTo)}&error=${encodeURIComponent(message)}`;
 }
 
+/**
+ * A valid profile city means:
+ * - user has a selected country and city
+ * - city exists and is active
+ * - city belongs to the user's selected country
+ */
 export async function hasValidProfileCity(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

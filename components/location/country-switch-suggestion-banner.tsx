@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
+import { buildCountryDetectionUrl } from '@/lib/location/browser-country';
+
 type CountryInfo = {
   id: string;
   name: string;
@@ -53,7 +55,10 @@ export function CountrySwitchSuggestionBanner({
 
         try {
           const response = await fetch(
-            `/api/location/country?lat=${encodeURIComponent(String(position.coords.latitude))}&lng=${encodeURIComponent(String(position.coords.longitude))}`,
+            buildCountryDetectionUrl(
+              position.coords.latitude,
+              position.coords.longitude,
+            ),
             { cache: 'no-store' },
           );
           if (!response.ok) {

@@ -83,7 +83,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
   );
   const filterCategoryIds = new Set(filterCategories.map((category) => category.id));
   const cityIds = new Set(cities.map((city) => city.id));
-  const profileCityId = dbUser?.cityId;
+  const profileCityId = dbUser?.cityId ?? null;
   const hasActiveProfileCity = Boolean(profileCityId && cityIds.has(profileCityId));
   const selectedFilterCategoryIdsFromParams = Array.from(
     new Set(toArray(params.category).filter((id) => filterCategoryIds.has(id))),
@@ -105,10 +105,12 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     selectedCityIdsFromParams.length > 0
       ? selectedCityIdsFromParams
       : cities.map((city) => city.id);
-  const selectedCityIds =
+  const shouldIncludeProfileCity =
     hasActiveProfileCity &&
-    profileCityId &&
-    !selectedCityIdsBase.includes(profileCityId)
+    profileCityId !== null &&
+    !selectedCityIdsBase.includes(profileCityId);
+  const selectedCityIds =
+    shouldIncludeProfileCity
       ? [...selectedCityIdsBase, profileCityId]
       : selectedCityIdsBase;
 

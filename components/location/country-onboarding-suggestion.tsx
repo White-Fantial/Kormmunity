@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
+import { buildCountryDetectionUrl } from '@/lib/location/browser-country';
+
 type DetectedCountry = {
   id: string;
   name: string;
@@ -35,7 +37,10 @@ export function CountryOnboardingSuggestion({
 
         try {
           const response = await fetch(
-            `/api/location/country?lat=${encodeURIComponent(String(position.coords.latitude))}&lng=${encodeURIComponent(String(position.coords.longitude))}`,
+            buildCountryDetectionUrl(
+              position.coords.latitude,
+              position.coords.longitude,
+            ),
             { cache: 'no-store' },
           );
 
