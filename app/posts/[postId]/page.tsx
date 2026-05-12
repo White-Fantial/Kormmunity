@@ -1,4 +1,4 @@
-import { cache } from 'react';
+import { cache, Suspense } from 'react';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import type { CategoryType } from '@prisma/client';
@@ -37,6 +37,7 @@ import {
   getActiveCitiesByCountry,
   getActivePostTagOptions,
 } from '@/lib/posts/reference-data';
+import { measureServerTiming } from '@/lib/performance/server';
 
 const TITLE_PREVIEW_LENGTH = 40;
 const DESCRIPTION_PREVIEW_LENGTH = 80;
@@ -54,7 +55,10 @@ type PostDetailPageProps = {
     type?: string | string[];
     tag?: string | string[];
     q?: string | string[];
-    page?: string | string[];
+    cursor?: string | string[];
+    direction?: string | string[];
+    commentsCursor?: string | string[];
+    commentsDirection?: string | string[];
   }>;
 };
 
@@ -75,55 +79,137 @@ function toSingle(value: string | string[] | undefined) {
 }
 
 const getPostWithDetails = cache(async (postId: string) => {
-  return prisma.post.findUnique({
-    where: { id: postId },
-    include: {
-      author: {
-        select: {
-          id: true,
-          displayName: true,
-          profileImageUrl: true,
-          openChatUrl: true,
-        },
-      },
-      category: {
-        select: {
-          id: true,
-          name: true,
-          type: true,
-          color: true,
-        },
-      },
-      tags: {
-        select: {
-          postTagOption: {
-            select: { id: true, label: true, isActive: true },
+  return measureServerTiming('post-detail:base', () =>
+    prisma.post.findUnique({
+      where: { id: postId },
+      include: {
+        author: {
+          select: {
+            id: true,
+            displayName: true,
+            profileImageUrl: true,
+            openChatUrl: true,
           },
         },
-      },
-      city: { select: { name: true } },
-      images: {
-        select: { id: true, url: true },
-        orderBy: { sortOrder: 'asc' },
-      },
-      comments: {
-        where: { status: 'PUBLISHED' },
-        orderBy: { createdAt: 'asc' },
-        select: {
-          id: true,
-          body: true,
-          authorId: true,
-          createdAt: true,
-          author: {
-            select: {
-              displayName: true,
-              profileImageUrl: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            color: true,
+          },
+        },
+        tags: {
+          select: {
+            postTagOption: {
+              select: { id: true, label: true, isActive: true },
+            },
+          },
+        },
+        city: { select: { name: true } },
+        images: {
+          select: { id: true, url: true },
+          orderBy: { sortOrder: 'asc' },
+        },
+        _count: {
+          select: {
+            comments: {
+              where: { status: 'PUBLISHED' },
             },
           },
         },
       },
-    },
-  });
+    }),
+  );
+});
+
+const COMMENT_PAGE_SIZE = 20;
+
+function decodeCommentsCursor(cursorToken: string) {
+  try {
+    const parsed = JSON.parse(Buffer.from(cursorToken, 'base64url').toString('utf8')) as {
+      id: string;
+      createdAt: string;
+    };
+    if (!parsed?.id || !parsed?.createdAt) {
+      return null;
+    }
+
+    const createdAt = new Date(parsed.createdAt);
+    if (Number.isNaN(createdAt.getTime())) {
+      return null;
+    }
+
+    return { id: parsed.id, createdAt };
+  } catch {
+    return null;
+  }
+}
+
+function encodeCommentsCursor(comment: { id: string; createdAt: Date }) {
+  return Buffer.from(
+    JSON.stringify({
+      id: comment.id,
+      createdAt: comment.createdAt.toISOString(),
+    }),
+  ).toString('base64url');
+}
+
+const getPostComments = cache(async (
+  postId: string,
+  cursorToken: string,
+  direction: 'next' | 'prev',
+) => {
+  const cursor = cursorToken ? decodeCommentsCursor(cursorToken) : null;
+  const comments = await measureServerTiming('post-detail:comments', () =>
+    prisma.comment.findMany({
+      where: {
+        postId,
+        status: 'PUBLISHED',
+        ...(cursor
+          ? direction === 'prev'
+            ? {
+                OR: [
+                  { createdAt: { gt: cursor.createdAt } },
+                  { AND: [{ createdAt: cursor.createdAt }, { id: { gt: cursor.id } }] },
+                ],
+              }
+            : {
+                OR: [
+                  { createdAt: { lt: cursor.createdAt } },
+                  { AND: [{ createdAt: cursor.createdAt }, { id: { lt: cursor.id } }] },
+                ],
+              }
+          : {}),
+      },
+      orderBy:
+        direction === 'prev'
+          ? [{ createdAt: 'desc' }, { id: 'desc' }]
+          : [{ createdAt: 'asc' }, { id: 'asc' }],
+      take: COMMENT_PAGE_SIZE + 1,
+      select: {
+        id: true,
+        body: true,
+        authorId: true,
+        createdAt: true,
+        author: {
+          select: {
+            displayName: true,
+            profileImageUrl: true,
+          },
+        },
+      },
+    }),
+  );
+  const hasExtra = comments.length > COMMENT_PAGE_SIZE;
+  const slicedComments = hasExtra ? comments.slice(0, COMMENT_PAGE_SIZE) : comments;
+  const visibleComments = direction === 'prev' ? [...slicedComments].reverse() : slicedComments;
+
+  return {
+    visibleComments,
+    hasPrevPage: direction === 'prev' ? hasExtra : Boolean(cursor),
+    hasNextPage: direction === 'prev' ? Boolean(cursor) : hasExtra,
+  };
 });
 
 export async function generateMetadata({
@@ -218,28 +304,18 @@ export default async function PostDetailPage({
   if (keyword) {
     postContextParams.set('q', keyword);
   }
-  const pageParam = toSingle(query.page);
-  if (pageParam) {
-    postContextParams.set('page', pageParam);
+  const listCursor = toSingle(query.cursor);
+  if (listCursor) {
+    postContextParams.set('cursor', listCursor);
+  }
+  const listDirection = toSingle(query.direction);
+  if (listDirection === 'prev') {
+    postContextParams.set('direction', listDirection);
   }
   const postContextQueryString = postContextParams.toString();
   const createPostHref = (targetPostId: string) =>
     `/posts/${targetPostId}${postContextQueryString ? `?${postContextQueryString}` : ''}`;
   const currentPostHref = createPostHref(post.id);
-  let previousPost:
-    | {
-        id: string;
-        title: string | null;
-        tags: { postTagOption: { label: string } }[];
-      }
-    | null = null;
-  let nextPost:
-    | {
-        id: string;
-        title: string | null;
-        tags: { postTagOption: { label: string } }[];
-      }
-    | null = null;
 
   if (currentUser) {
     const savedPostPromise = prisma.savedPost.findUnique({
@@ -279,175 +355,7 @@ export default async function PostDetailPage({
     }
   }
 
-  if (post.status === 'PUBLISHED') {
-    const userCountryId = currentUser?.countryId ?? null;
-    const [categories, cities, allTagOptions] = await Promise.all([
-      getActiveCategories(),
-      userCountryId ? getActiveCitiesByCountry(userCountryId) : getActiveCities(),
-      getActivePostTagOptions(),
-    ]);
-    const categoryTypes = Array.from(new Set(categories.map((category) => category.type)));
-    const categoryTypeSet = new Set(categoryTypes);
-    const alwaysIncludedCategories = categories.filter(
-      (category) => category.visibilityMode === 'ALWAYS_INCLUDED',
-    );
-    const filterCategories = categories.filter((category) => category.visibilityMode === 'NORMAL');
-    const filterCategoryIds = new Set(filterCategories.map((category) => category.id));
-    const cityIds = new Set(cities.map((city) => city.id));
-    const profileCityId = currentUser?.cityId ?? null;
-    const activeProfileCityId = profileCityId && cityIds.has(profileCityId) ? profileCityId : null;
-    const hasActiveProfileCity = activeProfileCityId !== null;
-    const selectedFilterCategoryIdsFromParams = Array.from(
-      new Set(toArray(query.category).filter((id) => filterCategoryIds.has(id))),
-    );
-    const selectedFilterCategoryIds =
-      selectedFilterCategoryIdsFromParams.length > 0
-        ? selectedFilterCategoryIdsFromParams
-        : filterCategories.map((category) => category.id);
-    const selectedFilterCategoryTypesFromParams = Array.from(
-      new Set(
-        toArray(query.type).filter(
-          (type): type is CategoryType => categoryTypeSet.has(type as CategoryType),
-        ),
-      ),
-    );
-    const selectedFilterCategoryTypes =
-      selectedFilterCategoryTypesFromParams.length > 0
-        ? selectedFilterCategoryTypesFromParams
-        : categoryTypes;
-    const selectedCategoryIds = Array.from(
-      new Set([
-        ...selectedFilterCategoryIds,
-        ...alwaysIncludedCategories.map((category) => category.id),
-      ]),
-    );
-    const selectedCityIdsFromParams = Array.from(
-      new Set(toArray(query.city).filter((id) => cityIds.has(id))),
-    );
-    const selectedCityIdsBase =
-      selectedCityIdsFromParams.length > 0
-        ? selectedCityIdsFromParams
-        : cities.map((city) => city.id);
-    const shouldIncludeProfileCity = hasActiveProfileCity
-      ? !selectedCityIdsBase.includes(activeProfileCityId)
-      : false;
-    const selectedCityIds = shouldIncludeProfileCity
-      ? [...selectedCityIdsBase, activeProfileCityId]
-      : selectedCityIdsBase;
-    const selectableTagOptions = allTagOptions.filter((option) =>
-      selectedFilterCategoryTypes.includes(option.categoryType),
-    );
-    const selectableTagIds = new Set(selectableTagOptions.map((option) => option.id));
-    const selectedTagIds = Array.from(
-      new Set(toArray(query.tag).filter((id) => selectableTagIds.has(id))),
-    );
-    const shouldFilterByCountry = Boolean(userCountryId);
-    const shouldFilterByCategoryType = selectedFilterCategoryTypes.length !== categoryTypes.length;
-    const shouldFilterByTag = selectedTagIds.length > 0;
-    const shouldFilterByCity = hasActiveProfileCity && selectedCityIds.length !== cities.length;
-    const hasKeyword = Boolean(keyword);
-    const andConditions: object[] = [];
-    if (shouldFilterByCountry) {
-      andConditions.push({ OR: [{ countryId: userCountryId }, { countryId: null }] });
-    }
-    if (shouldFilterByCity) {
-      andConditions.push({ OR: [{ cityId: { in: selectedCityIds } }, { cityId: null }] });
-    }
-    if (shouldFilterByCategoryType) {
-      andConditions.push({ category: { type: { in: selectedFilterCategoryTypes } } });
-    }
-    if (shouldFilterByTag) {
-      andConditions.push({
-        tags: {
-          some: {
-            postTagOptionId: {
-              in: selectedTagIds,
-            },
-          },
-        },
-      });
-    }
-    if (hasKeyword) {
-      andConditions.push({
-        OR: [
-          { title: { contains: keyword, mode: 'insensitive' as const } },
-          { body: { contains: keyword, mode: 'insensitive' as const } },
-          { author: { displayName: { contains: keyword, mode: 'insensitive' as const } } },
-        ],
-      });
-    }
-
-    const postWhere = {
-      status: 'PUBLISHED' as const,
-      categoryId: { in: selectedCategoryIds },
-      AND: andConditions.length > 0 ? andConditions : undefined,
-    };
-
-    [previousPost, nextPost] = await Promise.all([
-      prisma.post.findFirst({
-        where: {
-          ...postWhere,
-          OR: [
-            { createdAt: { gt: post.createdAt } },
-            {
-              AND: [
-                { createdAt: post.createdAt },
-                { id: { gt: post.id } },
-              ],
-            },
-          ],
-        },
-        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-        select: {
-          id: true,
-          title: true,
-          tags: {
-            select: {
-              postTagOption: {
-                select: { label: true },
-              },
-            },
-            take: 1,
-          },
-        },
-      }),
-      prisma.post.findFirst({
-        where: {
-          ...postWhere,
-          OR: [
-            { createdAt: { lt: post.createdAt } },
-            {
-              AND: [
-                { createdAt: post.createdAt },
-                { id: { lt: post.id } },
-              ],
-            },
-          ],
-        },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        select: {
-          id: true,
-          title: true,
-          tags: {
-            select: {
-              postTagOption: {
-                select: { label: true },
-              },
-            },
-            take: 1,
-          },
-        },
-      }),
-    ]);
-  }
-
   const isOwner = currentUser?.id === post.authorId;
-  const previousPostTitle = previousPost
-    ? withPostTagPrefix(previousPost.title ?? '제목 없음', previousPost.tags[0]?.postTagOption.label)
-    : null;
-  const nextPostTitle = nextPost
-    ? withPostTagPrefix(nextPost.title ?? '제목 없음', nextPost.tags[0]?.postTagOption.label)
-    : null;
   const outlineActionButtonClass =
     'inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#e8e8e8] px-4 py-2 text-sm font-medium hover:bg-[#f9f9f9]';
   const primaryActionButtonClass =
@@ -654,116 +562,445 @@ export default async function PostDetailPage({
         </div>
       ) : null}
 
-      <section className="grid grid-cols-1 gap-2 border-t border-[#e8e8e8] pt-4 sm:grid-cols-2">
-        {previousPost ? (
-          <Link
-            href={createPostHref(previousPost.id)}
-            className={outlineActionButtonClass}
-            aria-label={`이전 글로 이동: ${previousPostTitle}`}
-          >
-            <span className="mr-1 shrink-0">이전 글:</span>
-            <span className="line-clamp-1 min-w-0">
-              {previousPostTitle}
-            </span>
-          </Link>
-        ) : (
-          <button type="button" disabled className={`${outlineActionButtonClass} text-[#888]`}>
-            이전 글이 없어요
-          </button>
+      <Suspense
+        fallback={(
+          <section className="grid grid-cols-1 gap-2 border-t border-[#e8e8e8] pt-4 sm:grid-cols-2">
+            <button type="button" disabled className={`${outlineActionButtonClass} text-[#888]`}>
+              이전 글을 불러오는 중...
+            </button>
+            <button type="button" disabled className={`${outlineActionButtonClass} text-[#888]`}>
+              다음 글을 불러오는 중...
+            </button>
+          </section>
         )}
-        {nextPost ? (
-          <Link
-            href={createPostHref(nextPost.id)}
-            className={outlineActionButtonClass}
-            aria-label={`다음 글로 이동: ${nextPostTitle}`}
-          >
-            <span className="mr-1 shrink-0">다음 글:</span>
-            <span className="line-clamp-1 min-w-0">
-              {nextPostTitle}
-            </span>
-          </Link>
-        ) : (
-          <button type="button" disabled className={`${outlineActionButtonClass} text-[#888]`}>
-            다음 글이 없어요
-          </button>
+      >
+        <AdjacentPostsSection
+          post={post}
+          query={query}
+          currentUser={currentUser}
+          createPostHref={createPostHref}
+          outlineActionButtonClass={outlineActionButtonClass}
+        />
+      </Suspense>
+
+      <Suspense
+        fallback={(
+          <section className="space-y-3 border-t border-[#e8e8e8] pt-4">
+            <h2 className="text-base font-bold">댓글 {post._count.comments}</h2>
+            <p className="text-sm text-[#888]">댓글을 불러오는 중...</p>
+          </section>
         )}
-      </section>
-
-      <section className="space-y-3 border-t border-[#e8e8e8] pt-4">
-        <h2 className="text-base font-bold">댓글 {post.comments.length}</h2>
-
-        {currentUser ? (
-          <form action={createCommentAction} className="space-y-2">
-            <input type="hidden" name="postId" value={post.id} />
-            <label htmlFor="comment-body" className="sr-only">
-              댓글 입력
-            </label>
-            <textarea
-              id="comment-body"
-              name="body"
-              required
-              rows={3}
-              maxLength={500}
-              placeholder="댓글을 남겨보세요."
-              className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
-            />
-            <FormSubmitButton
-              idleLabel="댓글 작성"
-              pendingLabel="등록 중..."
-              className="rounded-xl bg-[#fee500] px-4 py-2 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
-            />
-          </form>
-        ) : (
-          <p className="text-sm text-[#888]">
-            댓글을 작성하려면{' '}
-            <Link href="/login" className="font-semibold text-[#3c1e1e] underline">
-              로그인
-            </Link>{' '}
-            이 필요해요.
-          </p>
-        )}
-
-        {post.comments.length === 0 ? (
-          <p className="text-sm text-[#888]">아직 댓글이 없어요.</p>
-        ) : (
-          <ul className="space-y-3">
-            {post.comments.map((comment) => {
-              const canDelete = canDeleteComment(currentUser, comment);
-
-              return (
-                <li key={comment.id} className="rounded-xl border border-[#e8e8e8] p-3">
-                  <p className="whitespace-pre-wrap text-sm">{comment.body}</p>
-                  <div className="mt-2 flex items-center justify-between text-xs text-[#888]">
-                    <div className="flex items-center gap-2">
-                      <UserAvatar
-                        displayName={comment.author.displayName}
-                        profileImageUrl={comment.author.profileImageUrl}
-                        className="h-6 w-6"
-                        sizes="24px"
-                      />
-                      <span>
-                        {comment.author.displayName} ·{' '}
-                        {new Date(comment.createdAt).toLocaleString('ko-KR')}
-                      </span>
-                    </div>
-                    {canDelete ? (
-                      <form action={deleteCommentAction}>
-                        <input type="hidden" name="postId" value={post.id} />
-                        <input type="hidden" name="commentId" value={comment.id} />
-                        <FormSubmitButton
-                          idleLabel="삭제"
-                          pendingLabel="삭제 중..."
-                          className="text-red-500"
-                        />
-                      </form>
-                    ) : null}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+      >
+        <CommentsSection
+          postId={post.id}
+          commentCount={post._count.comments}
+          currentUser={currentUser}
+          query={query}
+        />
+      </Suspense>
     </article>
+  );
+}
+
+type AdjacentPostsSectionProps = {
+  post: Awaited<ReturnType<typeof getPostWithDetails>>;
+  query: Awaited<PostDetailPageProps['searchParams']>;
+  currentUser: Awaited<ReturnType<typeof getCurrentUser>>;
+  createPostHref: (targetPostId: string) => string;
+  outlineActionButtonClass: string;
+};
+
+async function AdjacentPostsSection({
+  post,
+  query,
+  currentUser,
+  createPostHref,
+  outlineActionButtonClass,
+}: AdjacentPostsSectionProps) {
+  if (!post) {
+    return null;
+  }
+
+  let previousPost: {
+    id: string;
+    title: string | null;
+    tags: { postTagOption: { label: string } }[];
+  } | null = null;
+  let nextPost: {
+    id: string;
+    title: string | null;
+    tags: { postTagOption: { label: string } }[];
+  } | null = null;
+
+  if (post.status === 'PUBLISHED') {
+    const userCountryId = currentUser?.countryId ?? null;
+    const [categories, cities, allTagOptions] = await Promise.all([
+      getActiveCategories(),
+      userCountryId ? getActiveCitiesByCountry(userCountryId) : getActiveCities(),
+      getActivePostTagOptions(),
+    ]);
+    const categoryTypes = Array.from(new Set(categories.map((category) => category.type)));
+    const categoryTypeSet = new Set(categoryTypes);
+    const alwaysIncludedCategories = categories.filter(
+      (category) => category.visibilityMode === 'ALWAYS_INCLUDED',
+    );
+    const filterCategories = categories.filter((category) => category.visibilityMode === 'NORMAL');
+    const filterCategoryIds = new Set(filterCategories.map((category) => category.id));
+    const cityIds = new Set(cities.map((city) => city.id));
+    const profileCityId = currentUser?.cityId ?? null;
+    const activeProfileCityId = profileCityId && cityIds.has(profileCityId) ? profileCityId : null;
+    const hasActiveProfileCity = activeProfileCityId !== null;
+    const selectedFilterCategoryIdsFromParams = Array.from(
+      new Set(toArray(query.category).filter((id) => filterCategoryIds.has(id))),
+    );
+    const selectedFilterCategoryIds =
+      selectedFilterCategoryIdsFromParams.length > 0
+        ? selectedFilterCategoryIdsFromParams
+        : filterCategories.map((category) => category.id);
+    const selectedFilterCategoryTypesFromParams = Array.from(
+      new Set(
+        toArray(query.type).filter(
+          (type): type is CategoryType => categoryTypeSet.has(type as CategoryType),
+        ),
+      ),
+    );
+    const selectedFilterCategoryTypes =
+      selectedFilterCategoryTypesFromParams.length > 0
+        ? selectedFilterCategoryTypesFromParams
+        : categoryTypes;
+    const selectedCategoryIds = Array.from(
+      new Set([
+        ...selectedFilterCategoryIds,
+        ...alwaysIncludedCategories.map((category) => category.id),
+      ]),
+    );
+    const selectedCityIdsFromParams = Array.from(
+      new Set(toArray(query.city).filter((id) => cityIds.has(id))),
+    );
+    const selectedCityIdsBase =
+      selectedCityIdsFromParams.length > 0
+        ? selectedCityIdsFromParams
+        : cities.map((city) => city.id);
+    const shouldIncludeProfileCity = hasActiveProfileCity
+      ? !selectedCityIdsBase.includes(activeProfileCityId)
+      : false;
+    const selectedCityIds = shouldIncludeProfileCity
+      ? [...selectedCityIdsBase, activeProfileCityId]
+      : selectedCityIdsBase;
+    const selectableTagOptions = allTagOptions.filter((option) =>
+      selectedFilterCategoryTypes.includes(option.categoryType),
+    );
+    const selectableTagIds = new Set(selectableTagOptions.map((option) => option.id));
+    const selectedTagIds = Array.from(
+      new Set(toArray(query.tag).filter((id) => selectableTagIds.has(id))),
+    );
+    const keyword = toSingle(query.q);
+    const shouldFilterByCountry = Boolean(userCountryId);
+    const shouldFilterByCategoryType = selectedFilterCategoryTypes.length !== categoryTypes.length;
+    const shouldFilterByTag = selectedTagIds.length > 0;
+    const shouldFilterByCity = hasActiveProfileCity && selectedCityIds.length !== cities.length;
+    const hasKeyword = Boolean(keyword);
+    const andConditions: object[] = [];
+    if (shouldFilterByCountry) {
+      andConditions.push({ OR: [{ countryId: userCountryId }, { countryId: null }] });
+    }
+    if (shouldFilterByCity) {
+      andConditions.push({ OR: [{ cityId: { in: selectedCityIds } }, { cityId: null }] });
+    }
+    if (shouldFilterByCategoryType) {
+      andConditions.push({ category: { type: { in: selectedFilterCategoryTypes } } });
+    }
+    if (shouldFilterByTag) {
+      andConditions.push({
+        tags: {
+          some: {
+            postTagOptionId: {
+              in: selectedTagIds,
+            },
+          },
+        },
+      });
+    }
+    if (hasKeyword) {
+      andConditions.push({
+        OR: [
+          { title: { contains: keyword, mode: 'insensitive' as const } },
+          { body: { contains: keyword, mode: 'insensitive' as const } },
+          { author: { displayName: { contains: keyword, mode: 'insensitive' as const } } },
+        ],
+      });
+    }
+
+    const postWhere = {
+      status: 'PUBLISHED' as const,
+      categoryId: { in: selectedCategoryIds },
+      AND: andConditions.length > 0 ? andConditions : undefined,
+    };
+
+    [previousPost, nextPost] = await measureServerTiming('post-detail:adjacent', () =>
+      Promise.all([
+        prisma.post.findFirst({
+          where: {
+            ...postWhere,
+            OR: [
+              { createdAt: { gt: post.createdAt } },
+              {
+                AND: [
+                  { createdAt: post.createdAt },
+                  { id: { gt: post.id } },
+                ],
+              },
+            ],
+          },
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          select: {
+            id: true,
+            title: true,
+            tags: {
+              select: {
+                postTagOption: {
+                  select: { label: true },
+                },
+              },
+              take: 1,
+            },
+          },
+        }),
+        prisma.post.findFirst({
+          where: {
+            ...postWhere,
+            OR: [
+              { createdAt: { lt: post.createdAt } },
+              {
+                AND: [
+                  { createdAt: post.createdAt },
+                  { id: { lt: post.id } },
+                ],
+              },
+            ],
+          },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          select: {
+            id: true,
+            title: true,
+            tags: {
+              select: {
+                postTagOption: {
+                  select: { label: true },
+                },
+              },
+              take: 1,
+            },
+          },
+        }),
+      ]),
+    );
+  }
+
+  const previousPostTitle = previousPost
+    ? withPostTagPrefix(previousPost.title ?? '제목 없음', previousPost.tags[0]?.postTagOption.label)
+    : null;
+  const nextPostTitle = nextPost
+    ? withPostTagPrefix(nextPost.title ?? '제목 없음', nextPost.tags[0]?.postTagOption.label)
+    : null;
+
+  return (
+    <section className="grid grid-cols-1 gap-2 border-t border-[#e8e8e8] pt-4 sm:grid-cols-2">
+      {previousPost ? (
+        <Link
+          href={createPostHref(previousPost.id)}
+          className={outlineActionButtonClass}
+          aria-label={`이전 글로 이동: ${previousPostTitle}`}
+        >
+          <span className="mr-1 shrink-0">이전 글:</span>
+          <span className="line-clamp-1 min-w-0">
+            {previousPostTitle}
+          </span>
+        </Link>
+      ) : (
+        <button type="button" disabled className={`${outlineActionButtonClass} text-[#888]`}>
+          이전 글이 없어요
+        </button>
+      )}
+      {nextPost ? (
+        <Link
+          href={createPostHref(nextPost.id)}
+          className={outlineActionButtonClass}
+          aria-label={`다음 글로 이동: ${nextPostTitle}`}
+        >
+          <span className="mr-1 shrink-0">다음 글:</span>
+          <span className="line-clamp-1 min-w-0">
+            {nextPostTitle}
+          </span>
+        </Link>
+      ) : (
+        <button type="button" disabled className={`${outlineActionButtonClass} text-[#888]`}>
+          다음 글이 없어요
+        </button>
+      )}
+    </section>
+  );
+}
+
+type CommentsSectionProps = {
+  postId: string;
+  commentCount: number;
+  currentUser: Awaited<ReturnType<typeof getCurrentUser>>;
+  query: Awaited<PostDetailPageProps['searchParams']>;
+};
+
+async function CommentsSection({
+  postId,
+  commentCount,
+  currentUser,
+  query,
+}: CommentsSectionProps) {
+  const commentsCursor = toSingle(query.commentsCursor);
+  const commentsDirection = toSingle(query.commentsDirection) === 'prev' ? 'prev' : 'next';
+  const { visibleComments, hasPrevPage, hasNextPage } = await getPostComments(postId, commentsCursor, commentsDirection);
+  const firstComment = visibleComments[0];
+  const lastComment = visibleComments[visibleComments.length - 1];
+
+  const createCommentPageHref = (nextCursor: string, nextDirection: 'next' | 'prev') => {
+    const queryString = new URLSearchParams();
+    for (const categoryId of toArray(query.category)) {
+      if (categoryId.trim()) {
+        queryString.append('category', categoryId.trim());
+      }
+    }
+    for (const cityId of toArray(query.city)) {
+      if (cityId.trim()) {
+        queryString.append('city', cityId.trim());
+      }
+    }
+    for (const categoryType of toArray(query.type)) {
+      if (categoryType.trim()) {
+        queryString.append('type', categoryType.trim());
+      }
+    }
+    for (const tagId of toArray(query.tag)) {
+      if (tagId.trim()) {
+        queryString.append('tag', tagId.trim());
+      }
+    }
+    const keyword = toSingle(query.q);
+    if (keyword) {
+      queryString.set('q', keyword);
+    }
+    const listCursor = toSingle(query.cursor);
+    if (listCursor) {
+      queryString.set('cursor', listCursor);
+    }
+    const listDirection = toSingle(query.direction);
+    if (listDirection === 'prev') {
+      queryString.set('direction', 'prev');
+    }
+    queryString.set('commentsCursor', nextCursor);
+    if (nextDirection === 'prev') {
+      queryString.set('commentsDirection', 'prev');
+    }
+
+    return `/posts/${postId}?${queryString.toString()}`;
+  };
+
+  return (
+    <section className="space-y-3 border-t border-[#e8e8e8] pt-4">
+      <h2 className="text-base font-bold">댓글 {commentCount}</h2>
+
+      {currentUser ? (
+        <form action={createCommentAction} className="space-y-2">
+          <input type="hidden" name="postId" value={postId} />
+          <label htmlFor="comment-body" className="sr-only">
+            댓글 입력
+          </label>
+          <textarea
+            id="comment-body"
+            name="body"
+            required
+            rows={3}
+            maxLength={500}
+            placeholder="댓글을 남겨보세요."
+            className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
+          />
+          <FormSubmitButton
+            idleLabel="댓글 작성"
+            pendingLabel="등록 중..."
+            className="rounded-xl bg-[#fee500] px-4 py-2 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
+          />
+        </form>
+      ) : (
+        <p className="text-sm text-[#888]">
+          댓글을 작성하려면{' '}
+          <Link href="/login" className="font-semibold text-[#3c1e1e] underline">
+            로그인
+          </Link>{' '}
+          이 필요해요.
+        </p>
+      )}
+
+      {visibleComments.length === 0 ? (
+        <p className="text-sm text-[#888]">아직 댓글이 없어요.</p>
+      ) : (
+        <ul className="space-y-3">
+          {visibleComments.map((comment) => {
+            const canDelete = canDeleteComment(currentUser, comment);
+
+            return (
+              <li key={comment.id} className="rounded-xl border border-[#e8e8e8] p-3">
+                <p className="whitespace-pre-wrap text-sm">{comment.body}</p>
+                <div className="mt-2 flex items-center justify-between text-xs text-[#888]">
+                  <div className="flex items-center gap-2">
+                    <UserAvatar
+                      displayName={comment.author.displayName}
+                      profileImageUrl={comment.author.profileImageUrl}
+                      className="h-6 w-6"
+                      sizes="24px"
+                    />
+                    <span>
+                      {comment.author.displayName} ·{' '}
+                      {new Date(comment.createdAt).toLocaleString('ko-KR')}
+                    </span>
+                  </div>
+                  {canDelete ? (
+                    <form action={deleteCommentAction}>
+                      <input type="hidden" name="postId" value={postId} />
+                      <input type="hidden" name="commentId" value={comment.id} />
+                      <FormSubmitButton
+                        idleLabel="삭제"
+                        pendingLabel="삭제 중..."
+                        className="text-red-500"
+                      />
+                    </form>
+                  ) : null}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {hasPrevPage || hasNextPage ? (
+        <nav className="flex items-center justify-between gap-2 pt-1" aria-label="댓글 페이지 이동">
+          {hasPrevPage && firstComment ? (
+            <Link
+              href={createCommentPageHref(encodeCommentsCursor(firstComment), 'prev')}
+              className="rounded-xl border border-[#e8e8e8] px-4 py-2 text-sm hover:bg-[#f9f9f9]"
+            >
+              이전 댓글
+            </Link>
+          ) : (
+            <span />
+          )}
+          {hasNextPage && lastComment ? (
+            <Link
+              href={createCommentPageHref(encodeCommentsCursor(lastComment), 'next')}
+              className="rounded-xl border border-[#e8e8e8] px-4 py-2 text-sm hover:bg-[#f9f9f9]"
+            >
+              다음 댓글
+            </Link>
+          ) : null}
+        </nav>
+      ) : null}
+    </section>
   );
 }

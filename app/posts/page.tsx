@@ -7,7 +7,9 @@ import { saveSearchAlertAction } from '@/app/posts/search-alert-actions';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { canMakeFinalUserDecision } from '@/lib/permissions';
+import { decodeCursor, encodeCursor } from '@/lib/posts/cursor';
 import { getActiveCategories, getActiveCities, getActiveCitiesByCountry, getActivePostTagOptions } from '@/lib/posts/reference-data';
+import { measureServerTiming } from '@/lib/performance/server';
 
 export const metadata: Metadata = {
   title: '홈',
@@ -21,14 +23,15 @@ type PostsPageProps = {
     type?: string | string[];
     tag?: string | string[];
     q?: string | string[];
-    page?: string | string[];
+    cursor?: string | string[];
+    direction?: string | string[];
     success?: string;
     error?: string;
   }>;
 };
 
 const PAGE_SIZE = 20;
-const MAX_PAGE = 500;
+const BODY_PREVIEW_LENGTH = 220;
 
 function toArray(value: string | string[] | undefined) {
   if (!value) {
@@ -50,13 +53,9 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
   const params = await searchParams;
   const currentUser = await getCurrentUser();
   const keyword = toSingle(params.q);
-  const pageParam = toSingle(params.page) || '1';
-  const rawPage = Number.parseInt(pageParam, 10);
-  const currentPage =
-    Number.isFinite(rawPage) && rawPage > 0
-      ? Math.min(rawPage, MAX_PAGE)
-      : 1;
-  const skip = (currentPage - 1) * PAGE_SIZE;
+  const cursorToken = toSingle(params.cursor);
+  const paginationCursor = cursorToken ? decodeCursor(cursorToken) : null;
+  const paginationDirection = toSingle(params.direction) === 'prev' ? 'prev' : 'next';
 
   const userCountryId = currentUser?.countryId ?? null;
 
@@ -158,12 +157,13 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
   const returnTo = `/posts${returnToParams.toString() ? `?${returnToParams.toString()}` : ''}`;
   const canViewReportStats = currentUser ? canMakeFinalUserDecision(currentUser) : false;
   const paginationBaseParams = new URLSearchParams(returnToParams);
-  const createPageHref = (page: number) => {
+  const createListHref = (cursor: string, direction: 'next' | 'prev') => {
     const query = new URLSearchParams(paginationBaseParams);
-    if (page > 1) {
-      query.set('page', String(page));
+    query.set('cursor', cursor);
+    if (direction === 'prev') {
+      query.set('direction', direction);
     } else {
-      query.delete('page');
+      query.delete('direction');
     }
 
     const queryString = query.toString();
@@ -171,8 +171,11 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
   };
   const createDetailHref = (postId: string) => {
     const query = new URLSearchParams(paginationBaseParams);
-    if (currentPage > 1) {
-      query.set('page', String(currentPage));
+    if (cursorToken) {
+      query.set('cursor', cursorToken);
+    }
+    if (paginationDirection === 'prev') {
+      query.set('direction', 'prev');
     }
 
     const queryString = query.toString();
@@ -210,6 +213,33 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
       ],
     });
   }
+  if (paginationCursor) {
+    andConditions.push(
+      paginationDirection === 'prev'
+        ? {
+            OR: [
+              { createdAt: { gt: paginationCursor.createdAt } },
+              {
+                AND: [
+                  { createdAt: paginationCursor.createdAt },
+                  { id: { gt: paginationCursor.id } },
+                ],
+              },
+            ],
+          }
+        : {
+            OR: [
+              { createdAt: { lt: paginationCursor.createdAt } },
+              {
+                AND: [
+                  { createdAt: paginationCursor.createdAt },
+                  { id: { lt: paginationCursor.id } },
+                ],
+              },
+            ],
+          },
+    );
+  }
 
   const postWhere = {
     status: 'PUBLISHED' as const,
@@ -220,7 +250,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
   let normalizedPosts: Array<{
     id: string;
     title: string | null;
-    body: string;
+    bodyPreview: string;
     createdAt: Date;
     price: string | null;
     thumbnailUrl: string | null;
@@ -232,57 +262,70 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     author: { displayName: string; profileImageUrl: string | null };
   }> = [];
   let hasNextPage = false;
+  let hasPrevPage = false;
 
   if (canViewReportStats) {
-    const posts = await prisma.post.findMany({
-      where: postWhere,
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take: PAGE_SIZE + 1,
-      select: {
-        id: true,
-        title: true,
-        body: true,
-        createdAt: true,
-        tags: {
-          select: {
-            postTagOption: {
-              select: { id: true, label: true },
+    const posts = await measureServerTiming('posts:list:with-reports', () =>
+      prisma.post.findMany({
+        where: postWhere,
+        orderBy:
+          paginationDirection === 'prev'
+            ? [{ createdAt: 'asc' }, { id: 'asc' }]
+            : [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: PAGE_SIZE + 1,
+        select: {
+          id: true,
+          title: true,
+          body: true,
+          createdAt: true,
+          tags: {
+            select: {
+              postTagOption: {
+                select: { id: true, label: true },
+              },
+            },
+          },
+          price: true,
+          category: { select: { name: true, type: true, color: true } },
+          city: { select: { name: true } },
+          author: {
+            select: {
+              displayName: true,
+              profileImageUrl: true,
+            },
+          },
+          images: {
+            select: { url: true },
+            orderBy: { sortOrder: 'asc' },
+            take: 1,
+          },
+          _count: {
+            select: {
+              comments: {
+                where: { status: 'PUBLISHED' },
+              },
+              reports: true,
             },
           },
         },
-        price: true,
-        category: { select: { name: true, type: true, color: true } },
-        city: { select: { name: true } },
-        author: {
-          select: {
-            displayName: true,
-            profileImageUrl: true,
-          },
-        },
-        images: {
-          select: { url: true },
-          orderBy: { sortOrder: 'asc' },
-          take: 1,
-        },
-        _count: {
-          select: {
-            comments: {
-              where: { status: 'PUBLISHED' },
-            },
-            reports: true,
-          },
-        },
-      },
-    });
-
-    hasNextPage = posts.length > PAGE_SIZE;
-    const pagePosts = hasNextPage ? posts.slice(0, PAGE_SIZE) : posts;
+      }),
+    );
+    const hasExtra = posts.length > PAGE_SIZE;
+    const slicedPosts = hasExtra ? posts.slice(0, PAGE_SIZE) : posts;
+    const pagePosts = paginationDirection === 'prev' ? [...slicedPosts].reverse() : slicedPosts;
+    hasPrevPage =
+      paginationDirection === 'prev'
+        ? hasExtra
+        : Boolean(paginationCursor);
+    hasNextPage =
+      paginationDirection === 'prev'
+        ? Boolean(paginationCursor)
+        : hasExtra;
 
     normalizedPosts = pagePosts.map((post) => ({
       id: post.id,
       title: post.title,
-      body: post.body,
+      bodyPreview: post.body.slice(0, BODY_PREVIEW_LENGTH),
       createdAt: post.createdAt,
       postTags: post.tags.map((tag) => tag.postTagOption),
       price: post.price ? post.price.toString() : null,
@@ -294,54 +337,66 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
       author: post.author,
     }));
   } else {
-    const posts = await prisma.post.findMany({
-      where: postWhere,
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take: PAGE_SIZE + 1,
-      select: {
-        id: true,
-        title: true,
-        body: true,
-        createdAt: true,
-        tags: {
-          select: {
-            postTagOption: {
-              select: { id: true, label: true },
+    const posts = await measureServerTiming('posts:list', () =>
+      prisma.post.findMany({
+        where: postWhere,
+        orderBy:
+          paginationDirection === 'prev'
+            ? [{ createdAt: 'asc' }, { id: 'asc' }]
+            : [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: PAGE_SIZE + 1,
+        select: {
+          id: true,
+          title: true,
+          body: true,
+          createdAt: true,
+          tags: {
+            select: {
+              postTagOption: {
+                select: { id: true, label: true },
+              },
+            },
+          },
+          price: true,
+          category: { select: { name: true, type: true, color: true } },
+          city: { select: { name: true } },
+          author: {
+            select: {
+              displayName: true,
+              profileImageUrl: true,
+            },
+          },
+          images: {
+            select: { url: true },
+            orderBy: { sortOrder: 'asc' },
+            take: 1,
+          },
+          _count: {
+            select: {
+              comments: {
+                where: { status: 'PUBLISHED' },
+              },
             },
           },
         },
-        price: true,
-        category: { select: { name: true, type: true, color: true } },
-        city: { select: { name: true } },
-        author: {
-          select: {
-            displayName: true,
-            profileImageUrl: true,
-          },
-        },
-        images: {
-          select: { url: true },
-          orderBy: { sortOrder: 'asc' },
-          take: 1,
-        },
-        _count: {
-          select: {
-            comments: {
-              where: { status: 'PUBLISHED' },
-            },
-          },
-        },
-      },
-    });
-
-    hasNextPage = posts.length > PAGE_SIZE;
-    const pagePosts = hasNextPage ? posts.slice(0, PAGE_SIZE) : posts;
+      }),
+    );
+    const hasExtra = posts.length > PAGE_SIZE;
+    const slicedPosts = hasExtra ? posts.slice(0, PAGE_SIZE) : posts;
+    const pagePosts = paginationDirection === 'prev' ? [...slicedPosts].reverse() : slicedPosts;
+    hasPrevPage =
+      paginationDirection === 'prev'
+        ? hasExtra
+        : Boolean(paginationCursor);
+    hasNextPage =
+      paginationDirection === 'prev'
+        ? Boolean(paginationCursor)
+        : hasExtra;
 
     normalizedPosts = pagePosts.map((post) => ({
       id: post.id,
       title: post.title,
-      body: post.body,
+      bodyPreview: post.body.slice(0, BODY_PREVIEW_LENGTH),
       createdAt: post.createdAt,
       postTags: post.tags.map((tag) => tag.postTagOption),
       price: post.price ? post.price.toString() : null,
@@ -354,7 +409,14 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
   }
 
   const hasFilters = shouldFilterByCategory || shouldFilterByCategoryType || shouldFilterByTag || shouldFilterByCity || hasKeyword;
-  const hasPrevPage = currentPage > 1;
+  const firstPost = normalizedPosts[0];
+  const lastPost = normalizedPosts[normalizedPosts.length - 1];
+  const prevCursor = firstPost
+    ? encodeCursor({ id: firstPost.id, createdAt: firstPost.createdAt })
+    : null;
+  const nextCursor = lastPost
+    ? encodeCursor({ id: lastPost.id, createdAt: lastPost.createdAt })
+    : null;
   const emptyState = hasFilters
     ? {
         title: '선택한 조건에 맞는 글이 없어요.',
@@ -547,7 +609,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
           {hasPrevPage ? (
             <div className="flex justify-center">
               <Link
-                href={createPageHref(currentPage - 1)}
+                href={prevCursor ? createListHref(prevCursor, 'prev') : '/posts'}
                 className="rounded-xl border border-[#e8e8e8] px-4 py-2 text-sm hover:bg-[#f9f9f9]"
               >
                 이전 페이지로 이동
@@ -570,20 +632,18 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
           </div>
           {hasPrevPage || hasNextPage ? (
             <nav className="flex items-center justify-center gap-2" aria-label="게시글 목록 페이지 이동">
-              {hasPrevPage ? (
+              {hasPrevPage && prevCursor ? (
                 <Link
-                  href={createPageHref(currentPage - 1)}
+                  href={createListHref(prevCursor, 'prev')}
                   className="rounded-xl border border-[#e8e8e8] px-4 py-2 text-sm hover:bg-[#f9f9f9]"
                 >
                   이전
                 </Link>
               ) : null}
-              <span aria-label={`현재 페이지 ${currentPage}`} className="text-sm text-[#666]">
-                {currentPage}페이지
-              </span>
-              {hasNextPage ? (
+              <span className="text-sm text-[#666]">커서 페이지네이션</span>
+              {hasNextPage && nextCursor ? (
                 <Link
-                  href={createPageHref(currentPage + 1)}
+                  href={createListHref(nextCursor, 'next')}
                   className="rounded-xl border border-[#e8e8e8] px-4 py-2 text-sm hover:bg-[#f9f9f9]"
                 >
                   다음

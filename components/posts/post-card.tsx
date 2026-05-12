@@ -7,7 +7,7 @@ type PostCardProps = {
   post: {
     id: string;
     title: string | null;
-    body: string;
+    bodyPreview: string;
     createdAt: Date;
     price: string | null;
     thumbnailUrl: string | null;
@@ -26,7 +26,7 @@ type PostCardProps = {
 
 export function PostCard({ post, href }: PostCardProps) {
   const hasTitle = Boolean(post.title?.trim());
-  const previewBase = post.title?.trim() || post.body.split('\n')[0] || '내용 없음';
+  const previewBase = post.title?.trim() || post.bodyPreview.split('\n')[0] || '내용 없음';
   const preview = withPostTagPrefix(previewBase, post.postTags[0]?.label);
 
   return (
@@ -59,12 +59,13 @@ export function PostCard({ post, href }: PostCardProps) {
             alt=""
             fill
             sizes="(max-width: 768px) 100vw, 640px"
+            quality={60}
             className="object-cover"
           />
         </div>
       ) : null}
       {hasTitle ? <p className="text-base font-semibold leading-6">{preview}</p> : null}
-      <p className="line-clamp-2 text-sm text-[#555]">{post.body}</p>
+      <p className="line-clamp-2 text-sm text-[#555]">{post.bodyPreview}</p>
       <div className="flex flex-wrap items-center gap-2 text-sm text-[#888]">
         <UserAvatar
           displayName={post.author.displayName}

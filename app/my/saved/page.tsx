@@ -8,6 +8,8 @@ import { PostTagBadge } from '@/components/posts/post-tag-badge';
 import { EmptyStateMessage } from '@/components/ui/empty-state-message';
 import { requireUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
+import { decodeCursor, encodeCursor } from '@/lib/posts/cursor';
+import { measureServerTiming } from '@/lib/performance/server';
 
 export const dynamic = 'force-dynamic';
 const BODY_PREVIEW_LENGTH = 40;
@@ -18,67 +20,110 @@ export const metadata: Metadata = {
 };
 
 type MySavedPostsPageProps = {
-  searchParams: Promise<{ error?: string; page?: string }>;
+  searchParams: Promise<{ error?: string; cursor?: string; direction?: string }>;
 };
 
 export default async function MySavedPostsPage({ searchParams }: MySavedPostsPageProps) {
   const user = await requireUser();
   const params = await searchParams;
-  const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1);
+  const cursorToken = (params.cursor ?? '').trim();
+  const cursor = cursorToken ? decodeCursor(cursorToken) : null;
+  const direction = params.direction === 'prev' ? 'prev' : 'next';
 
-  const savedPosts = await prisma.savedPost.findMany({
-    where: {
-      userId: user.id,
-      post: {
-        status: {
-          not: 'DELETED',
+  const savedPosts = await measureServerTiming('my-saved:list', () =>
+    prisma.savedPost.findMany({
+      where: {
+        userId: user.id,
+        post: {
+          status: {
+            not: 'DELETED',
+          },
         },
+        ...(cursor
+          ? direction === 'prev'
+            ? {
+                OR: [
+                  { createdAt: { gt: cursor.createdAt } },
+                  { AND: [{ createdAt: cursor.createdAt }, { id: { gt: cursor.id } }] },
+                ],
+              }
+            : {
+                OR: [
+                  { createdAt: { lt: cursor.createdAt } },
+                  { AND: [{ createdAt: cursor.createdAt }, { id: { lt: cursor.id } }] },
+                ],
+              }
+          : {}),
       },
-    },
-    orderBy: { createdAt: 'desc' },
-    skip: (page - 1) * PAGE_SIZE,
-    take: PAGE_SIZE + 1,
-    select: {
-      postId: true,
-      post: {
-        select: {
-          id: true,
-          title: true,
-          body: true,
-          createdAt: true,
-          tags: {
-            select: {
-              postTagOption: {
-                select: { id: true, label: true },
+      orderBy:
+        direction === 'prev'
+          ? [{ createdAt: 'asc' }, { id: 'asc' }]
+          : [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: PAGE_SIZE + 1,
+      select: {
+        id: true,
+        createdAt: true,
+        postId: true,
+        post: {
+          select: {
+            id: true,
+            title: true,
+            body: true,
+            createdAt: true,
+            tags: {
+              select: {
+                postTagOption: {
+                  select: { id: true, label: true },
+                },
+              },
+            },
+            author: {
+              select: {
+                displayName: true,
+              },
+            },
+              category: { select: { name: true, color: true } },
+            city: { select: { name: true } },
+            images: {
+              select: { url: true },
+              orderBy: { sortOrder: 'asc' },
+              take: 1,
+            },
+            _count: {
+              select: {
+                comments: {
+                  where: { status: 'PUBLISHED' },
+                },
               },
             },
           },
-          author: {
-            select: {
-              displayName: true,
-            },
-          },
-            category: { select: { name: true, color: true } },
-          city: { select: { name: true } },
-          images: {
-            select: { url: true },
-            orderBy: { sortOrder: 'asc' },
-            take: 1,
-          },
-          _count: {
-            select: {
-              comments: {
-                where: { status: 'PUBLISHED' },
-              },
-            },
-          },
         },
       },
-    },
-  });
+    }),
+  );
 
-  const hasNextPage = savedPosts.length > PAGE_SIZE;
-  const visibleSavedPosts = hasNextPage ? savedPosts.slice(0, PAGE_SIZE) : savedPosts;
+  const hasExtra = savedPosts.length > PAGE_SIZE;
+  const slicedSavedPosts = hasExtra ? savedPosts.slice(0, PAGE_SIZE) : savedPosts;
+  const visibleSavedPosts = direction === 'prev' ? [...slicedSavedPosts].reverse() : slicedSavedPosts;
+  const hasPrevPage = direction === 'prev' ? hasExtra : Boolean(cursor);
+  const hasNextPage = direction === 'prev' ? Boolean(cursor) : hasExtra;
+  const firstSavedPost = visibleSavedPosts[0];
+  const lastSavedPost = visibleSavedPosts[visibleSavedPosts.length - 1];
+  const prevCursor = firstSavedPost
+    ? encodeCursor({ id: firstSavedPost.id, createdAt: firstSavedPost.createdAt })
+    : null;
+  const nextCursor = lastSavedPost
+    ? encodeCursor({ id: lastSavedPost.id, createdAt: lastSavedPost.createdAt })
+    : null;
+  const createPageHref = (nextCursorToken: string, nextDirection: 'next' | 'prev') => {
+    const query = new URLSearchParams();
+    query.set('cursor', nextCursorToken);
+    if (nextDirection === 'prev') {
+      query.set('direction', 'prev');
+    }
+
+    return `/my/saved?${query.toString()}`;
+  };
 
   return (
     <section className="space-y-4">
@@ -93,7 +138,7 @@ export default async function MySavedPostsPage({ searchParams }: MySavedPostsPag
         />
       ) : (
         <ul className="space-y-3">
-          {visibleSavedPosts.map(({ postId, post }) => {
+           {visibleSavedPosts.map(({ postId, post }) => {
             const titleText = post.title?.trim() ?? '';
             const bodyPreview = post.body.slice(0, BODY_PREVIEW_LENGTH);
             const postHeading = titleText || bodyPreview;
@@ -111,6 +156,7 @@ export default async function MySavedPostsPage({ searchParams }: MySavedPostsPag
                         alt={thumbnailAlt}
                         fill
                         sizes="(max-width: 640px) 80px, 80px"
+                        quality={60}
                         className="object-cover"
                       />
                     </div>
@@ -161,11 +207,11 @@ export default async function MySavedPostsPage({ searchParams }: MySavedPostsPag
         </ul>
       )}
 
-      {(page > 1 || hasNextPage) ? (
+      {hasPrevPage || hasNextPage ? (
         <div className="flex justify-between gap-2 pt-1">
-          {page > 1 ? (
+          {hasPrevPage && prevCursor ? (
             <Link
-              href={`/my/saved?page=${page - 1}`}
+              href={createPageHref(prevCursor, 'prev')}
               className="rounded-xl border border-[#e8e8e8] px-4 py-2 text-sm font-medium hover:bg-[#f9f9f9]"
             >
               이전
@@ -173,9 +219,9 @@ export default async function MySavedPostsPage({ searchParams }: MySavedPostsPag
           ) : (
             <span />
           )}
-          {hasNextPage ? (
+          {hasNextPage && nextCursor ? (
             <Link
-              href={`/my/saved?page=${page + 1}`}
+              href={createPageHref(nextCursor, 'next')}
               className="rounded-xl border border-[#e8e8e8] px-4 py-2 text-sm font-medium hover:bg-[#f9f9f9]"
             >
               다음

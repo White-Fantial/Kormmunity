@@ -208,6 +208,9 @@ model Post {
   @@index([cityId, categoryId, status, createdAt])
   @@index([authorId, createdAt])
   @@index([status, createdAt])
+  @@index([status, countryId, createdAt, id])
+  @@index([status, cityId, createdAt, id])
+  @@index([status, categoryId, createdAt, id])
   @@index([authorId, status, createdAt])
 }
 
@@ -220,6 +223,8 @@ model PostTag {
 
   @@id([postId, postTagOptionId])
   @@index([postTagOptionId, createdAt])
+  @@index([postId, createdAt])
+  @@index([postTagOptionId, postId])
 }
 
 model SavedPost {
@@ -232,6 +237,7 @@ model SavedPost {
 
   @@unique([userId, postId])
   @@index([userId, createdAt])
+  @@index([userId, createdAt, id])
   @@index([postId, createdAt])
 }
 
@@ -287,6 +293,7 @@ model Comment {
   updatedAt DateTime      @updatedAt
 
   @@index([postId, status, createdAt])
+  @@index([postId, status, id])
 }
 
 model ModerationAction {
