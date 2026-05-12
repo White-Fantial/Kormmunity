@@ -3,15 +3,16 @@ import { redirect } from 'next/navigation';
 
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
-import { canMakeFinalUserDecision } from '@/lib/permissions';
+import { canHoldPost, canMakeFinalUserDecision } from '@/lib/permissions';
 import { truncatePostBody } from '@/lib/posts/constants';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminReportsPage() {
   const currentUser = await getCurrentUser();
+  const canAccessAdminLinks = canMakeFinalUserDecision(currentUser);
 
-  if (!currentUser || !canMakeFinalUserDecision(currentUser)) {
+  if (!currentUser || !canHoldPost(currentUser)) {
     redirect('/posts');
   }
 
@@ -44,23 +45,31 @@ export default async function AdminReportsPage() {
   return (
     <section className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">관리자 — 신고 내역</h1>
+        <h1 className="text-xl font-bold">신고 내역</h1>
         <nav className="flex gap-3 text-sm">
-          <Link
-            href="/admin/report-options"
-            className="font-medium text-[#3c1e1e] underline"
-          >
-            신고 옵션
-          </Link>
-          <Link href="/admin/post-permissions" className="font-medium text-[#3c1e1e] underline">
-            게시글 권한
-          </Link>
-          <Link href="/admin/posts" className="font-medium text-[#3c1e1e] underline">
-            게시글
-          </Link>
-          <Link href="/admin/users" className="font-medium text-[#3c1e1e] underline">
-            사용자
-          </Link>
+          {canAccessAdminLinks ? (
+            <>
+              <Link
+                href="/admin/report-options"
+                className="font-medium text-[#3c1e1e] underline"
+              >
+                신고 옵션
+              </Link>
+              <Link href="/admin/post-permissions" className="font-medium text-[#3c1e1e] underline">
+                게시글 권한
+              </Link>
+              <Link href="/admin/posts" className="font-medium text-[#3c1e1e] underline">
+                게시글
+              </Link>
+              <Link href="/admin/users" className="font-medium text-[#3c1e1e] underline">
+                사용자
+              </Link>
+            </>
+          ) : (
+            <Link href="/coordinator" className="font-medium text-[#3c1e1e] underline">
+              운영 관리
+            </Link>
+          )}
         </nav>
       </div>
 

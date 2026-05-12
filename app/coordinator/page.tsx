@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 
 import {
   holdPostAction,
@@ -68,7 +69,15 @@ export default async function CoordinatorPage({ searchParams }: CoordinatorPageP
 
   return (
     <section className="space-y-6">
-      <h1 className="text-xl font-bold">운영 관리 대시보드</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-bold">운영 관리 대시보드</h1>
+        <Link
+          href="/admin/reports"
+          className="rounded-xl border border-[#e8e8e8] bg-white px-3 py-1 text-sm font-medium text-[#3c1e1e] hover:border-[#fee500] hover:bg-[#fffde7]"
+        >
+          신고내역 확인
+        </Link>
+      </div>
 
       {params.error ? (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{params.error}</p>
