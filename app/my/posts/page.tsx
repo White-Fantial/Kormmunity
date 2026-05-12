@@ -35,12 +35,13 @@ export default async function MyPostsPage({ searchParams }: MyPostsPageProps) {
         select: {
           name: true,
           type: true,
+          color: true,
         },
       },
       tags: {
         select: {
           postTagOption: {
-            select: { id: true, label: true, color: true },
+            select: { id: true, label: true },
           },
         },
       },
@@ -101,7 +102,7 @@ export default async function MyPostsPage({ searchParams }: MyPostsPageProps) {
                         <PostTagBadge
                           key={tag.postTagOption.id}
                           label={tag.postTagOption.label}
-                          color={tag.postTagOption.color}
+                          categoryColor={post.category.color}
                         />
                       ))}
                     </div>

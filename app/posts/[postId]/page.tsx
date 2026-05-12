@@ -129,12 +129,13 @@ export default async function PostDetailPage({
           id: true,
           name: true,
           type: true,
+          color: true,
         },
       },
       tags: {
         select: {
           postTagOption: {
-            select: { id: true, label: true, color: true, isActive: true },
+            select: { id: true, label: true, isActive: true },
           },
         },
       },
@@ -248,7 +249,7 @@ export default async function PostDetailPage({
           <PostTagBadge
             key={tag.postTagOption.id}
             label={tag.postTagOption.label}
-            color={tag.postTagOption.color}
+            categoryColor={post.category.color}
           />
         ))}
       </div>

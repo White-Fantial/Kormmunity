@@ -42,7 +42,6 @@ export type PostFormCategoryOption = {
     id: string;
     label: string;
     slug: string;
-    color: string | null;
   }[];
 };
 
@@ -199,7 +198,6 @@ export async function getPostCreationFormOptions(
         categoryType: true,
         label: true,
         slug: true,
-        color: true,
       },
     }),
     user.role === 'ADMIN'
@@ -223,7 +221,7 @@ export async function getPostCreationFormOptions(
 
   const optionsByCategoryType = new Map<
     CategoryType,
-    { id: string; label: string; slug: string; color: string | null }[]
+    { id: string; label: string; slug: string }[]
   >();
   for (const option of tagOptions) {
     const existing = optionsByCategoryType.get(option.categoryType) ?? [];
@@ -231,7 +229,6 @@ export async function getPostCreationFormOptions(
       id: option.id,
       label: option.label,
       slug: option.slug,
-      color: option.color,
     });
     optionsByCategoryType.set(option.categoryType, existing);
   }

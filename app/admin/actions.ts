@@ -350,8 +350,6 @@ export async function createPostTagOptionAction(formData: FormData) {
   const categoryType = normalizeText(formData.get('categoryType')) as CategoryType;
   const label = normalizeText(formData.get('label'));
   const slug = normalizeText(formData.get('slug')).toLowerCase();
-  const colorValue = normalizeText(formData.get('color'));
-  const color = normalizeHexColor(colorValue);
   const sortOrderRaw = normalizeText(formData.get('sortOrder'));
   const sortOrder = sortOrderRaw ? Number.parseInt(sortOrderRaw, 10) : 0;
 
@@ -365,10 +363,6 @@ export async function createPostTagOptionAction(formData: FormData) {
 
   if (!/^[a-z0-9-]+$/.test(slug)) {
     redirect('/admin/categories?error=태그 슬러그는 영문 소문자, 숫자, 하이픈만 사용할 수 있습니다.');
-  }
-
-  if (colorValue && !color) {
-    redirect('/admin/categories?error=태그 색상은 #RRGGBB 형식이어야 합니다.');
   }
 
   if (Number.isNaN(sortOrder)) {
@@ -406,7 +400,6 @@ export async function createPostTagOptionAction(formData: FormData) {
       categoryType,
       label,
       slug,
-      color,
       sortOrder,
       isActive: true,
     },
@@ -427,8 +420,6 @@ export async function updatePostTagOptionAction(formData: FormData) {
   const optionId = normalizeText(formData.get('optionId'));
   const label = normalizeText(formData.get('label'));
   const slug = normalizeText(formData.get('slug')).toLowerCase();
-  const colorValue = normalizeText(formData.get('color'));
-  const color = normalizeHexColor(colorValue);
   const sortOrderRaw = normalizeText(formData.get('sortOrder'));
   const sortOrder = sortOrderRaw ? Number.parseInt(sortOrderRaw, 10) : 0;
 
@@ -438,10 +429,6 @@ export async function updatePostTagOptionAction(formData: FormData) {
 
   if (!/^[a-z0-9-]+$/.test(slug)) {
     redirect('/admin/categories?error=태그 슬러그는 영문 소문자, 숫자, 하이픈만 사용할 수 있습니다.');
-  }
-
-  if (colorValue && !color) {
-    redirect('/admin/categories?error=태그 색상은 #RRGGBB 형식이어야 합니다.');
   }
 
   if (Number.isNaN(sortOrder)) {
@@ -488,7 +475,6 @@ export async function updatePostTagOptionAction(formData: FormData) {
     data: {
       label,
       slug,
-      color,
       sortOrder,
     },
   });

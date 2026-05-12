@@ -75,7 +75,6 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
         id: true,
         label: true,
         slug: true,
-        color: true,
         sortOrder: true,
         isActive: true,
         categoryType: true,

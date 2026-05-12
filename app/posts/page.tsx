@@ -64,7 +64,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     prisma.postTagOption.findMany({
       where: { isActive: true },
       orderBy: [{ categoryType: 'asc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
-      select: { id: true, label: true, color: true, categoryType: true },
+      select: { id: true, label: true, categoryType: true },
     }),
   ]);
 
@@ -207,8 +207,8 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     thumbnailUrl: string | null;
     commentCount: number;
     reportCount?: number;
-    postTags: { id: string; label: string; color: string | null }[];
-    category: { name: string; type: CategoryType };
+    postTags: { id: string; label: string }[];
+    category: { name: string; type: CategoryType; color: string | null };
     city: { name: string } | null;
     author: { displayName: string; profileImageUrl: string | null };
   }> = [];
@@ -226,12 +226,12 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
         tags: {
           select: {
             postTagOption: {
-              select: { id: true, label: true, color: true },
+              select: { id: true, label: true },
             },
           },
         },
         price: true,
-        category: { select: { name: true, type: true } },
+        category: { select: { name: true, type: true, color: true } },
         city: { select: { name: true } },
         author: {
           select: {
@@ -282,12 +282,12 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
         tags: {
           select: {
             postTagOption: {
-              select: { id: true, label: true, color: true },
+              select: { id: true, label: true },
             },
           },
         },
         price: true,
-        category: { select: { name: true, type: true } },
+        category: { select: { name: true, type: true, color: true } },
         city: { select: { name: true } },
         author: {
           select: {

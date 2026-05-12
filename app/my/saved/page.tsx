@@ -44,7 +44,7 @@ export default async function MySavedPostsPage({ searchParams }: MySavedPostsPag
           tags: {
             select: {
               postTagOption: {
-                select: { id: true, label: true, color: true },
+                select: { id: true, label: true },
               },
             },
           },
@@ -53,7 +53,7 @@ export default async function MySavedPostsPage({ searchParams }: MySavedPostsPag
               displayName: true,
             },
           },
-            category: { select: { name: true } },
+            category: { select: { name: true, color: true } },
           city: { select: { name: true } },
           images: {
             select: { url: true },
@@ -114,7 +114,7 @@ export default async function MySavedPostsPage({ searchParams }: MySavedPostsPag
                         <PostTagBadge
                           key={tag.postTagOption.id}
                           label={tag.postTagOption.label}
-                          color={tag.postTagOption.color}
+                          categoryColor={post.category.color}
                         />
                       ))}
                     </div>

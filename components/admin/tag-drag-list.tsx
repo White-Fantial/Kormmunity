@@ -10,13 +10,11 @@ import {
   updatePostTagOptionAction,
 } from '@/app/admin/actions';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
-import { ColorPaletteInput } from './color-palette-input';
 
 export type TagOption = {
   id: string;
   label: string;
   slug: string;
-  color: string | null;
   sortOrder: number;
   isActive: boolean;
   _count: { posts: number };
@@ -97,12 +95,6 @@ export function TagDragList({ categoryType, categoryTypeLabel, initialTags }: Ta
                 >
                   ⠿
                 </span>
-                {tag.color ? (
-                  <span
-                    className="inline-block h-3.5 w-3.5 rounded-full border border-[#e8e8e8]"
-                    style={{ backgroundColor: tag.color }}
-                  />
-                ) : null}
                 <span className="font-medium">{tag.label}</span>
                 <span className="rounded-full bg-[#f0f0f0] px-2 py-px text-[#666]">{tag.slug}</span>
                 <span
@@ -138,7 +130,6 @@ export function TagDragList({ categoryType, categoryTypeLabel, initialTags }: Ta
                     className="rounded-lg border border-[#e8e8e8] px-2 py-1 text-xs focus:border-[#fee500] focus:outline-none"
                   />
                 </div>
-                <ColorPaletteInput name="color" defaultValue={tag.color ?? ''} label="태그 색상" />
                 <div className="flex gap-2">
                   <FormSubmitButton
                     idleLabel="저장"
@@ -186,7 +177,6 @@ export function TagDragList({ categoryType, categoryTypeLabel, initialTags }: Ta
             className="rounded-lg border border-[#e8e8e8] px-2 py-1 text-xs focus:border-[#fee500] focus:outline-none"
           />
         </div>
-        <ColorPaletteInput name="color" defaultValue="" label="태그 색상" />
         <FormSubmitButton
           idleLabel="태그 추가"
           pendingLabel="추가 중..."

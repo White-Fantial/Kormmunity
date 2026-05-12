@@ -307,7 +307,6 @@ async function main() {
           categoryType,
           label,
           slug,
-          color: null,
           sortOrder: index,
           isActive: true,
         },

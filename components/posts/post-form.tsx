@@ -35,7 +35,6 @@ type CategoryOption = {
     id: string;
     label: string;
     slug: string;
-    color: string | null;
   }[];
 };
 
