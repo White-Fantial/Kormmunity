@@ -11,6 +11,14 @@ type ReverseGeoResponse = {
   };
 };
 
+const NOMINATIM_MIN_INTERVAL_MS = 1_000;
+const COUNTRY_CACHE_TTL_MS = 5 * 60 * 1_000;
+let lastNominatimRequestAt = 0;
+const countryDetectionCache = new Map<
+  string,
+  { country: { id: string; name: string } | null; expiresAt: number }
+>();
+
 function parseCoordinate(value: string | null) {
   if (!value) {
     return null;
@@ -32,7 +40,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ country: null }, { status: 400 });
   }
 
+  const cacheKey = `${lat.toFixed(2)}:${lng.toFixed(2)}`;
+  const cached = countryDetectionCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return NextResponse.json({ country: cached.country });
+  }
+
+  if (Date.now() - lastNominatimRequestAt < NOMINATIM_MIN_INTERVAL_MS) {
+    return NextResponse.json({ country: null });
+  }
+
   try {
+    lastNominatimRequestAt = Date.now();
     const reverseGeoResponse = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(String(lat))}&lon=${encodeURIComponent(String(lng))}&zoom=3&addressdetails=1&accept-language=en`,
       {
@@ -61,15 +80,19 @@ export async function GET(request: NextRequest) {
     });
 
     const detectedCountry = detectCountryFromNames(countries, countryName, countryCode);
+    const countryPayload = detectedCountry
+      ? {
+          id: detectedCountry.id,
+          name: detectedCountry.name,
+        }
+      : null;
 
-    return NextResponse.json({
-      country: detectedCountry
-        ? {
-            id: detectedCountry.id,
-            name: detectedCountry.name,
-          }
-        : null,
+    countryDetectionCache.set(cacheKey, {
+      country: countryPayload,
+      expiresAt: Date.now() + COUNTRY_CACHE_TTL_MS,
     });
+
+    return NextResponse.json({ country: countryPayload });
   } catch {
     return NextResponse.json({ country: null });
   }

@@ -1,2 +1,2 @@
-// 10s geolocation timeout keeps prompt responsive on slow devices/networks.
+// 10s geolocation timeout keeps prompts responsive; timeout falls back to manual country choice.
 export const GEOLOCATION_TIMEOUT_MS = 10_000;

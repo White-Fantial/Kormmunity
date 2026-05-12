@@ -33,6 +33,7 @@ export function CountrySwitchSuggestionBanner({
 }: CountrySwitchSuggestionBannerProps) {
   const [detectedCountry, setDetectedCountry] = useState<CountryInfo | null>(null);
   const [dismissedLocally, setDismissedLocally] = useState(false);
+  const [geolocationUnavailable, setGeolocationUnavailable] = useState(false);
   const isDismissedBySnooze = useMemo(() => {
     if (!detectedCountry || !dismissedCountryId || dismissedCountryId !== detectedCountry.id || !dismissedUntil) {
       return false;
@@ -74,7 +75,7 @@ export function CountrySwitchSuggestionBanner({
           // no-op
         }
       },
-      () => undefined,
+      () => setGeolocationUnavailable(true),
       { timeout: GEOLOCATION_TIMEOUT_MS },
     );
 
@@ -83,7 +84,7 @@ export function CountrySwitchSuggestionBanner({
     };
   }, [selectedCountry]);
 
-  if (!selectedCountry || !detectedCountry || dismissedLocally) {
+  if (!selectedCountry || !detectedCountry || dismissedLocally || geolocationUnavailable) {
     return null;
   }
 
