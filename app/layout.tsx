@@ -80,7 +80,7 @@ export default async function RootLayout({
                 <img
                   src="/kormmunity-logo.svg"
                   alt="Kormmunity logo"
-                  width={260}
+                  width={210}
                   height={48}
                   className="h-7 w-auto"
                 />
