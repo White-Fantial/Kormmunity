@@ -8,7 +8,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { canMakeFinalUserDecision } from '@/lib/permissions';
 import { decodeCursor, encodeCursor } from '@/lib/posts/cursor';
-import { getActiveCategories, getActiveCities, getActiveCitiesByCountry, getActivePostTagOptions } from '@/lib/posts/reference-data';
+import { getActiveCategories, getActiveCities, getActiveCitiesByCountry } from '@/lib/posts/reference-data';
 import { measureServerTiming } from '@/lib/performance/server';
 
 export const metadata: Metadata = {
@@ -59,14 +59,10 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
 
   const userCountryId = currentUser?.countryId ?? null;
 
-  const [categories, cities, allTagOptions] = await Promise.all([
+  const [categories, cities] = await Promise.all([
     getActiveCategories(),
     userCountryId ? getActiveCitiesByCountry(userCountryId) : getActiveCities(),
-    getActivePostTagOptions(),
   ]);
-
-  const categoryTypes = Array.from(new Set(categories.map((category) => category.type)));
-  const categoryTypeSet = new Set(categoryTypes);
 
   const alwaysIncludedCategories = categories.filter(
     (category) => category.visibilityMode === 'ALWAYS_INCLUDED',
@@ -87,18 +83,6 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     selectedFilterCategoryIdsFromParams.length > 0
       ? selectedFilterCategoryIdsFromParams
       : filterCategories.map((category) => category.id);
-
-  const selectedFilterCategoryTypesFromParams = Array.from(
-    new Set(
-      toArray(params.type).filter(
-        (type): type is CategoryType => categoryTypeSet.has(type as CategoryType),
-      ),
-    ),
-  );
-  const selectedFilterCategoryTypes =
-    selectedFilterCategoryTypesFromParams.length > 0
-      ? selectedFilterCategoryTypesFromParams
-      : categoryTypes;
 
   const selectedCategoryIds = Array.from(
     new Set([
@@ -121,20 +105,9 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
       ? [...selectedCityIdsBase, activeProfileCityId]
       : selectedCityIdsBase;
 
-  const selectableTagOptions = allTagOptions.filter((option) =>
-    selectedFilterCategoryTypes.includes(option.categoryType),
-  );
-  const selectableTagIds = new Set(selectableTagOptions.map((option) => option.id));
-  const selectedTagIds = Array.from(
-    new Set(toArray(params.tag).filter((id) => selectableTagIds.has(id))),
-  );
-
   const shouldFilterByCountry = Boolean(userCountryId);
   const shouldFilterByCategory =
     selectedFilterCategoryIds.length !== filterCategories.length;
-  const shouldFilterByCategoryType =
-    selectedFilterCategoryTypes.length !== categoryTypes.length;
-  const shouldFilterByTag = selectedTagIds.length > 0;
   const shouldFilterByCity = hasActiveProfileCity && selectedCityIds.length !== cities.length;
   const hasKeyword = Boolean(keyword);
 
@@ -144,12 +117,6 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
   }
   for (const cityId of selectedCityIdsFromParams) {
     returnToParams.append('city', cityId);
-  }
-  for (const categoryType of selectedFilterCategoryTypesFromParams) {
-    returnToParams.append('type', categoryType);
-  }
-  for (const tagId of selectedTagIds) {
-    returnToParams.append('tag', tagId);
   }
   if (keyword) {
     returnToParams.set('q', keyword);
@@ -189,20 +156,6 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
   }
   if (shouldFilterByCity) {
     andConditions.push({ OR: [{ cityId: { in: selectedCityIds } }, { cityId: null }] });
-  }
-  if (shouldFilterByCategoryType) {
-    andConditions.push({ category: { type: { in: selectedFilterCategoryTypes } } });
-  }
-  if (shouldFilterByTag) {
-    andConditions.push({
-      tags: {
-        some: {
-          postTagOptionId: {
-            in: selectedTagIds,
-          },
-        },
-      },
-    });
   }
   if (hasKeyword) {
     andConditions.push({
@@ -468,27 +421,6 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
           </summary>
 
           <div className="mt-3 hidden grid-cols-1 gap-4 group-open:grid sm:grid-cols-2">
-            <fieldset className="space-y-2 text-sm sm:col-span-2">
-              <legend className="font-medium">카테고리 타입</legend>
-              <div className="flex flex-wrap gap-2">
-                {categoryTypes.map((categoryType) => (
-                  <label
-                    key={categoryType}
-                    className="flex cursor-pointer items-center gap-2 rounded-full border border-[#e8e8e8] px-3 py-1.5 hover:border-[#fee500] hover:bg-[#fffde7]"
-                  >
-                    <input
-                      type="checkbox"
-                      name="type"
-                      value={categoryType}
-                      defaultChecked={selectedFilterCategoryTypes.includes(categoryType)}
-                      className="accent-[#fee500]"
-                    />
-                    <span>{categoryType}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-
             <fieldset className="space-y-2 text-sm">
               <legend className="font-medium">카테고리 선택</legend>
               <div className="flex flex-wrap gap-2">
@@ -542,31 +474,6 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
                   );
                 })}
               </div>
-            </fieldset>
-
-            <fieldset className="space-y-2 text-sm sm:col-span-2">
-              <legend className="font-medium">태그 선택</legend>
-              {selectableTagOptions.length === 0 ? (
-                <p className="text-xs text-[#888]">선택한 카테고리 타입에 태그가 없습니다.</p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {selectableTagOptions.map((tag) => (
-                    <label
-                      key={tag.id}
-                      className="flex cursor-pointer items-center gap-2 rounded-full border border-[#e8e8e8] px-3 py-1.5 hover:border-[#fee500] hover:bg-[#fffde7]"
-                    >
-                      <input
-                        type="checkbox"
-                        name="tag"
-                        value={tag.id}
-                        defaultChecked={selectedTagIds.includes(tag.id)}
-                        className="accent-[#fee500]"
-                      />
-                      <span>{tag.label}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
             </fieldset>
 
             <div className="flex flex-wrap gap-2 sm:col-span-2">
