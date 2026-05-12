@@ -42,7 +42,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
       actionType: 'REVIEW_REQUEST',
     },
     orderBy: { createdAt: 'desc' },
-    take: 200,
+    take: 100,
     select: {
       id: true,
       targetId: true,
@@ -97,6 +97,16 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
     return actionType;
   };
 
+  const userReviewRequestsByTargetId = userReviewRequests.reduce<
+    Record<string, Array<(typeof userReviewRequests)[number]>>
+  >((acc, request) => {
+    if (!acc[request.targetId]) {
+      acc[request.targetId] = [];
+    }
+    acc[request.targetId].push(request);
+    return acc;
+  }, {});
+
   return (
     <section className="space-y-6">
       <div className="flex items-center justify-between">
@@ -124,12 +134,10 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
         ) : (
           <ul className="space-y-4">
             {users.map((u) => {
-              const reviewRequests = userReviewRequests
-                .filter((request) => request.targetId === u.id)
-                .slice(0, 5);
+              const reviewRequests = userReviewRequestsByTargetId[u.id]?.slice(0, 5) ?? [];
 
               return (
-                <li key={u.id} className="space-y-3 rounded-xl border border-[#e8e8e8] p-3">
+                <li key={u.id} className="space-y-2 rounded-xl border border-[#e8e8e8] p-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium">{u.displayName}</span>
                   <span
