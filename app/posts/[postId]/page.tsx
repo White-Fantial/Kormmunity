@@ -50,6 +50,11 @@ export async function generateMetadata({
       title: true,
       body: true,
       status: true,
+      images: {
+        select: { url: true },
+        orderBy: { sortOrder: 'asc' },
+        take: 1,
+      },
       category: { select: { name: true } },
       tags: {
         select: {
@@ -74,15 +79,24 @@ export async function generateMetadata({
     post.title ?? post.body.slice(0, TITLE_PREVIEW_LENGTH),
     post.tags[0]?.postTagOption.label,
   );
+  const socialTitle = `${title} | 한인 커뮤니티`;
   const description = `${post.category.name} · ${post.city?.name ?? '전 지역'} · ${post.body.slice(0, DESCRIPTION_PREVIEW_LENGTH)}`;
+  const primaryImageUrl = post.images[0]?.url;
 
   return {
     title,
     description,
     openGraph: {
-      title,
+      title: socialTitle,
       description,
       type: 'article',
+      images: primaryImageUrl ? [primaryImageUrl] : undefined,
+    },
+    twitter: {
+      card: primaryImageUrl ? 'summary_large_image' : 'summary',
+      title: socialTitle,
+      description,
+      images: primaryImageUrl ? [primaryImageUrl] : undefined,
     },
   };
 }
