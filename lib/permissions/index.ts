@@ -1,5 +1,5 @@
 import { CategoryVisibilityMode, UserRole } from '@prisma/client';
-import type { CategoryType, PostStatus, SaleStatus, UserStatus } from '@prisma/client';
+import type { CategoryType, PostStatus, UserStatus } from '@prisma/client';
 
 import { prisma } from '@/lib/db/prisma';
 
@@ -15,7 +15,6 @@ type PermissionPost = {
   id: string;
   authorId: string;
   status: PostStatus;
-  saleStatus: SaleStatus | null;
 };
 
 type PermissionComment = {
@@ -39,6 +38,13 @@ export type PostFormCategoryOption = {
   name: string;
   type: CategoryType;
   visibilityMode: CategoryVisibilityMode;
+  postTagOptions: {
+    id: string;
+    label: string;
+    slug: string;
+    color: string | null;
+    isDefault: boolean;
+  }[];
 };
 
 export type PostFormTargetOption = {
@@ -179,7 +185,23 @@ export async function getPostCreationFormOptions(
     prisma.category.findMany({
       where: { isActive: true },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-      select: { id: true, name: true, type: true, visibilityMode: true },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        visibilityMode: true,
+        postTagOptions: {
+          where: { isActive: true },
+          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+          select: {
+            id: true,
+            label: true,
+            slug: true,
+            color: true,
+            isDefault: true,
+          },
+        },
+      },
     }),
     user.role === 'ADMIN'
       ? Promise.resolve([])
@@ -370,31 +392,6 @@ export function canDeleteComment(
   }
 
   return user.id === comment.authorId;
-}
-
-export function canMarkPostAsSold(
-  user: PermissionUser | null | undefined,
-  post: PermissionPost,
-) {
-  if (!user) {
-    return false;
-  }
-
-  return user.id === post.authorId && user.status === 'ACTIVE';
-}
-
-export function canMarkPostAsReserved(
-  user: PermissionUser | null | undefined,
-  post: PermissionPost,
-) {
-  return canMarkPostAsSold(user, post);
-}
-
-export function canMarkPostAsAvailable(
-  user: PermissionUser | null | undefined,
-  post: PermissionPost,
-) {
-  return canMarkPostAsSold(user, post);
 }
 
 export function canHoldPost(user: PermissionUser | null | undefined) {

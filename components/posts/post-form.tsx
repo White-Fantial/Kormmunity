@@ -29,6 +29,13 @@ type CategoryOption = {
   label: string;
   type: string;
   visibilityMode: 'NORMAL' | 'ALWAYS_INCLUDED' | 'HIDDEN';
+  postTagOptions: {
+    id: string;
+    label: string;
+    slug: string;
+    color: string | null;
+    isDefault: boolean;
+  }[];
 };
 
 type AllowedTarget = {
@@ -57,9 +64,10 @@ type PostFormProps = {
     body?: string;
     countryId?: string | null;
     cityId?: string | null;
-    categoryId?: string;
-    price?: string | null;
-    contactUrl?: string | null;
+      categoryId?: string;
+      postTagOptionId?: string | null;
+      price?: string | null;
+      contactUrl?: string | null;
     images?: {
       id: string;
       url: string;
@@ -153,6 +161,18 @@ function getCategoryLabel(category: CategoryOption) {
   return category.label;
 }
 
+function getDefaultPostTagOptionId(category: CategoryOption | undefined) {
+  if (!category || category.postTagOptions.length === 0) {
+    return '';
+  }
+
+  return (
+    category.postTagOptions.find((option) => option.isDefault)?.id ??
+    category.postTagOptions[0]?.id ??
+    ''
+  );
+}
+
 // Keep the current selection when it is still valid for the filtered option set.
 function getValidatedSelection<T extends { value?: string; id?: string }>(
   options: T[],
@@ -189,6 +209,7 @@ export function PostForm({
   );
   const [cityValue, setCityValue] = useState(toCityValue(defaultValues?.cityId ?? defaultCityId));
   const [categoryId, setCategoryId] = useState(defaultValues?.categoryId ?? '');
+  const [postTagOptionId, setPostTagOptionId] = useState(defaultValues?.postTagOptionId ?? '');
   const [deletedImageIds, setDeletedImageIds] = useState<Set<string>>(new Set());
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -227,6 +248,12 @@ export function PostForm({
   const selectedCategory = useMemo(
     () => categories.find((category) => category.id === selectedCategoryId),
     [categories, selectedCategoryId],
+  );
+  const selectedCategoryTagOptions = selectedCategory?.postTagOptions ?? [];
+  const selectedPostTagOptionId = getValidatedSelection(
+    selectedCategoryTagOptions,
+    postTagOptionId,
+    getDefaultPostTagOptionId(selectedCategory),
   );
 
   function toggleDeleteImage(id: string) {
@@ -420,6 +447,29 @@ export function PostForm({
           ))}
         </select>
       </div>
+
+      {selectedCategoryTagOptions.length > 0 ? (
+        <div className="space-y-1">
+          <label htmlFor="postTagOptionId" className="text-sm font-medium">
+            말머리/상태
+          </label>
+          <select
+            id="postTagOptionId"
+            name="postTagOptionId"
+            value={selectedPostTagOptionId}
+            onChange={(event) => setPostTagOptionId(event.target.value)}
+            className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
+          >
+            {selectedCategoryTagOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <input type="hidden" name="postTagOptionId" value="" />
+      )}
 
       {shouldShowPrice ? (
         <div className="space-y-1">

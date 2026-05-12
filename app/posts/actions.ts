@@ -16,9 +16,6 @@ import {
   canEditPost,
   isPostScopeValid,
   canReportPost,
-  canMarkPostAsSold,
-  canMarkPostAsReserved,
-  canMarkPostAsAvailable,
 } from '@/lib/permissions';
 import {
   MAX_UPLOAD_IMAGE_COUNT,
@@ -49,10 +46,6 @@ function parsePrice(rawPrice: string) {
   return { value: new Decimal(rawPrice), invalid: false };
 }
 
-function isProgressTrackCategoryType(type: CategoryType) {
-  return type === CategoryType.SALE || type === CategoryType.RECRUIT;
-}
-
 function getUploadedImages(formData: FormData): PreUploadedImage[] {
   const raw = formData.get('uploadedImages');
   if (typeof raw !== 'string' || !raw) return [];
@@ -76,10 +69,23 @@ function getUploadedImages(formData: FormData): PreUploadedImage[] {
   );
 }
 
-async function validateCategoryAndPrice(categoryId: string, rawPrice: string) {
+async function validateCategoryPriceAndTag(
+  categoryId: string,
+  rawPrice: string,
+  rawPostTagOptionId: string,
+) {
   const category = await prisma.category.findUnique({
     where: { id: categoryId },
-    select: { id: true, type: true, visibilityMode: true },
+    select: {
+      id: true,
+      type: true,
+      visibilityMode: true,
+      postTagOptions: {
+        where: { isActive: true },
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+        select: { id: true, isDefault: true },
+      },
+    },
   });
 
   if (!category) {
@@ -97,7 +103,25 @@ async function validateCategoryAndPrice(categoryId: string, rawPrice: string) {
     return { ok: false as const, message: '판매글은 가격을 입력해 주세요.' };
   }
 
-  return { ok: true as const, category, price };
+  const selectedTagOptionId = rawPostTagOptionId || null;
+  if (selectedTagOptionId) {
+    const matched = category.postTagOptions.some((option) => option.id === selectedTagOptionId);
+    if (!matched) {
+      return { ok: false as const, message: '카테고리에 맞는 활성 태그를 선택해 주세요.' };
+    }
+  }
+
+  const defaultTagOptionId =
+    category.postTagOptions.find((option) => option.isDefault)?.id ??
+    category.postTagOptions[0]?.id ??
+    null;
+
+  return {
+    ok: true as const,
+    category,
+    price,
+    postTagOptionId: selectedTagOptionId ?? defaultTagOptionId,
+  };
 }
 
 async function resolvePostScope(
@@ -155,6 +179,7 @@ export async function createPostAction(formData: FormData) {
   const rawCountryId = normalizeText(formData.get('countryId'));
   const rawCityId = normalizeText(formData.get('cityId'));
   const rawPrice = normalizeText(formData.get('price'));
+  const rawPostTagOptionId = normalizeText(formData.get('postTagOptionId'));
   const contactUrl = normalizeText(formData.get('contactUrl')) || null;
   const uploadedImages = getUploadedImages(formData);
 
@@ -186,7 +211,7 @@ export async function createPostAction(formData: FormData) {
     redirect('/posts/new?error=카테고리를 선택해 주세요.');
   }
 
-  const categoryResult = await validateCategoryAndPrice(categoryId, rawPrice);
+  const categoryResult = await validateCategoryPriceAndTag(categoryId, rawPrice, rawPostTagOptionId);
 
   if (!categoryResult.ok) {
     redirect(`/posts/new?error=${encodeURIComponent(categoryResult.message)}`);
@@ -209,7 +234,6 @@ export async function createPostAction(formData: FormData) {
   }
 
   const isPostInSaleCategory = categoryResult.category.type === CategoryType.SALE;
-  const isProgressTrackCategory = isProgressTrackCategoryType(categoryResult.category.type);
 
   if (uploadedImages.length > MAX_UPLOAD_IMAGE_COUNT) {
     redirect(`/posts/new?error=${encodeURIComponent(`이미지는 최대 ${MAX_UPLOAD_IMAGE_COUNT}장까지 업로드할 수 있어요.`)}`);
@@ -226,7 +250,7 @@ export async function createPostAction(formData: FormData) {
         countryId: resolvedCountryId,
         price: categoryResult.price,
         status: 'PUBLISHED',
-        saleStatus: isProgressTrackCategory ? 'AVAILABLE' : null,
+        postTagOptionId: categoryResult.postTagOptionId,
         contactUrl,
       },
     });
@@ -282,7 +306,7 @@ export async function updatePostAction(formData: FormData) {
 
   const post = await prisma.post.findUnique({
     where: { id: postId },
-    select: { id: true, authorId: true, status: true, saleStatus: true },
+    select: { id: true, authorId: true, status: true },
   });
 
   if (!post || !canEditPost(user, post)) {
@@ -295,6 +319,7 @@ export async function updatePostAction(formData: FormData) {
   const rawCountryId = normalizeText(formData.get('countryId'));
   const rawCityId = normalizeText(formData.get('cityId'));
   const rawPrice = normalizeText(formData.get('price'));
+  const rawPostTagOptionId = normalizeText(formData.get('postTagOptionId'));
   const contactUrl = normalizeText(formData.get('contactUrl')) || null;
   const uploadedImages = getUploadedImages(formData);
   const deleteImageIds = formData.getAll('deleteImageIds').filter((v): v is string => typeof v === 'string');
@@ -307,7 +332,7 @@ export async function updatePostAction(formData: FormData) {
     redirect(`/posts/${postId}/edit?error=카테고리를 선택해 주세요.`);
   }
 
-  const categoryResult = await validateCategoryAndPrice(categoryId, rawPrice);
+  const categoryResult = await validateCategoryPriceAndTag(categoryId, rawPrice, rawPostTagOptionId);
 
   if (!categoryResult.ok) {
     redirect(
@@ -331,7 +356,6 @@ export async function updatePostAction(formData: FormData) {
     redirect(`/posts/${postId}/edit?error=이 카테고리/지역에 글을 작성할 권한이 없습니다.`);
   }
   const isPostInSaleCategory = categoryResult.category.type === CategoryType.SALE;
-  const isProgressTrackCategory = isProgressTrackCategoryType(categoryResult.category.type);
 
   const existingImageCount = await prisma.postImage.count({
     where: { postId },
@@ -373,11 +397,7 @@ export async function updatePostAction(formData: FormData) {
         cityId: resolvedCityId,
         countryId: resolvedCountryId,
         price: isPostInSaleCategory ? categoryResult.price : null,
-        saleStatus: isProgressTrackCategory
-          ? post.saleStatus === 'SOLD'
-            ? 'SOLD'
-            : 'AVAILABLE'
-          : null,
+        postTagOptionId: categoryResult.postTagOptionId,
         status: 'PUBLISHED',
         contactUrl,
       },
@@ -423,7 +443,7 @@ export async function deletePostAction(formData: FormData) {
 
   const post = await prisma.post.findUnique({
     where: { id: postId },
-    select: { id: true, authorId: true, status: true, saleStatus: true },
+    select: { id: true, authorId: true, status: true },
   });
 
   if (!post || !canDeletePost(user, post)) {
@@ -465,7 +485,7 @@ export async function reportPostAction(formData: FormData) {
   const [post, option] = await Promise.all([
     prisma.post.findUnique({
       where: { id: postId },
-      select: { id: true, authorId: true, status: true, saleStatus: true },
+      select: { id: true, authorId: true, status: true },
     }),
     prisma.reportOption.findFirst({
       where: { id: optionId, isActive: true },
@@ -506,9 +526,10 @@ export async function reportPostAction(formData: FormData) {
   redirect(`/posts/${postId}?success=${encodeURIComponent('신고가 접수되었어요.')}`);
 }
 
-export async function markPostAsSoldAction(formData: FormData) {
+export async function changePostTagOptionAction(formData: FormData) {
   const user = await requireUser();
   const postId = normalizeText(formData.get('postId'));
+  const postTagOptionId = normalizeText(formData.get('postTagOptionId'));
 
   const post = await prisma.post.findUnique({
     where: { id: postId },
@@ -516,112 +537,48 @@ export async function markPostAsSoldAction(formData: FormData) {
       id: true,
       authorId: true,
       status: true,
-      saleStatus: true,
-      category: { select: { type: true } },
+      categoryId: true,
     },
   });
 
-  if (!post || !canMarkPostAsSold(user, post)) {
-    redirect('/my/posts?error=권한이 없습니다.');
+  if (!post || !canEditPost(user, post)) {
+    redirect(`/posts/${postId}?error=권한이 없습니다.`);
   }
 
-  if (!isProgressTrackCategoryType(post.category.type)) {
-    redirect('/my/posts?error=이 카테고리는 완료 상태를 변경할 수 없어요.');
+  const selectedOption = await prisma.postTagOption.findFirst({
+    where: {
+      id: postTagOptionId,
+      categoryId: post.categoryId,
+      isActive: true,
+    },
+    select: { id: true, label: true },
+  });
+
+  if (!selectedOption) {
+    redirect(`/posts/${postId}?error=${encodeURIComponent('유효한 활성 태그를 선택해 주세요.')}`);
   }
 
   await prisma.post.update({
     where: { id: postId },
     data: {
-      saleStatus: 'SOLD',
+      postTagOptionId: selectedOption.id,
     },
   });
+
+  if (user.role === 'ADMIN' && user.id !== post.authorId) {
+    await prisma.moderationAction.create({
+      data: {
+        actorId: user.id,
+        targetType: 'POST',
+        targetId: post.id,
+        actionType: 'POST_TAG_CHANGED',
+        reason: selectedOption.label,
+      },
+    });
+  }
 
   revalidatePath('/posts');
   revalidatePath('/my/posts');
   revalidatePath(`/posts/${postId}`);
-  redirect('/my/posts');
-}
-
-export async function markPostAsReservedAction(formData: FormData) {
-  const user = await requireUser();
-  const postId = normalizeText(formData.get('postId'));
-
-  const post = await prisma.post.findUnique({
-    where: { id: postId },
-    select: {
-      id: true,
-      authorId: true,
-      status: true,
-      saleStatus: true,
-      category: { select: { type: true } },
-    },
-  });
-
-  if (!post || !canMarkPostAsReserved(user, post)) {
-    redirect('/my/posts?error=권한이 없습니다.');
-  }
-
-  if (post.category.type !== CategoryType.SALE) {
-    redirect('/my/posts?error=판매글만 예약중 처리할 수 있어요.');
-  }
-
-  if (post.saleStatus !== 'AVAILABLE') {
-    redirect('/my/posts?error=판매중 상태인 글만 예약중으로 변경할 수 있어요.');
-  }
-
-  await prisma.post.update({
-    where: { id: postId },
-    data: {
-      saleStatus: 'RESERVED',
-    },
-  });
-
-  revalidatePath('/posts');
-  revalidatePath('/my/posts');
-  revalidatePath(`/posts/${postId}`);
-  redirect('/my/posts');
-}
-
-export async function markPostAsAvailableAction(formData: FormData) {
-  const user = await requireUser();
-  const postId = normalizeText(formData.get('postId'));
-
-  const post = await prisma.post.findUnique({
-    where: { id: postId },
-    select: {
-      id: true,
-      authorId: true,
-      status: true,
-      saleStatus: true,
-      category: { select: { type: true } },
-    },
-  });
-
-  if (!post || !canMarkPostAsAvailable(user, post)) {
-    redirect('/my/posts?error=권한이 없습니다.');
-  }
-
-  if (!isProgressTrackCategoryType(post.category.type)) {
-    redirect('/my/posts?error=이 카테고리는 상태를 변경할 수 없어요.');
-  }
-
-  if (post.saleStatus === 'AVAILABLE') {
-    redirect(
-      `/my/posts?error=${encodeURIComponent(
-        post.category.type === CategoryType.RECRUIT ? '이미 진행중 상태예요.' : '이미 판매중 상태예요.',
-      )}`,
-    );
-  }
-
-  await prisma.post.update({
-    where: { id: postId },
-    data: {
-      saleStatus: 'AVAILABLE',
-    },
-  });
-
-  revalidatePath('/posts');
-  revalidatePath('/my/posts');
-  revalidatePath(`/posts/${postId}`);
-  redirect('/my/posts');
+  redirect(`/posts/${postId}?success=${encodeURIComponent('태그가 변경되었어요.')}`);
 }

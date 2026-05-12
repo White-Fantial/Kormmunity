@@ -42,6 +42,7 @@ export default async function AdminPostsPage({ searchParams }: AdminPostsPagePro
       createdAt: true,
       author: { select: { id: true, displayName: true } },
       category: { select: { name: true } },
+      postTagOption: { select: { label: true, isActive: true } },
       city: { select: { name: true } },
     },
   });
@@ -115,6 +116,18 @@ export default async function AdminPostsPage({ searchParams }: AdminPostsPagePro
                 <div className="flex flex-wrap gap-2 text-xs text-[#888]">
                   <span className="rounded-full bg-[#fffde7] px-2 py-0.5 font-medium text-[#7a6000]">{post.category.name}</span>
                   <span className="rounded-full bg-[#f5f5f5] px-2 py-0.5">{post.city?.name ?? '전 지역'}</span>
+                  {post.postTagOption ? (
+                    <span
+                      className={`rounded-full px-2 py-0.5 ${
+                        post.postTagOption.isActive
+                          ? 'bg-[#e8f0fe] text-[#1a56db]'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      {post.postTagOption.label}
+                      {post.postTagOption.isActive ? '' : ' (비활성 태그)'}
+                    </span>
+                  ) : null}
                   <span
                     className={`rounded-full px-2 py-0.5 ${
                       post.status === 'HELD'

@@ -1,7 +1,5 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import type { CategoryType } from '@prisma/client';
-
 import { PostCard } from '@/components/posts/post-card';
 import { saveSearchAlertAction } from '@/app/posts/search-alert-actions';
 import { getCurrentUser } from '@/lib/auth/session';
@@ -163,12 +161,12 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     title: string | null;
     body: string;
     createdAt: Date;
-    saleStatus: 'SOLD' | 'AVAILABLE' | 'RESERVED' | null;
     price: string | null;
     thumbnailUrl: string | null;
     commentCount: number;
     reportCount?: number;
-    category: { name: string; type: CategoryType };
+    postTagOption: { label: string; color: string | null } | null;
+    category: { name: string };
     city: { name: string } | null;
     author: { displayName: string; profileImageUrl: string | null };
   }> = [];
@@ -183,9 +181,9 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
         title: true,
         body: true,
         createdAt: true,
-        saleStatus: true,
+        postTagOption: { select: { label: true, color: true } },
         price: true,
-        category: { select: { name: true, type: true } },
+        category: { select: { name: true } },
         city: { select: { name: true } },
         author: {
           select: {
@@ -214,7 +212,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
       title: post.title,
       body: post.body,
       createdAt: post.createdAt,
-      saleStatus: post.saleStatus,
+      postTagOption: post.postTagOption,
       price: post.price ? post.price.toString() : null,
       thumbnailUrl: post.images[0]?.url ?? null,
       commentCount: post._count.comments,
@@ -233,9 +231,9 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
         title: true,
         body: true,
         createdAt: true,
-        saleStatus: true,
+        postTagOption: { select: { label: true, color: true } },
         price: true,
-        category: { select: { name: true, type: true } },
+        category: { select: { name: true } },
         city: { select: { name: true } },
         author: {
           select: {
@@ -263,7 +261,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
       title: post.title,
       body: post.body,
       createdAt: post.createdAt,
-      saleStatus: post.saleStatus,
+      postTagOption: post.postTagOption,
       price: post.price ? post.price.toString() : null,
       thumbnailUrl: post.images[0]?.url ?? null,
       commentCount: post._count.comments,

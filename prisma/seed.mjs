@@ -57,6 +57,39 @@ const categories = [
   },
 ];
 
+const defaultTagOptionsByCategorySlug = {
+  'buy-sell': [
+    { label: '판매중', slug: 'selling', color: '#1A56DB', isDefault: true },
+    { label: '예약중', slug: 'reserved', color: '#2563EB' },
+    { label: '완료', slug: 'completed', color: '#3C1E1E' },
+  ],
+  'free-share': [
+    { label: '나눔중', slug: 'sharing', color: '#1D4ED8', isDefault: true },
+    { label: '나눔완료', slug: 'shared', color: '#3C1E1E' },
+  ],
+  'job': [
+    { label: '구인', slug: 'hiring', color: '#15803D', isDefault: true },
+    { label: '구직', slug: 'looking-for-job', color: '#0EA5E9' },
+    { label: '완료', slug: 'completed', color: '#3C1E1E' },
+  ],
+  question: [
+    { label: '질문중', slug: 'asking', color: '#7C3AED', isDefault: true },
+    { label: '해결됨', slug: 'resolved', color: '#166534' },
+  ],
+  help: [
+    { label: '질문중', slug: 'asking', color: '#7C3AED', isDefault: true },
+    { label: '해결됨', slug: 'resolved', color: '#166534' },
+  ],
+};
+
+const defaultTagOptionsByCategoryType = {
+  [CategoryType.SALE]: defaultTagOptionsByCategorySlug['buy-sell'],
+  [CategoryType.RECRUIT]: defaultTagOptionsByCategorySlug.job,
+  [CategoryType.GIVEAWAY]: defaultTagOptionsByCategorySlug['free-share'],
+  [CategoryType.QUESTION]: defaultTagOptionsByCategorySlug.question,
+  [CategoryType.HELP]: defaultTagOptionsByCategorySlug.help,
+};
+
 const reportOptions = [
   '사기/거래 위험',
   '욕설/혐오/괴롭힘',
@@ -126,6 +159,53 @@ async function main() {
       }),
     ),
   );
+
+  const categoryRecords = await prisma.category.findMany({
+    where: {
+      slug: {
+        in: categories.map((category) => category.slug),
+      },
+    },
+    select: {
+      id: true,
+      slug: true,
+      type: true,
+    },
+  });
+
+  for (const category of categoryRecords) {
+    const options =
+      defaultTagOptionsByCategorySlug[category.slug] ??
+      defaultTagOptionsByCategoryType[category.type] ??
+      [];
+
+    for (const [index, option] of options.entries()) {
+      await prisma.postTagOption.upsert({
+        where: {
+          categoryId_slug: {
+            categoryId: category.id,
+            slug: option.slug,
+          },
+        },
+        update: {
+          label: option.label,
+          color: option.color,
+          sortOrder: index,
+          isActive: true,
+          isDefault: Boolean(option.isDefault),
+        },
+        create: {
+          categoryId: category.id,
+          label: option.label,
+          slug: option.slug,
+          color: option.color,
+          sortOrder: index,
+          isActive: true,
+          isDefault: Boolean(option.isDefault),
+        },
+      });
+    }
+  }
 
   await Promise.all(
     reportOptions.map((label, index) =>

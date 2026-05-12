@@ -39,9 +39,9 @@ export default async function EditPostPage({
         countryId: true,
         cityId: true,
         categoryId: true,
+        postTagOptionId: true,
         price: true,
         status: true,
-        saleStatus: true,
         contactUrl: true,
         images: {
           select: { id: true, url: true },
@@ -80,6 +80,7 @@ export default async function EditPostPage({
             label: category.name,
             type: category.type,
             visibilityMode: category.visibilityMode,
+            postTagOptions: category.postTagOptions,
           }))}
           allowedTargets={formOptions.allowedTargets}
           defaultCountryId={formOptions.defaultCountryId}
@@ -93,6 +94,7 @@ export default async function EditPostPage({
             countryId: post.countryId,
             cityId: post.cityId,
             categoryId: post.categoryId,
+            postTagOptionId: post.postTagOptionId,
             price: post.price?.toString() ?? '',
             contactUrl: post.contactUrl,
             images: post.images,

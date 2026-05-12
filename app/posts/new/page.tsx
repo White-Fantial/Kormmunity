@@ -52,6 +52,7 @@ export default async function NewPostPage({ searchParams }: NewPostPageProps) {
             label: category.name,
             type: category.type,
             visibilityMode: category.visibilityMode,
+            postTagOptions: category.postTagOptions,
           }))}
           allowedTargets={formOptions.allowedTargets}
           defaultCountryId={formOptions.defaultCountryId}

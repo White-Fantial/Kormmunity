@@ -18,6 +18,13 @@ const VALID_CATEGORY_TYPES = Object.values(CategoryType) as CategoryType[];
 const VALID_CATEGORY_VISIBILITY_MODES = Object.values(
   CategoryVisibilityMode,
 ) as CategoryVisibilityMode[];
+const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+
+function normalizeHexColor(value: string) {
+  if (!value) return null;
+  const normalized = value.startsWith('#') ? value : `#${value}`;
+  return HEX_COLOR_PATTERN.test(normalized) ? normalized : null;
+}
 
 function normalizeText(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value.trim() : '';
@@ -321,6 +328,236 @@ export async function updateCategorySettingsAction(formData: FormData) {
   await logModerationAction(user.id, 'CATEGORY', categoryId, 'SETTINGS_UPDATE');
 
   revalidatePath('/admin/categories');
+  redirect('/admin/categories');
+}
+
+export async function createPostTagOptionAction(formData: FormData) {
+  const user = await requireUser();
+  requireAdmin(user);
+
+  const categoryId = normalizeText(formData.get('categoryId'));
+  const label = normalizeText(formData.get('label'));
+  const slug = normalizeText(formData.get('slug')).toLowerCase();
+  const colorValue = normalizeText(formData.get('color'));
+  const color = normalizeHexColor(colorValue);
+  const sortOrderRaw = normalizeText(formData.get('sortOrder'));
+  const sortOrder = sortOrderRaw ? Number.parseInt(sortOrderRaw, 10) : 0;
+  const isDefault = formData.get('isDefault') === 'true';
+
+  if (!categoryId || !label || !slug) {
+    redirect('/admin/categories?error=카테고리, 태그명, 슬러그를 입력해 주세요.');
+  }
+
+  if (!/^[a-z0-9-]+$/.test(slug)) {
+    redirect('/admin/categories?error=태그 슬러그는 영문 소문자, 숫자, 하이픈만 사용할 수 있습니다.');
+  }
+
+  if (colorValue && !color) {
+    redirect('/admin/categories?error=태그 색상은 #RRGGBB 형식이어야 합니다.');
+  }
+
+  if (Number.isNaN(sortOrder)) {
+    redirect('/admin/categories?error=정렬 순서는 숫자로 입력해 주세요.');
+  }
+
+  const category = await prisma.category.findUnique({
+    where: { id: categoryId },
+    select: { id: true },
+  });
+
+  if (!category) {
+    redirect('/admin/categories?error=카테고리를 찾을 수 없습니다.');
+  }
+
+  const existing = await prisma.postTagOption.findUnique({
+    where: {
+      categoryId_slug: {
+        categoryId,
+        slug,
+      },
+    },
+    select: { id: true },
+  });
+
+  if (existing) {
+    redirect('/admin/categories?error=동일한 슬러그 태그가 이미 존재합니다.');
+  }
+
+  const hasDefault = await prisma.postTagOption.findFirst({
+    where: { categoryId, isActive: true, isDefault: true },
+    select: { id: true },
+  });
+  // Ensure each category always has a selectable default among active options.
+  const shouldBeDefault = isDefault || !hasDefault;
+
+  await prisma.$transaction(async (tx) => {
+    if (shouldBeDefault) {
+      await tx.postTagOption.updateMany({
+        where: { categoryId },
+        data: { isDefault: false },
+      });
+    }
+
+    await tx.postTagOption.create({
+      data: {
+        categoryId,
+        label,
+        slug,
+        color,
+        sortOrder,
+        isActive: true,
+        isDefault: shouldBeDefault,
+      },
+    });
+  });
+
+  await logModerationAction(user.id, 'POST_TAG_OPTION', categoryId, 'CREATE');
+
+  revalidatePath('/admin/categories');
+  revalidatePath('/posts');
+  revalidatePath('/posts/new');
+  redirect('/admin/categories');
+}
+
+export async function updatePostTagOptionAction(formData: FormData) {
+  const user = await requireUser();
+  requireAdmin(user);
+
+  const optionId = normalizeText(formData.get('optionId'));
+  const label = normalizeText(formData.get('label'));
+  const slug = normalizeText(formData.get('slug')).toLowerCase();
+  const colorValue = normalizeText(formData.get('color'));
+  const color = normalizeHexColor(colorValue);
+  const sortOrderRaw = normalizeText(formData.get('sortOrder'));
+  const sortOrder = sortOrderRaw ? Number.parseInt(sortOrderRaw, 10) : 0;
+  const isDefault = formData.get('isDefault') === 'true';
+
+  if (!optionId || !label || !slug) {
+    redirect('/admin/categories?error=태그 정보가 올바르지 않습니다.');
+  }
+
+  if (!/^[a-z0-9-]+$/.test(slug)) {
+    redirect('/admin/categories?error=태그 슬러그는 영문 소문자, 숫자, 하이픈만 사용할 수 있습니다.');
+  }
+
+  if (colorValue && !color) {
+    redirect('/admin/categories?error=태그 색상은 #RRGGBB 형식이어야 합니다.');
+  }
+
+  if (Number.isNaN(sortOrder)) {
+    redirect('/admin/categories?error=정렬 순서는 숫자로 입력해 주세요.');
+  }
+
+  const option = await prisma.postTagOption.findUnique({
+    where: { id: optionId },
+    select: { id: true, categoryId: true, isActive: true },
+  });
+
+  if (!option) {
+    redirect('/admin/categories?error=태그를 찾을 수 없습니다.');
+  }
+
+  const duplicate = await prisma.postTagOption.findFirst({
+    where: {
+      categoryId: option.categoryId,
+      slug,
+      NOT: { id: option.id },
+    },
+    select: { id: true },
+  });
+
+  if (duplicate) {
+    redirect('/admin/categories?error=동일한 슬러그 태그가 이미 존재합니다.');
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (isDefault) {
+      await tx.postTagOption.updateMany({
+        where: { categoryId: option.categoryId },
+        data: { isDefault: false },
+      });
+    }
+
+    await tx.postTagOption.update({
+      where: { id: option.id },
+      data: {
+        label,
+        slug,
+        color,
+        sortOrder,
+        isDefault,
+      },
+    });
+  });
+
+  await logModerationAction(user.id, 'POST_TAG_OPTION', option.id, 'UPDATE');
+
+  revalidatePath('/admin/categories');
+  revalidatePath('/posts');
+  revalidatePath('/posts/new');
+  redirect('/admin/categories');
+}
+
+export async function togglePostTagOptionActiveAction(formData: FormData) {
+  const user = await requireUser();
+  requireAdmin(user);
+
+  const optionId = normalizeText(formData.get('optionId'));
+  const isActive = formData.get('isActive') === 'true';
+
+  if (!optionId) {
+    redirect('/admin/categories?error=태그 ID가 없습니다.');
+  }
+
+  const option = await prisma.postTagOption.findUnique({
+    where: { id: optionId },
+    select: { id: true, categoryId: true, isDefault: true },
+  });
+
+  if (!option) {
+    redirect('/admin/categories?error=태그를 찾을 수 없습니다.');
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.postTagOption.update({
+      where: { id: option.id },
+      data: {
+        isActive: !isActive,
+        // Deactivation always removes default flag; reactivation keeps current non-default state.
+        isDefault: isActive ? false : option.isDefault,
+      },
+    });
+
+    if (isActive && option.isDefault) {
+      const fallback = await tx.postTagOption.findFirst({
+        where: {
+          categoryId: option.categoryId,
+          isActive: true,
+          id: { not: option.id },
+        },
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+        select: { id: true },
+      });
+
+      if (fallback) {
+        await tx.postTagOption.update({
+          where: { id: fallback.id },
+          data: { isDefault: true },
+        });
+      }
+    }
+  });
+
+  await logModerationAction(
+    user.id,
+    'POST_TAG_OPTION',
+    option.id,
+    isActive ? 'DEACTIVATE' : 'ACTIVATE',
+  );
+
+  revalidatePath('/admin/categories');
+  revalidatePath('/posts');
+  revalidatePath('/posts/new');
   redirect('/admin/categories');
 }
 

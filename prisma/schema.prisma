@@ -27,12 +27,6 @@ enum PostStatus {
   DELETED
 }
 
-enum SaleStatus {
-  AVAILABLE
-  RESERVED
-  SOLD
-}
-
 enum CommentStatus {
   PUBLISHED
   HELD
@@ -138,9 +132,28 @@ model Category {
   isActive       Boolean                @default(true)
   sortOrder      Int                    @default(0)
   posts          Post[]
+  postTagOptions PostTagOption[]
   permissions    PostPermission[]
   createdAt      DateTime               @default(now())
   updatedAt      DateTime               @updatedAt
+}
+
+model PostTagOption {
+  id         String   @id @default(cuid())
+  categoryId String
+  label      String
+  slug       String
+  color      String?
+  sortOrder  Int      @default(0)
+  isActive   Boolean  @default(true)
+  isDefault  Boolean  @default(false)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  posts      Post[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([categoryId, slug])
+  @@index([categoryId, isActive, sortOrder])
 }
 
 model PostPermission {
@@ -173,13 +186,14 @@ model Post {
   body          String
   price         Decimal?     @db.Decimal(10, 2)
   status        PostStatus   @default(PUBLISHED)
-  saleStatus    SaleStatus?
+  postTagOptionId String?
   heldReason    String?
   deletedReason String?
   author        User         @relation(fields: [authorId], references: [id])
   city          City?        @relation(fields: [cityId], references: [id])
   country       Country?     @relation(fields: [countryId], references: [id])
   category      Category     @relation(fields: [categoryId], references: [id])
+  postTagOption PostTagOption? @relation(fields: [postTagOptionId], references: [id], onDelete: SetNull)
   contactUrl    String?
   images        PostImage[]
   comments      Comment[]
@@ -193,6 +207,7 @@ model Post {
 
   @@index([cityId, categoryId, status, createdAt])
   @@index([authorId, createdAt])
+  @@index([postTagOptionId, createdAt])
 }
 
 model SavedPost {

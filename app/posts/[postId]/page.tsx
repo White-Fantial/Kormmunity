@@ -1,12 +1,9 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { CategoryType } from '@prisma/client';
 
 import {
-  markPostAsSoldAction,
-  markPostAsReservedAction,
-  markPostAsAvailableAction,
+  changePostTagOptionAction,
   reportPostAction,
 } from '@/app/posts/actions';
 import { savePostAction, unsavePostAction } from '@/app/posts/saved-actions';
@@ -20,6 +17,7 @@ import {
 } from '@/app/coordinator/actions';
 import { DeletePostButton } from '@/components/posts/delete-post-button';
 import { PostImageGallery } from '@/components/posts/post-image-gallery';
+import { PostTagBadge, withPostTagPrefix } from '@/components/posts/post-tag-badge';
 import { PostShareButton } from '@/components/posts/post-share-button';
 import { PostMarkdown } from '@/components/posts/post-markdown';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
@@ -28,6 +26,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import {
   canDeleteComment,
+  canEditPost,
   canHoldPost,
   canReportPost,
   canRestorePost,
@@ -54,6 +53,7 @@ export async function generateMetadata({
       body: true,
       status: true,
       category: { select: { name: true } },
+      postTagOption: { select: { label: true } },
       city: { select: { name: true } },
     },
   });
@@ -65,7 +65,10 @@ export async function generateMetadata({
     };
   }
 
-  const title = post.title ?? post.body.slice(0, TITLE_PREVIEW_LENGTH);
+  const title = withPostTagPrefix(
+    post.title ?? post.body.slice(0, TITLE_PREVIEW_LENGTH),
+    post.postTagOption?.label,
+  );
   const description = `${post.category.name} · ${post.city?.name ?? '전 지역'} · ${post.body.slice(0, DESCRIPTION_PREVIEW_LENGTH)}`;
 
   return {
@@ -98,7 +101,18 @@ export default async function PostDetailPage({
           openChatUrl: true,
         },
       },
-      category: { select: { name: true, type: true } },
+      category: {
+        select: {
+          id: true,
+          name: true,
+          postTagOptions: {
+            where: { isActive: true },
+            orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+            select: { id: true, label: true },
+          },
+        },
+      },
+      postTagOption: { select: { id: true, label: true, color: true, isActive: true } },
       city: { select: { name: true } },
       images: {
         select: { id: true, url: true },
@@ -179,18 +193,11 @@ export default async function PostDetailPage({
   }
 
   const isOwner = currentUser?.id === post.authorId;
-  const isSalePost = post.category.type === CategoryType.SALE;
-  const isRecruitPost = post.category.type === CategoryType.RECRUIT;
-  const isRecruitCompleted = isRecruitPost && post.saleStatus === 'SOLD';
-  const isRecruitInProgress = isRecruitPost && post.saleStatus === 'AVAILABLE';
-  const canMarkReserved = isOwner && isSalePost && post.saleStatus === 'AVAILABLE';
-  const canMarkSold =
-    isOwner &&
-    isSalePost &&
-    (post.saleStatus === 'AVAILABLE' || post.saleStatus === 'RESERVED');
-  const canMarkAvailable = isOwner && isSalePost && post.saleStatus !== 'AVAILABLE';
-  const canMarkRecruitCompleted = isOwner && isRecruitPost && !isRecruitCompleted;
-  const canMarkRecruitInProgress = isOwner && isRecruitCompleted;
+  const canChangeTag = currentUser ? canEditPost(currentUser, post) : false;
+  const activeTagOptionIds = new Set(post.category.postTagOptions.map((option) => option.id));
+  const selectedTagOptionId = activeTagOptionIds.has(post.postTagOption?.id ?? '')
+    ? post.postTagOption?.id
+    : post.category.postTagOptions[0]?.id;
   const outlineActionButtonClass =
     'inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#e8e8e8] px-4 py-2 text-sm font-medium hover:bg-[#f9f9f9]';
   const primaryActionButtonClass =
@@ -217,21 +224,14 @@ export default async function PostDetailPage({
       <div className="flex flex-wrap gap-2 text-xs">
         <span className="rounded-full bg-[#fffde7] px-2 py-1 font-medium text-[#7a6000]">{post.category.name}</span>
         <span className="rounded-full bg-[#f5f5f5] px-2 py-1 text-[#555]">{post.city?.name ?? '전 지역'}</span>
-        {isSalePost && post.saleStatus === 'RESERVED' ? (
-          <span className="rounded-full bg-[#e8f0fe] px-2 py-1 text-[#1a56db]">예약중</span>
-        ) : null}
-        {isSalePost && post.saleStatus === 'SOLD' ? (
-          <span className="rounded-full bg-[#3c1e1e] px-2 py-1 text-white">판매완료</span>
-        ) : null}
-        {isRecruitInProgress ? (
-          <span className="rounded-full bg-[#e8f5e9] px-2 py-1 text-[#2e7d32]">진행중</span>
-        ) : null}
-        {isRecruitCompleted ? (
-          <span className="rounded-full bg-[#3c1e1e] px-2 py-1 text-white">진행완료</span>
+        {post.postTagOption ? (
+          <PostTagBadge label={post.postTagOption.label} color={post.postTagOption.color} />
         ) : null}
       </div>
 
-      {post.title ? <h1 className="text-xl font-bold">{post.title}</h1> : null}
+      {post.title ? (
+        <h1 className="text-xl font-bold">{withPostTagPrefix(post.title, post.postTagOption?.label)}</h1>
+      ) : null}
       <PostMarkdown body={post.body} />
 
       {post.images.length > 0 ? (
@@ -288,55 +288,32 @@ export default async function PostDetailPage({
       ) : (
         <p className="text-sm text-[#888]">작성자가 연락 링크를 등록하지 않았어요.</p>
       )}
+      {canChangeTag && post.category.postTagOptions.length > 0 ? (
+        <form action={changePostTagOptionAction} className="flex items-center gap-2 border-t border-[#e8e8e8] pt-4">
+          <input type="hidden" name="postId" value={post.id} />
+          <select
+            name="postTagOptionId"
+            defaultValue={selectedTagOptionId}
+            className="w-full rounded-xl border border-[#e8e8e8] px-3 py-2 text-sm"
+          >
+            {post.category.postTagOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <FormSubmitButton
+            idleLabel="태그 변경"
+            pendingLabel="처리 중..."
+            className={outlineActionButtonClass}
+          />
+        </form>
+      ) : null}
       {isOwner ? (
         <div className="grid grid-cols-2 gap-2 border-t border-[#e8e8e8] pt-4">
           <Link href={`/posts/${post.id}/edit`} className={outlineActionButtonClass}>
             수정
           </Link>
-          {canMarkReserved ? (
-            <form action={markPostAsReservedAction}>
-              <input type="hidden" name="postId" value={post.id} />
-              <button type="submit" className={outlineActionButtonClass}>
-                예약중으로 변경
-              </button>
-            </form>
-          ) : null}
-          {canMarkSold ? (
-            <form action={markPostAsSoldAction}>
-              <input type="hidden" name="postId" value={post.id} />
-              <FormSubmitButton
-                idleLabel="판매 완료로 변경"
-                pendingLabel="처리 중..."
-                className={outlineActionButtonClass}
-              />
-            </form>
-          ) : null}
-          {canMarkAvailable ? (
-            <form action={markPostAsAvailableAction}>
-              <input type="hidden" name="postId" value={post.id} />
-              <button type="submit" className={outlineActionButtonClass}>
-                판매중으로 변경
-              </button>
-            </form>
-          ) : null}
-          {canMarkRecruitCompleted ? (
-            <form action={markPostAsSoldAction}>
-              <input type="hidden" name="postId" value={post.id} />
-              <FormSubmitButton
-                idleLabel="진행완료로 변경"
-                pendingLabel="처리 중..."
-                className={outlineActionButtonClass}
-              />
-            </form>
-          ) : null}
-          {canMarkRecruitInProgress ? (
-            <form action={markPostAsAvailableAction}>
-              <input type="hidden" name="postId" value={post.id} />
-              <button type="submit" className={outlineActionButtonClass}>
-                진행중으로 변경
-              </button>
-            </form>
-          ) : null}
           <DeletePostButton
             postId={post.id}
             className={dangerActionButtonClass}
