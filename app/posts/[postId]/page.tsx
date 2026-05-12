@@ -346,13 +346,10 @@ export default async function PostDetailPage({
       {canSubmitReport && reportOptions.length > 0 ? (
         <section className="border-t border-[#e8e8e8] pt-4">
           <details aria-label="신고하기 섹션" className="group space-y-2">
-            <summary
-              role="button"
-              className="flex cursor-pointer list-none items-center justify-between rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
-            >
+            <summary className="flex cursor-pointer list-none items-center justify-between rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">
               <span>
                 신고하기
-                <span className="sr-only"> 패널을 펼치거나 접으려면 누르세요.</span>
+                <span className="sr-only">패널을 펼치거나 접으려면 누르세요.</span>
               </span>
               <span aria-hidden="true" className="text-xs text-red-400 transition-transform group-open:rotate-180">
                 ▼
