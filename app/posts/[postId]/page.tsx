@@ -240,7 +240,6 @@ export default async function PostDetailPage({
 
       <div className="flex flex-wrap gap-2 text-xs">
         <span className="rounded-full bg-[#fffde7] px-2 py-1 font-medium text-[#7a6000]">{post.category.name}</span>
-        <span className="rounded-full bg-[#eef2ff] px-2 py-1 text-[#3730a3]">{post.category.type}</span>
         <span className="rounded-full bg-[#f5f5f5] px-2 py-1 text-[#555]">{post.city?.name ?? '전 지역'}</span>
         {post.tags.map((tag) => (
           <PostTagBadge
