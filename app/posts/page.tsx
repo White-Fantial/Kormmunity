@@ -105,10 +105,9 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     selectedCityIdsFromParams.length > 0
       ? selectedCityIdsFromParams
       : cities.map((city) => city.id);
-  const shouldIncludeProfileCity =
-    hasActiveProfileCity &&
-    profileCityId !== null &&
-    !selectedCityIdsBase.includes(profileCityId);
+  const shouldIncludeProfileCity = hasActiveProfileCity
+    ? !selectedCityIdsBase.includes(profileCityId!)
+    : false;
   const selectedCityIds =
     shouldIncludeProfileCity
       ? [...selectedCityIdsBase, profileCityId]

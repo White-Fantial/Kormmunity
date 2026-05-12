@@ -33,14 +33,14 @@ export async function updateProfileAction(formData: FormData) {
   const notifyOnKakaoForSearchAlert = formData.get('notifyOnKakaoForSearchAlert') === 'on';
   const notifyOnKakaoForComment = formData.get('notifyOnKakaoForComment') === 'on';
 
-  const selectedCountryId = countryId ?? user.countryId;
+  const targetCountryId = countryId ?? user.countryId;
 
-  if (!selectedCountryId) {
+  if (!targetCountryId) {
     redirect('/my/profile?error=국가를 먼저 선택해 주세요.');
   }
 
   const country = await prisma.country.findFirst({
-    where: { id: selectedCountryId, isActive: true },
+    where: { id: targetCountryId, isActive: true },
     select: { id: true },
   });
 
@@ -48,7 +48,7 @@ export async function updateProfileAction(formData: FormData) {
     redirect('/my/profile?error=유효한 국가를 선택해 주세요.');
   }
 
-  const isCountryChanged = selectedCountryId !== user.countryId;
+  const isCountryChanged = targetCountryId !== user.countryId;
 
   if (cityId) {
     const city = await prisma.city.findFirst({
@@ -60,7 +60,7 @@ export async function updateProfileAction(formData: FormData) {
       redirect('/my/profile?error=선택한 지역을 찾을 수 없어요.');
     }
 
-    if (city.countryId !== selectedCountryId) {
+    if (city.countryId !== targetCountryId) {
       redirect('/my/profile?error=선택한 지역은 현재 국가에 속하지 않아요.');
     }
   }
@@ -70,7 +70,7 @@ export async function updateProfileAction(formData: FormData) {
       where: { id: user.id },
       data: {
         openChatUrl,
-        countryId: selectedCountryId,
+        countryId: targetCountryId,
         cityId: null,
         countrySuggestionDismissedCountryId: null,
         countrySuggestionDismissedUntil: null,
@@ -93,7 +93,7 @@ export async function updateProfileAction(formData: FormData) {
     where: { id: user.id },
     data: {
       openChatUrl,
-      countryId: selectedCountryId,
+      countryId: targetCountryId,
       cityId,
       notifyOnKakaoForSearchAlert,
       notifyOnKakaoForComment,

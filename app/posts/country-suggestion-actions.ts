@@ -73,6 +73,7 @@ export async function dismissCountrySuggestionAction(formData: FormData) {
   }
 
   const snoozeDays = getCountrySwitchSuggestionSnoozeDays();
+  // Persist a per-country snooze window in whole days.
   const dismissedUntil = new Date(Date.now() + snoozeDays * MILLISECONDS_PER_DAY);
 
   await prisma.user.update({
