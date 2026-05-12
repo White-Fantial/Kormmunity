@@ -191,7 +191,7 @@ const countries = [
     cities: ['Zurich', 'Geneva', 'Basel', 'Bern', 'Lausanne', 'Lucerne', 'Other'],
   },
   {
-    name: 'Türkiye',
+    name: 'Turkiye',
     slug: 'turkiye',
     cities: ['Istanbul', 'Ankara', 'Izmir', 'Bursa', 'Antalya', 'Adana', 'Other'],
   },
