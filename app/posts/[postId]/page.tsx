@@ -1,6 +1,7 @@
 import { cache } from 'react';
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import type { CategoryType } from '@prisma/client';
 import { notFound } from 'next/navigation';
 
 import {
@@ -30,6 +31,12 @@ import {
   canReportPost,
   canRestorePost,
 } from '@/lib/permissions';
+import {
+  getActiveCategories,
+  getActiveCities,
+  getActiveCitiesByCountry,
+  getActivePostTagOptions,
+} from '@/lib/posts/reference-data';
 
 const TITLE_PREVIEW_LENGTH = 40;
 const DESCRIPTION_PREVIEW_LENGTH = 80;
@@ -39,8 +46,33 @@ const TWITTER_CARD_LARGE_IMAGE = 'summary_large_image';
 
 type PostDetailPageProps = {
   params: Promise<{ postId: string }>;
-  searchParams: Promise<{ error?: string; success?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    success?: string;
+    category?: string | string[];
+    city?: string | string[];
+    type?: string | string[];
+    tag?: string | string[];
+    q?: string | string[];
+    page?: string | string[];
+  }>;
 };
+
+function toArray(value: string | string[] | undefined) {
+  if (!value) {
+    return [];
+  }
+
+  return Array.isArray(value) ? value : [value];
+}
+
+function toSingle(value: string | string[] | undefined) {
+  if (!value) {
+    return '';
+  }
+
+  return (Array.isArray(value) ? value[0] : value).trim();
+}
 
 const getPostWithDetails = cache(async (postId: string) => {
   return prisma.post.findUnique({
@@ -161,6 +193,53 @@ export default async function PostDetailPage({
   let reportOptions: { id: string; label: string }[] = [];
   let myReport: { optionId: string; additionalReason: string | null } | null = null;
   let isSaved = false;
+  const postContextParams = new URLSearchParams();
+  for (const categoryId of toArray(query.category)) {
+    if (categoryId.trim()) {
+      postContextParams.append('category', categoryId.trim());
+    }
+  }
+  for (const cityId of toArray(query.city)) {
+    if (cityId.trim()) {
+      postContextParams.append('city', cityId.trim());
+    }
+  }
+  for (const categoryType of toArray(query.type)) {
+    if (categoryType.trim()) {
+      postContextParams.append('type', categoryType.trim());
+    }
+  }
+  for (const tagId of toArray(query.tag)) {
+    if (tagId.trim()) {
+      postContextParams.append('tag', tagId.trim());
+    }
+  }
+  const keyword = toSingle(query.q);
+  if (keyword) {
+    postContextParams.set('q', keyword);
+  }
+  const pageParam = toSingle(query.page);
+  if (pageParam) {
+    postContextParams.set('page', pageParam);
+  }
+  const postContextQueryString = postContextParams.toString();
+  const createPostHref = (targetPostId: string) =>
+    `/posts/${targetPostId}${postContextQueryString ? `?${postContextQueryString}` : ''}`;
+  const currentPostHref = createPostHref(post.id);
+  let previousPost:
+    | {
+        id: string;
+        title: string | null;
+        tags: { postTagOption: { label: string } }[];
+      }
+    | null = null;
+  let nextPost:
+    | {
+        id: string;
+        title: string | null;
+        tags: { postTagOption: { label: string } }[];
+      }
+    | null = null;
 
   if (currentUser) {
     const savedPostPromise = prisma.savedPost.findUnique({
@@ -198,6 +277,169 @@ export default async function PostDetailPage({
     } else {
       isSaved = Boolean(await savedPostPromise);
     }
+  }
+
+  if (post.status === 'PUBLISHED') {
+    const userCountryId = currentUser?.countryId ?? null;
+    const [categories, cities, allTagOptions] = await Promise.all([
+      getActiveCategories(),
+      userCountryId ? getActiveCitiesByCountry(userCountryId) : getActiveCities(),
+      getActivePostTagOptions(),
+    ]);
+    const categoryTypes = Array.from(new Set(categories.map((category) => category.type)));
+    const categoryTypeSet = new Set(categoryTypes);
+    const alwaysIncludedCategories = categories.filter(
+      (category) => category.visibilityMode === 'ALWAYS_INCLUDED',
+    );
+    const filterCategories = categories.filter((category) => category.visibilityMode === 'NORMAL');
+    const filterCategoryIds = new Set(filterCategories.map((category) => category.id));
+    const cityIds = new Set(cities.map((city) => city.id));
+    const profileCityId = currentUser?.cityId ?? null;
+    const activeProfileCityId = profileCityId && cityIds.has(profileCityId) ? profileCityId : null;
+    const hasActiveProfileCity = activeProfileCityId !== null;
+    const selectedFilterCategoryIdsFromParams = Array.from(
+      new Set(toArray(query.category).filter((id) => filterCategoryIds.has(id))),
+    );
+    const selectedFilterCategoryIds =
+      selectedFilterCategoryIdsFromParams.length > 0
+        ? selectedFilterCategoryIdsFromParams
+        : filterCategories.map((category) => category.id);
+    const selectedFilterCategoryTypesFromParams = Array.from(
+      new Set(
+        toArray(query.type).filter(
+          (type): type is CategoryType => categoryTypeSet.has(type as CategoryType),
+        ),
+      ),
+    );
+    const selectedFilterCategoryTypes =
+      selectedFilterCategoryTypesFromParams.length > 0
+        ? selectedFilterCategoryTypesFromParams
+        : categoryTypes;
+    const selectedCategoryIds = Array.from(
+      new Set([
+        ...selectedFilterCategoryIds,
+        ...alwaysIncludedCategories.map((category) => category.id),
+      ]),
+    );
+    const selectedCityIdsFromParams = Array.from(
+      new Set(toArray(query.city).filter((id) => cityIds.has(id))),
+    );
+    const selectedCityIdsBase =
+      selectedCityIdsFromParams.length > 0
+        ? selectedCityIdsFromParams
+        : cities.map((city) => city.id);
+    const shouldIncludeProfileCity = hasActiveProfileCity
+      ? !selectedCityIdsBase.includes(activeProfileCityId)
+      : false;
+    const selectedCityIds = shouldIncludeProfileCity
+      ? [...selectedCityIdsBase, activeProfileCityId]
+      : selectedCityIdsBase;
+    const selectableTagOptions = allTagOptions.filter((option) =>
+      selectedFilterCategoryTypes.includes(option.categoryType),
+    );
+    const selectableTagIds = new Set(selectableTagOptions.map((option) => option.id));
+    const selectedTagIds = Array.from(
+      new Set(toArray(query.tag).filter((id) => selectableTagIds.has(id))),
+    );
+    const shouldFilterByCountry = Boolean(userCountryId);
+    const shouldFilterByCategory = selectedFilterCategoryIds.length !== filterCategories.length;
+    const shouldFilterByCategoryType = selectedFilterCategoryTypes.length !== categoryTypes.length;
+    const shouldFilterByTag = selectedTagIds.length > 0;
+    const shouldFilterByCity = hasActiveProfileCity && selectedCityIds.length !== cities.length;
+    const hasKeyword = Boolean(keyword);
+    const andConditions: object[] = [];
+    if (shouldFilterByCountry) {
+      andConditions.push({ OR: [{ countryId: userCountryId }, { countryId: null }] });
+    }
+    if (shouldFilterByCity) {
+      andConditions.push({ OR: [{ cityId: { in: selectedCityIds } }, { cityId: null }] });
+    }
+    if (shouldFilterByCategoryType) {
+      andConditions.push({ category: { type: { in: selectedFilterCategoryTypes } } });
+    }
+    if (shouldFilterByTag) {
+      andConditions.push({
+        tags: {
+          some: {
+            postTagOptionId: {
+              in: selectedTagIds,
+            },
+          },
+        },
+      });
+    }
+    if (hasKeyword) {
+      andConditions.push({
+        OR: [
+          { title: { contains: keyword, mode: 'insensitive' as const } },
+          { body: { contains: keyword, mode: 'insensitive' as const } },
+          { author: { displayName: { contains: keyword, mode: 'insensitive' as const } } },
+        ],
+      });
+    }
+
+    const postWhere = {
+      status: 'PUBLISHED' as const,
+      categoryId: { in: selectedCategoryIds },
+      AND: andConditions.length > 0 ? andConditions : undefined,
+    };
+
+    [previousPost, nextPost] = await Promise.all([
+      prisma.post.findFirst({
+        where: {
+          ...postWhere,
+          OR: [
+            { createdAt: { gt: post.createdAt } },
+            {
+              AND: [
+                { createdAt: post.createdAt },
+                { id: { gt: post.id } },
+              ],
+            },
+          ],
+        },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        select: {
+          id: true,
+          title: true,
+          tags: {
+            select: {
+              postTagOption: {
+                select: { label: true },
+              },
+            },
+            take: 1,
+          },
+        },
+      }),
+      prisma.post.findFirst({
+        where: {
+          ...postWhere,
+          OR: [
+            { createdAt: { lt: post.createdAt } },
+            {
+              AND: [
+                { createdAt: post.createdAt },
+                { id: { lt: post.id } },
+              ],
+            },
+          ],
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        select: {
+          id: true,
+          title: true,
+          tags: {
+            select: {
+              postTagOption: {
+                select: { label: true },
+              },
+            },
+            take: 1,
+          },
+        },
+      }),
+    ]);
   }
 
   const isOwner = currentUser?.id === post.authorId;
@@ -269,7 +511,7 @@ export default async function PostDetailPage({
         {currentUser ? (
           <form action={isSaved ? unsavePostAction : savePostAction}>
             <input type="hidden" name="postId" value={post.id} />
-            <input type="hidden" name="returnTo" value={`/posts/${post.id}`} />
+            <input type="hidden" name="returnTo" value={currentPostHref} />
             <FormSubmitButton
               idleLabel={isSaved ? '저장 취소' : '저장'}
               pendingLabel="처리 중..."
@@ -406,6 +648,27 @@ export default async function PostDetailPage({
           ) : null}
         </div>
       ) : null}
+
+      <section className="grid grid-cols-1 gap-2 border-t border-[#e8e8e8] pt-4 sm:grid-cols-2">
+        {previousPost ? (
+          <Link href={createPostHref(previousPost.id)} className={outlineActionButtonClass}>
+            ← 이전 글: {withPostTagPrefix(previousPost.title ?? '제목 없음', previousPost.tags[0]?.postTagOption.label)}
+          </Link>
+        ) : (
+          <span className={`${outlineActionButtonClass} cursor-default text-[#888]`}>
+            ← 이전 글이 없어요
+          </span>
+        )}
+        {nextPost ? (
+          <Link href={createPostHref(nextPost.id)} className={outlineActionButtonClass}>
+            다음 글: {withPostTagPrefix(nextPost.title ?? '제목 없음', nextPost.tags[0]?.postTagOption.label)} →
+          </Link>
+        ) : (
+          <span className={`${outlineActionButtonClass} cursor-default text-[#888]`}>
+            다음 글이 없어요 →
+          </span>
+        )}
+      </section>
 
       <section className="space-y-3 border-t border-[#e8e8e8] pt-4">
         <h2 className="text-base font-bold">댓글 {post.comments.length}</h2>

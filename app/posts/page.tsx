@@ -169,6 +169,15 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     const queryString = query.toString();
     return `/posts${queryString ? `?${queryString}` : ''}`;
   };
+  const createDetailHref = (postId: string) => {
+    const query = new URLSearchParams(paginationBaseParams);
+    if (currentPage > 1) {
+      query.set('page', String(currentPage));
+    }
+
+    const queryString = query.toString();
+    return `/posts/${postId}${queryString ? `?${queryString}` : ''}`;
+  };
 
   const andConditions: object[] = [];
 
@@ -555,6 +564,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
                 post={{
                   ...post,
                 }}
+                href={createDetailHref(post.id)}
               />
             ))}
           </div>

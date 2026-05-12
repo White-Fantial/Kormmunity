@@ -21,16 +21,17 @@ type PostCardProps = {
       profileImageUrl: string | null;
     };
   };
+  href?: string;
 };
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, href }: PostCardProps) {
   const hasTitle = Boolean(post.title?.trim());
   const previewBase = post.title?.trim() || post.body.split('\n')[0] || '내용 없음';
   const preview = withPostTagPrefix(previewBase, post.postTags[0]?.label);
 
   return (
     <Link
-      href={`/posts/${post.id}`}
+      href={href ?? `/posts/${post.id}`}
       className="block space-y-2 rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm transition hover:border-[#fee500] hover:shadow-md active:scale-[0.995]"
     >
       <div className="flex flex-wrap gap-2 text-xs">
