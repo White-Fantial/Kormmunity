@@ -218,7 +218,7 @@ export async function createPostAction(formData: FormData) {
         categoryId,
         cityId: resolvedCityId,
         countryId: resolvedCountryId,
-    price: categoryResult.price,
+        price: categoryResult.price,
         status: 'PUBLISHED',
         saleStatus: isProgressTrackCategory ? 'AVAILABLE' : null,
         contactUrl,

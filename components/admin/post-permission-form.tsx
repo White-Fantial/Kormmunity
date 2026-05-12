@@ -169,7 +169,7 @@ export function PostPermissionForm({
         </select>
         {!countryId ? (
           <p className="rounded-md bg-[#fff7d6] px-2 py-1 text-xs text-[#7a6000]">
-            All countries = wildcard permission
+            모든 국가는 와일드카드 권한입니다.
           </p>
         ) : null}
       </div>
@@ -194,7 +194,7 @@ export function PostPermissionForm({
         </select>
         {!cityId ? (
           <p className="rounded-md bg-[#fff7d6] px-2 py-1 text-xs text-[#7a6000]">
-            All cities = wildcard permission
+            모든 도시는 와일드카드 권한입니다.
           </p>
         ) : null}
       </div>
@@ -219,7 +219,7 @@ export function PostPermissionForm({
         </select>
         {!categoryId ? (
           <p className="rounded-md bg-[#fff7d6] px-2 py-1 text-xs text-[#7a6000]">
-            All categories = wildcard permission
+            모든 카테고리는 와일드카드 권한입니다.
           </p>
         ) : null}
       </div>
