@@ -361,7 +361,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     }));
   }
 
-  const hasFilters = shouldFilterByCategory || shouldFilterByCategoryType || shouldFilterByTag || shouldFilterByCity || hasKeyword;
+  const hasFilters = shouldFilterByCountry || shouldFilterByCategory || shouldFilterByCity || hasKeyword;
   const firstPost = normalizedPosts[0];
   const lastPost = normalizedPosts[normalizedPosts.length - 1];
   const prevCursor = firstPost
