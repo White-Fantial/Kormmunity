@@ -6,6 +6,11 @@ import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import {
+  extractKakaoOpenLink,
+  INVALID_KAKAO_OPEN_LINK_MESSAGE_KO,
+  isValidKakaoOpenLink,
+} from '@/lib/kakao-open-link';
+import {
   getProfileCityRequiredHref,
   normalizeInternalPath,
 } from '@/lib/posts/profile-city';
@@ -24,7 +29,11 @@ function normalizeReturnTo(value: FormDataEntryValue | null) {
 
 export async function updateProfileAction(formData: FormData) {
   const user = await requireUser();
-  const openChatUrl = normalizeText(formData.get('openChatUrl')) || null;
+  const normalizedOpenChatUrl = extractKakaoOpenLink(normalizeText(formData.get('openChatUrl')));
+  if (normalizedOpenChatUrl && !isValidKakaoOpenLink(normalizedOpenChatUrl)) {
+    redirect(`/my/profile?error=${encodeURIComponent(INVALID_KAKAO_OPEN_LINK_MESSAGE_KO)}`);
+  }
+  const openChatUrl = normalizedOpenChatUrl || null;
   const countryId = normalizeText(formData.get('countryId')) || null;
   const submittedCityValue = formData.get('cityId');
   const cityId = normalizeText(submittedCityValue) || null;
