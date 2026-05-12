@@ -6,9 +6,8 @@ import { saveSearchAlertAction } from '@/app/posts/search-alert-actions';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { canMakeFinalUserDecision } from '@/lib/permissions';
-import { getActiveCategories, getActiveCities, getActiveCitiesByCountry } from '@/lib/posts/reference-data';
+import { getActiveCategories, getActiveCities, getActiveCitiesByCountry, getActivePostTagOptions } from '@/lib/posts/reference-data';
 
-export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: '홈',
   description: '한인 커뮤니티의 최신 게시글을 확인해 보세요.',
@@ -61,11 +60,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
           },
         })
       : Promise.resolve(null),
-    prisma.postTagOption.findMany({
-      where: { isActive: true },
-      orderBy: [{ categoryType: 'asc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
-      select: { id: true, label: true, categoryType: true },
-    }),
+    getActivePostTagOptions(),
   ]);
 
   const categoryTypes = Array.from(new Set(categories.map((category) => category.type)));

@@ -8,7 +8,7 @@ import {
   PermissionSubjectType,
 } from '@prisma/client';
 
-import { requireUser } from '@/lib/auth/session';
+import { requireUser, invalidateSessionCache } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { canMakeFinalUserDecision, USER_ROLES } from '@/lib/permissions';
 import type { SessionUser } from '@/lib/auth/types';
@@ -54,6 +54,16 @@ async function logModerationAction(
   });
 }
 
+async function revalidateUserSessions(userId: string) {
+  const sessions = await prisma.session.findMany({
+    where: { userId, expiresAt: { gt: new Date() } },
+    select: { token: true },
+  });
+  for (const session of sessions) {
+    invalidateSessionCache(session.token);
+  }
+}
+
 export async function changeUserRoleAction(formData: FormData) {
   const user = await requireUser();
   requireAdmin(user);
@@ -97,6 +107,7 @@ export async function changeUserRoleAction(formData: FormData) {
   });
 
   revalidatePath('/admin/users');
+  await revalidateUserSessions(targetUserId);
   redirect('/admin/users');
 }
 
@@ -144,6 +155,7 @@ export async function changeUserStatusAction(formData: FormData) {
   });
 
   revalidatePath('/admin/users');
+  await revalidateUserSessions(targetUserId);
   redirect('/admin/users');
 }
 

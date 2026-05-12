@@ -1,9 +1,10 @@
 'use server';
 
+import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-import { requireUser } from '@/lib/auth/session';
+import { requireUser, getSessionCookieName, invalidateSessionCache } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { normalizeInternalPath } from '@/lib/posts/profile-city';
 
@@ -13,6 +14,8 @@ function normalizeText(value: FormDataEntryValue | null) {
 
 export async function selectCountryAction(formData: FormData) {
   const user = await requireUser();
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get(getSessionCookieName())?.value;
 
   // Country cannot be changed once set
   if (user.countryId) {
@@ -41,6 +44,7 @@ export async function selectCountryAction(formData: FormData) {
     data: { countryId: country.id },
   });
 
+  if (sessionToken) invalidateSessionCache(sessionToken);
   revalidatePath('/select-country');
   redirect(returnTo ?? '/posts');
 }

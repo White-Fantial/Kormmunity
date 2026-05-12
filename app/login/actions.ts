@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { randomUUID } from 'node:crypto';
 
-import { getSessionCookieName } from '@/lib/auth/session';
+import { getSessionCookieName, invalidateSessionCache } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 
 const DEFAULT_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
@@ -80,6 +80,7 @@ export async function logoutAction() {
   const token = cookieStore.get(getSessionCookieName())?.value;
 
   if (token) {
+    invalidateSessionCache(token);
     await prisma.session.deleteMany({
       where: { token },
     });

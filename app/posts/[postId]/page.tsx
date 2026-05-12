@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
@@ -30,7 +31,6 @@ import {
   canRestorePost,
 } from '@/lib/permissions';
 
-export const dynamic = 'force-dynamic';
 const TITLE_PREVIEW_LENGTH = 40;
 const DESCRIPTION_PREVIEW_LENGTH = 80;
 const COMMUNITY_NAME = '한인 커뮤니티';
@@ -42,78 +42,8 @@ type PostDetailPageProps = {
   searchParams: Promise<{ error?: string; success?: string }>;
 };
 
-export async function generateMetadata({
-  params,
-}: Pick<PostDetailPageProps, 'params'>): Promise<Metadata> {
-  const { postId } = await params;
-
-  const post = await prisma.post.findUnique({
-    where: { id: postId },
-    select: {
-      title: true,
-      body: true,
-      status: true,
-      images: {
-        select: { url: true },
-        orderBy: { sortOrder: 'asc' },
-        take: 1,
-      },
-      category: { select: { name: true } },
-      tags: {
-        select: {
-          postTagOption: {
-            select: { label: true },
-          },
-        },
-        take: 1,
-      },
-      city: { select: { name: true } },
-    },
-  });
-
-  if (!post || post.status === 'DELETED') {
-    return {
-      title: '게시글을 찾을 수 없어요',
-      robots: { index: false, follow: false },
-    };
-  }
-
-  const title = withPostTagPrefix(
-    post.title ?? post.body.slice(0, TITLE_PREVIEW_LENGTH),
-    post.tags[0]?.postTagOption.label,
-  );
-  const socialTitle = `${title} | ${COMMUNITY_NAME}`;
-  const description = `${post.category.name} · ${post.city?.name ?? '전 지역'} · ${post.body.slice(0, DESCRIPTION_PREVIEW_LENGTH)}`;
-  const primaryImageUrl = post.images?.[0]?.url;
-  const twitterCard = primaryImageUrl ? TWITTER_CARD_LARGE_IMAGE : TWITTER_CARD_SUMMARY;
-
-  return {
-    title,
-    description,
-    openGraph: {
-      title: socialTitle,
-      description,
-      type: 'article',
-      images: primaryImageUrl ? [primaryImageUrl] : undefined,
-    },
-    twitter: {
-      card: twitterCard,
-      title: socialTitle,
-      description,
-      images: primaryImageUrl ? [primaryImageUrl] : undefined,
-    },
-  };
-}
-
-export default async function PostDetailPage({
-  params,
-  searchParams,
-}: PostDetailPageProps) {
-  const { postId } = await params;
-  const query = await searchParams;
-  const currentUser = await getCurrentUser();
-
-  const post = await prisma.post.findUnique({
+const getPostWithDetails = cache(async (postId: string) => {
+  return prisma.post.findUnique({
     where: { id: postId },
     include: {
       author: {
@@ -162,6 +92,58 @@ export default async function PostDetailPage({
       },
     },
   });
+});
+
+export async function generateMetadata({
+  params,
+}: Pick<PostDetailPageProps, 'params'>): Promise<Metadata> {
+  const { postId } = await params;
+
+  const post = await getPostWithDetails(postId);
+
+  if (!post || post.status === 'DELETED') {
+    return {
+      title: '게시글을 찾을 수 없어요',
+      robots: { index: false, follow: false },
+    };
+  }
+
+  const title = withPostTagPrefix(
+    post.title ?? post.body.slice(0, TITLE_PREVIEW_LENGTH),
+    post.tags[0]?.postTagOption.label,
+  );
+  const socialTitle = `${title} | ${COMMUNITY_NAME}`;
+  const description = `${post.category.name} · ${post.city?.name ?? '전 지역'} · ${post.body.slice(0, DESCRIPTION_PREVIEW_LENGTH)}`;
+  const primaryImageUrl = post.images?.[0]?.url;
+  const twitterCard = primaryImageUrl ? TWITTER_CARD_LARGE_IMAGE : TWITTER_CARD_SUMMARY;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title: socialTitle,
+      description,
+      type: 'article',
+      images: primaryImageUrl ? [primaryImageUrl] : undefined,
+    },
+    twitter: {
+      card: twitterCard,
+      title: socialTitle,
+      description,
+      images: primaryImageUrl ? [primaryImageUrl] : undefined,
+    },
+  };
+}
+
+export default async function PostDetailPage({
+  params,
+  searchParams,
+}: PostDetailPageProps) {
+  const { postId } = await params;
+  const query = await searchParams;
+  const currentUser = await getCurrentUser();
+
+  const post = await getPostWithDetails(postId);
 
   if (!post || post.status === 'DELETED') {
     notFound();

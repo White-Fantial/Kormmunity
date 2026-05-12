@@ -86,6 +86,7 @@ export async function canCreatePost(
   targetCountryId: string | null,
   targetCityId: string | null,
   targetCategoryId: string,
+  categoryVisibilityMode?: CategoryVisibilityMode,
 ) {
   if (!user || !isActiveWriter(user)) {
     return false;
@@ -95,13 +96,18 @@ export async function canCreatePost(
     return false;
   }
 
-  const category = await prisma.category.findUnique({
-    where: { id: targetCategoryId },
-    select: { visibilityMode: true },
-  });
+  let visibilityMode = categoryVisibilityMode;
+  if (visibilityMode === undefined) {
+    const category = await prisma.category.findUnique({
+      where: { id: targetCategoryId },
+      select: { visibilityMode: true },
+    });
 
-  if (!category) {
-    return false;
+    if (!category) {
+      return false;
+    }
+
+    visibilityMode = category.visibilityMode;
   }
 
   if (user.role === 'ADMIN') {
@@ -114,7 +120,7 @@ export async function canCreatePost(
     targetCityId !== null &&
     targetCountryId === user.countryId &&
     targetCityId === user.cityId &&
-    category.visibilityMode === DEFAULT_USER_POST_VISIBILITY
+    visibilityMode === DEFAULT_USER_POST_VISIBILITY
   ) {
     return true;
   }

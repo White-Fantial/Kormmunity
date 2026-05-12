@@ -24,6 +24,17 @@ export const getActiveCities = unstable_cache(
   { revalidate: 3600 },
 );
 
+export const getActivePostTagOptions = unstable_cache(
+  () =>
+    prisma.postTagOption.findMany({
+      where: { isActive: true },
+      orderBy: [{ categoryType: 'asc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
+      select: { id: true, label: true, categoryType: true },
+    }),
+  ['reference-post-tag-options'],
+  { revalidate: 3600 },
+);
+
 export function getActiveCitiesByCountry(countryId: string) {
   return unstable_cache(
     () =>

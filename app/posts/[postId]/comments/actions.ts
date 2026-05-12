@@ -94,12 +94,14 @@ export async function createCommentAction(formData: FormData) {
   });
 
   if (post!.authorId !== user.id) {
-    await notifyCommentForPost({
+    void notifyCommentForPost({
       postId,
       postTitle: post!.title,
       postBody: post!.body,
       commenterDisplayName: user.displayName,
       commentBody: body,
+    }).catch((error) => {
+      console.error('[createCommentAction] failed to send comment notification', error);
     });
   }
 
@@ -108,7 +110,6 @@ export async function createCommentAction(formData: FormData) {
     postId,
   });
 
-  revalidatePath('/posts');
   revalidatePath(`/posts/${postId}`);
 }
 
@@ -135,6 +136,5 @@ export async function deleteCommentAction(formData: FormData) {
     data: { status: COMMENT_STATUS.DELETED },
   });
 
-  revalidatePath('/posts');
   revalidatePath(`/posts/${postId}`);
 }

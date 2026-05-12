@@ -1,9 +1,10 @@
 'use server';
 
+import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-import { requireUser } from '@/lib/auth/session';
+import { requireUser, getSessionCookieName, invalidateSessionCache } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import {
   extractKakaoOpenLink,
@@ -29,6 +30,8 @@ function normalizeReturnTo(value: FormDataEntryValue | null) {
 
 export async function updateProfileAction(formData: FormData) {
   const user = await requireUser();
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get(getSessionCookieName())?.value;
   const normalizedOpenChatUrl = extractKakaoOpenLink(normalizeText(formData.get('openChatUrl')));
   if (normalizedOpenChatUrl && !isValidKakaoOpenLink(normalizedOpenChatUrl)) {
     redirect(`/my/profile?error=${encodeURIComponent(INVALID_KAKAO_OPEN_LINK_MESSAGE_KO)}`);
@@ -86,6 +89,7 @@ export async function updateProfileAction(formData: FormData) {
       },
     });
 
+    if (sessionToken) invalidateSessionCache(sessionToken);
     revalidatePath('/my/profile');
     revalidatePath('/posts');
     revalidatePath('/posts/new');
@@ -107,6 +111,7 @@ export async function updateProfileAction(formData: FormData) {
     },
   });
 
+  if (sessionToken) invalidateSessionCache(sessionToken);
   revalidatePath('/my/profile');
   redirect(returnTo ?? '/my/profile?success=1');
 }

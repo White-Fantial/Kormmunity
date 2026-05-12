@@ -222,27 +222,23 @@ export async function createPostAction(formData: FormData) {
     redirect('/posts/new?error=카테고리를 선택해 주세요.');
   }
 
-  const categoryResult = await validateCategoryPriceAndTags(
-    categoryId,
-    rawPrice,
-    rawPostTagOptionIds,
-  );
+  const [categoryResult, scope] = await Promise.all([
+    validateCategoryPriceAndTags(categoryId, rawPrice, rawPostTagOptionIds),
+    resolvePostScope(rawCountryId, rawCityId, '/posts/new'),
+  ]);
 
   if (!categoryResult.ok) {
     redirect(`/posts/new?error=${encodeURIComponent(categoryResult.message)}`);
   }
 
-  const { countryId: resolvedCountryId, cityId: resolvedCityId } = await resolvePostScope(
-    rawCountryId,
-    rawCityId,
-    '/posts/new',
-  );
+  const { countryId: resolvedCountryId, cityId: resolvedCityId } = scope;
 
   const canWriteToScope = await canCreatePost(
     user,
     resolvedCountryId,
     resolvedCityId,
     categoryResult.category.id,
+    categoryResult.category.visibilityMode,
   );
   if (!canWriteToScope) {
     redirect('/posts/new?error=이 카테고리/지역에 글을 작성할 권한이 없습니다.');
@@ -295,12 +291,14 @@ export async function createPostAction(formData: FormData) {
     return post.id;
   });
 
-  await notifySearchAlertsForPost({
+  void notifySearchAlertsForPost({
     id: postId,
     title: title || null,
     body,
     authorDisplayName: user.displayName,
     imageUrl: uploadedImages[0]?.url ?? null,
+  }).catch((error) => {
+    console.error('[createPostAction] failed to send search alerts', error);
   });
 
   trackServerEvent('post_created', {
@@ -361,11 +359,11 @@ export async function updatePostAction(formData: FormData) {
     redirect(`/posts/${postId}/edit?error=카테고리를 선택해 주세요.`);
   }
 
-  const categoryResult = await validateCategoryPriceAndTags(
-    categoryId,
-    rawPrice,
-    rawPostTagOptionIds,
-  );
+  const [categoryResult, scope, existingImageCount] = await Promise.all([
+    validateCategoryPriceAndTags(categoryId, rawPrice, rawPostTagOptionIds),
+    resolvePostScope(rawCountryId, rawCityId, `/posts/${postId}/edit`),
+    prisma.postImage.count({ where: { postId } }),
+  ]);
 
   if (!categoryResult.ok) {
     redirect(
@@ -373,26 +371,19 @@ export async function updatePostAction(formData: FormData) {
     );
   }
 
-  const { countryId: resolvedCountryId, cityId: resolvedCityId } = await resolvePostScope(
-    rawCountryId,
-    rawCityId,
-    `/posts/${postId}/edit`,
-  );
+  const { countryId: resolvedCountryId, cityId: resolvedCityId } = scope;
 
   const canWriteToScope = await canCreatePost(
     user,
     resolvedCountryId,
     resolvedCityId,
     categoryResult.category.id,
+    categoryResult.category.visibilityMode,
   );
   if (!canWriteToScope) {
     redirect(`/posts/${postId}/edit?error=이 카테고리/지역에 글을 작성할 권한이 없습니다.`);
   }
   const isPostInSaleCategory = categoryResult.category.type === CategoryType.SALE;
-
-  const existingImageCount = await prisma.postImage.count({
-    where: { postId },
-  });
 
   const remainingImageCount = existingImageCount - deleteImageIds.length;
 

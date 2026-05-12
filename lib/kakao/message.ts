@@ -171,31 +171,37 @@ export async function notifySearchAlertsForPost(post: NotifyPostInput) {
   const preview = truncateText(previewSource, PREVIEW_LENGTH);
   const bodyPreview = truncateText(post.body.trim(), PREVIEW_LENGTH);
 
-  for (const alert of alerts) {
-    if (!matchesAlertQuery(post, alert.query)) {
-      continue;
-    }
+  const matchingAlerts = alerts.filter((alert) => matchesAlertQuery(post, alert.query));
+  if (matchingAlerts.length === 0) {
+    return;
+  }
 
-    try {
+  const messageLines = [
+    `[검색 알림] ${preview}`,
+    `작성자: ${post.authorDisplayName}`,
+    `내용: ${bodyPreview}`,
+    postUrl,
+  ];
+
+  if (post.imageUrl) {
+    messageLines.push(`사진: ${post.imageUrl}`);
+  }
+
+  const message = messageLines.join('\n');
+
+  const results = await Promise.allSettled(
+    matchingAlerts.map(async (alert) => {
       const accessToken = await ensureValidAccessToken(alert.user);
       if (!accessToken) {
-        continue;
+        return;
       }
+      await sendKakaoMemo(accessToken, message, postUrl);
+    }),
+  );
 
-      const messageLines = [
-        `[검색 알림] ${preview}`,
-        `작성자: ${post.authorDisplayName}`,
-        `내용: ${bodyPreview}`,
-        postUrl,
-      ];
-
-      if (post.imageUrl) {
-        messageLines.push(`사진: ${post.imageUrl}`);
-      }
-
-      await sendKakaoMemo(accessToken, messageLines.join('\n'), postUrl);
-    } catch (error) {
-      console.error('[kakao/message] failed to send alert', error);
+  for (const result of results) {
+    if (result.status === 'rejected') {
+      console.error('[kakao/message] failed to send alert', result.reason);
     }
   }
 }
