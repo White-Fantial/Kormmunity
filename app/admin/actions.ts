@@ -838,16 +838,16 @@ export async function createCountryAction(formData: FormData) {
   const slug = normalizeText(formData.get('slug'));
 
   if (!name || !slug) {
-    redirect('/admin/countries?error=이름과 슬러그를 입력해 주세요.');
+    redirect('/admin/cities?error=이름과 슬러그를 입력해 주세요.');
   }
 
   if (!/^[a-z0-9-]+$/.test(slug)) {
-    redirect('/admin/countries?error=슬러그는 영문 소문자, 숫자, 하이픈만 사용할 수 있습니다.');
+    redirect('/admin/cities?error=슬러그는 영문 소문자, 숫자, 하이픈만 사용할 수 있습니다.');
   }
 
   const existing = await prisma.country.findUnique({ where: { slug } });
   if (existing) {
-    redirect('/admin/countries?error=이미 존재하는 슬러그입니다.');
+    redirect('/admin/cities?error=이미 존재하는 슬러그입니다.');
   }
 
   const sortOrder = await prisma.country.count();
@@ -858,8 +858,8 @@ export async function createCountryAction(formData: FormData) {
 
   await logModerationAction(user.id, 'COUNTRY', country.id, 'CREATE', name);
 
-  revalidatePath('/admin/countries');
-  redirect('/admin/countries');
+  revalidatePath('/admin/cities');
+  redirect('/admin/cities');
 }
 
 export async function toggleCountryActiveAction(formData: FormData) {
@@ -870,7 +870,7 @@ export async function toggleCountryActiveAction(formData: FormData) {
   const isActive = formData.get('isActive') === 'true';
 
   if (!countryId) {
-    redirect('/admin/countries?error=국가 ID가 없습니다.');
+    redirect('/admin/cities?error=국가 ID가 없습니다.');
   }
 
   await prisma.country.update({
@@ -885,8 +885,8 @@ export async function toggleCountryActiveAction(formData: FormData) {
     isActive ? 'DEACTIVATE' : 'ACTIVATE',
   );
 
-  revalidatePath('/admin/countries');
-  redirect('/admin/countries');
+  revalidatePath('/admin/cities');
+  redirect('/admin/cities');
 }
 
 export async function assignCityCountryAction(formData: FormData) {

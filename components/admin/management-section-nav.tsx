@@ -16,8 +16,7 @@ export const adminManagementNavItems = [
   { href: '/admin/post-permissions', label: '게시글 권한' },
   { href: '/admin/report-options', label: '신고 옵션' },
   { href: '/admin/categories', label: '카테고리' },
-  { href: '/admin/cities', label: '도시' },
-  { href: '/admin/countries', label: '국가' },
+  { href: '/admin/cities', label: '국가/도시' },
 ] as const satisfies readonly ManagementNavItem[];
 
 type ManagementSectionNavProps = {
