@@ -10,11 +10,12 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminReportsPage() {
   const currentUser = await getCurrentUser();
-  const canAccessAdminLinks = canMakeFinalUserDecision(currentUser);
 
   if (!currentUser || !canHoldPost(currentUser)) {
     redirect('/posts');
   }
+
+  const hasAdminPrivileges = canMakeFinalUserDecision(currentUser);
 
   const reports = await prisma.postReport.findMany({
     orderBy: { createdAt: 'desc' },
@@ -45,9 +46,11 @@ export default async function AdminReportsPage() {
   return (
     <section className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">신고 내역</h1>
+        <h1 className="text-xl font-bold">
+          {hasAdminPrivileges ? '관리자 — 신고 내역' : '운영 관리 — 신고 내역'}
+        </h1>
         <nav className="flex gap-3 text-sm">
-          {canAccessAdminLinks ? (
+          {hasAdminPrivileges ? (
             <>
               <Link
                 href="/admin/report-options"
