@@ -8,13 +8,19 @@ CREATE TYPE "UserStatus" AS ENUM ('ACTIVE', 'LIMITED', 'SUSPENDED', 'DELETED');
 CREATE TYPE "PostStatus" AS ENUM ('DRAFT', 'PUBLISHED', 'HELD', 'DELETED');
 
 -- CreateEnum
-CREATE TYPE "SaleStatus" AS ENUM ('AVAILABLE', 'SOLD');
+CREATE TYPE "SaleStatus" AS ENUM ('AVAILABLE', 'RESERVED', 'SOLD');
 
 -- CreateEnum
 CREATE TYPE "CommentStatus" AS ENUM ('PUBLISHED', 'HELD', 'DELETED');
 
 -- CreateEnum
-CREATE TYPE "CategoryType" AS ENUM ('GENERAL', 'SALE', 'GIVEAWAY', 'HELP', 'QUESTION');
+CREATE TYPE "CategoryType" AS ENUM ('GENERAL', 'SALE', 'RECRUIT', 'GIVEAWAY', 'HELP', 'QUESTION');
+
+-- CreateEnum
+CREATE TYPE "CategoryVisibilityMode" AS ENUM ('NORMAL', 'ALWAYS_INCLUDED', 'HIDDEN');
+
+-- CreateEnum
+CREATE TYPE "PermissionSubjectType" AS ENUM ('USER', 'ROLE');
 
 -- CreateTable
 CREATE TABLE "User" (
@@ -22,10 +28,18 @@ CREATE TABLE "User" (
     "kakaoId" TEXT NOT NULL,
     "displayName" TEXT NOT NULL,
     "profileImageUrl" TEXT,
+    "kakaoAccessToken" TEXT,
+    "kakaoRefreshToken" TEXT,
+    "kakaoAccessTokenExpiresAt" TIMESTAMP(3),
     "openChatUrl" TEXT,
     "cityId" TEXT,
+    "countryId" TEXT,
     "role" "UserRole" NOT NULL DEFAULT 'USER',
     "status" "UserStatus" NOT NULL DEFAULT 'ACTIVE',
+    "notifyOnKakaoForSearchAlert" BOOLEAN NOT NULL DEFAULT true,
+    "notifyOnKakaoForComment" BOOLEAN NOT NULL DEFAULT true,
+    "countrySuggestionDismissedCountryId" TEXT,
+    "countrySuggestionDismissedUntil" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -44,12 +58,24 @@ CREATE TABLE "Session" (
 );
 
 -- CreateTable
+CREATE TABLE "Country" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+
+    CONSTRAINT "Country_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "City" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "countryId" TEXT,
 
     CONSTRAINT "City_pkey" PRIMARY KEY ("id")
 );
@@ -60,14 +86,28 @@ CREATE TABLE "Category" (
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "type" "CategoryType" NOT NULL DEFAULT 'GENERAL',
+    "visibilityMode" "CategoryVisibilityMode" NOT NULL DEFAULT 'NORMAL',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "isAlwaysIncluded" BOOLEAN NOT NULL DEFAULT false,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
-    "minRole" "UserRole" NOT NULL DEFAULT 'USER',
-    "ignoreCity" BOOLEAN NOT NULL DEFAULT false,
-    "supportsAllCities" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Category_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PostPermission" (
+    "id" TEXT NOT NULL,
+    "subjectType" "PermissionSubjectType" NOT NULL,
+    "userId" TEXT,
+    "role" "UserRole",
+    "countryId" TEXT,
+    "cityId" TEXT,
+    "categoryId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PostPermission_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -75,6 +115,7 @@ CREATE TABLE "Post" (
     "id" TEXT NOT NULL,
     "authorId" TEXT NOT NULL,
     "cityId" TEXT,
+    "countryId" TEXT,
     "categoryId" TEXT NOT NULL,
     "title" TEXT,
     "body" TEXT NOT NULL,
@@ -91,6 +132,41 @@ CREATE TABLE "Post" (
     "deletedAt" TIMESTAMP(3),
 
     CONSTRAINT "Post_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SavedPost" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "postId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "SavedPost_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ReportOption" (
+    "id" TEXT NOT NULL,
+    "label" TEXT NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ReportOption_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PostReport" (
+    "id" TEXT NOT NULL,
+    "postId" TEXT NOT NULL,
+    "reporterId" TEXT NOT NULL,
+    "optionId" TEXT NOT NULL,
+    "additionalReason" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PostReport_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -149,6 +225,18 @@ CREATE TABLE "UserRestriction" (
     CONSTRAINT "UserRestriction_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "SearchAlert" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "query" TEXT NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SearchAlert_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_kakaoId_key" ON "User"("kakaoId");
 
@@ -159,16 +247,49 @@ CREATE UNIQUE INDEX "Session_token_key" ON "Session"("token");
 CREATE INDEX "Session_userId_expiresAt_idx" ON "Session"("userId", "expiresAt");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Country_slug_key" ON "Country"("slug");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "City_slug_key" ON "City"("slug");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Category_slug_key" ON "Category"("slug");
 
 -- CreateIndex
+CREATE INDEX "PostPermission_subjectType_userId_idx" ON "PostPermission"("subjectType", "userId");
+
+-- CreateIndex
+CREATE INDEX "PostPermission_subjectType_role_idx" ON "PostPermission"("subjectType", "role");
+
+-- CreateIndex
+CREATE INDEX "PostPermission_countryId_cityId_categoryId_idx" ON "PostPermission"("countryId", "cityId", "categoryId");
+
+-- CreateIndex
 CREATE INDEX "Post_cityId_categoryId_status_createdAt_idx" ON "Post"("cityId", "categoryId", "status", "createdAt");
 
 -- CreateIndex
 CREATE INDEX "Post_authorId_createdAt_idx" ON "Post"("authorId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "SavedPost_userId_createdAt_idx" ON "SavedPost"("userId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "SavedPost_postId_createdAt_idx" ON "SavedPost"("postId", "createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SavedPost_userId_postId_key" ON "SavedPost"("userId", "postId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ReportOption_label_key" ON "ReportOption"("label");
+
+-- CreateIndex
+CREATE INDEX "PostReport_postId_createdAt_idx" ON "PostReport"("postId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "PostReport_reporterId_createdAt_idx" ON "PostReport"("reporterId", "createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PostReport_postId_reporterId_key" ON "PostReport"("postId", "reporterId");
 
 -- CreateIndex
 CREATE INDEX "Comment_postId_createdAt_idx" ON "Comment"("postId", "createdAt");
@@ -179,11 +300,35 @@ CREATE INDEX "ModerationAction_targetType_targetId_createdAt_idx" ON "Moderation
 -- CreateIndex
 CREATE INDEX "UserRestriction_userId_status_idx" ON "UserRestriction"("userId", "status");
 
+-- CreateIndex
+CREATE INDEX "SearchAlert_userId_createdAt_idx" ON "SearchAlert"("userId", "createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SearchAlert_userId_query_key" ON "SearchAlert"("userId", "query");
+
 -- AddForeignKey
 ALTER TABLE "User" ADD CONSTRAINT "User_cityId_fkey" FOREIGN KEY ("cityId") REFERENCES "City"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "User" ADD CONSTRAINT "User_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "Country"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "City" ADD CONSTRAINT "City_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "Country"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PostPermission" ADD CONSTRAINT "PostPermission_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PostPermission" ADD CONSTRAINT "PostPermission_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "Country"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PostPermission" ADD CONSTRAINT "PostPermission_cityId_fkey" FOREIGN KEY ("cityId") REFERENCES "City"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PostPermission" ADD CONSTRAINT "PostPermission_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Post" ADD CONSTRAINT "Post_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -192,7 +337,25 @@ ALTER TABLE "Post" ADD CONSTRAINT "Post_authorId_fkey" FOREIGN KEY ("authorId") 
 ALTER TABLE "Post" ADD CONSTRAINT "Post_cityId_fkey" FOREIGN KEY ("cityId") REFERENCES "City"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Post" ADD CONSTRAINT "Post_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "Country"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Post" ADD CONSTRAINT "Post_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SavedPost" ADD CONSTRAINT "SavedPost_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SavedPost" ADD CONSTRAINT "SavedPost_postId_fkey" FOREIGN KEY ("postId") REFERENCES "Post"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PostReport" ADD CONSTRAINT "PostReport_postId_fkey" FOREIGN KEY ("postId") REFERENCES "Post"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PostReport" ADD CONSTRAINT "PostReport_reporterId_fkey" FOREIGN KEY ("reporterId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PostReport" ADD CONSTRAINT "PostReport_optionId_fkey" FOREIGN KEY ("optionId") REFERENCES "ReportOption"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "PostImage" ADD CONSTRAINT "PostImage_postId_fkey" FOREIGN KEY ("postId") REFERENCES "Post"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -214,3 +377,6 @@ ALTER TABLE "UserRestriction" ADD CONSTRAINT "UserRestriction_createdById_fkey" 
 
 -- AddForeignKey
 ALTER TABLE "UserRestriction" ADD CONSTRAINT "UserRestriction_reviewedByAdminId_fkey" FOREIGN KEY ("reviewedByAdminId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SearchAlert" ADD CONSTRAINT "SearchAlert_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
