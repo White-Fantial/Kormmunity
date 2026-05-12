@@ -27,6 +27,7 @@ type PostsPageProps = {
 };
 
 const PAGE_SIZE = 20;
+const MAX_PAGE = 500;
 
 function toArray(value: string | string[] | undefined) {
   if (!value) {
@@ -48,8 +49,12 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
   const params = await searchParams;
   const currentUser = await getCurrentUser();
   const keyword = toSingle(params.q);
-  const rawPage = Number.parseInt(toSingle(params.page), 10);
-  const currentPage = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+  const pageParam = toSingle(params.page) || '1';
+  const rawPage = Number.parseInt(pageParam, 10);
+  const currentPage =
+    Number.isFinite(rawPage) && rawPage > 0
+      ? Math.min(rawPage, MAX_PAGE)
+      : 1;
   const skip = (currentPage - 1) * PAGE_SIZE;
 
   const userCountryId = currentUser?.countryId ?? null;
@@ -151,9 +156,9 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
   }
   const returnTo = `/posts${returnToParams.toString() ? `?${returnToParams.toString()}` : ''}`;
   const canViewReportStats = currentUser ? canMakeFinalUserDecision(currentUser) : false;
-  const paginationBaseParams = new URLSearchParams(returnToParams.toString());
+  const paginationBaseParams = new URLSearchParams(returnToParams);
   const createPageHref = (page: number) => {
-    const query = new URLSearchParams(paginationBaseParams.toString());
+    const query = new URLSearchParams(paginationBaseParams);
     if (page > 1) {
       query.set('page', String(page));
     } else {
@@ -557,7 +562,9 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
                   이전
                 </Link>
               ) : null}
-              <span className="text-sm text-[#666]">{currentPage}페이지</span>
+              <span aria-label={`현재 페이지 ${currentPage}`} className="text-sm text-[#666]">
+                {currentPage}페이지
+              </span>
               {hasNextPage ? (
                 <Link
                   href={createPageHref(currentPage + 1)}
