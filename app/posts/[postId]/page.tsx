@@ -37,6 +37,7 @@ import {
   getActiveCitiesByCountry,
   getActivePostTagOptions,
 } from '@/lib/posts/reference-data';
+import { truncatePostBody } from '@/lib/posts/constants';
 import { decodeCursor, encodeCursor } from '@/lib/posts/cursor';
 import { measureServerTiming } from '@/lib/performance/server';
 
@@ -595,11 +596,13 @@ async function AdjacentPostsSection({
   let previousPost: {
     id: string;
     title: string | null;
+    body: string;
     tags: { postTagOption: { label: string } }[];
   } | null = null;
   let nextPost: {
     id: string;
     title: string | null;
+    body: string;
     tags: { postTagOption: { label: string } }[];
   } | null = null;
 
@@ -727,6 +730,7 @@ async function AdjacentPostsSection({
           select: {
             id: true,
             title: true,
+            body: true,
             tags: {
               select: {
                 postTagOption: {
@@ -754,6 +758,7 @@ async function AdjacentPostsSection({
           select: {
             id: true,
             title: true,
+            body: true,
             tags: {
               select: {
                 postTagOption: {
@@ -768,11 +773,26 @@ async function AdjacentPostsSection({
     );
   }
 
+  const getAdjacentPostPreviewText = (targetPost: { title: string | null; body: string }) => {
+    const titleText = targetPost.title?.trim();
+    if (titleText) {
+      return titleText;
+    }
+    const bodyText = targetPost.body.trim();
+    return bodyText ? truncatePostBody(bodyText) : '내용 없음';
+  };
+
   const previousPostTitle = previousPost
-    ? withPostTagPrefix(previousPost.title ?? '제목 없음', previousPost.tags[0]?.postTagOption.label)
+    ? withPostTagPrefix(
+      getAdjacentPostPreviewText(previousPost),
+      previousPost.tags[0]?.postTagOption.label,
+    )
     : null;
   const nextPostTitle = nextPost
-    ? withPostTagPrefix(nextPost.title ?? '제목 없음', nextPost.tags[0]?.postTagOption.label)
+    ? withPostTagPrefix(
+      getAdjacentPostPreviewText(nextPost),
+      nextPost.tags[0]?.postTagOption.label,
+    )
     : null;
 
   return (
