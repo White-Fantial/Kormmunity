@@ -42,7 +42,6 @@ export default async function AdminCountriesPage({ searchParams }: AdminCountrie
           <Link href="/admin/users" className="font-medium text-[#3c1e1e] underline">사용자</Link>
           <Link href="/admin/post-permissions" className="font-medium text-[#3c1e1e] underline">게시글 권한</Link>
           <Link href="/admin/posts" className="font-medium text-[#3c1e1e] underline">게시글</Link>
-          <Link href="/admin/reports" className="font-medium text-[#3c1e1e] underline">신고내역</Link>
           <Link href="/admin/report-options" className="font-medium text-[#3c1e1e] underline">신고옵션</Link>
           <Link href="/admin/categories" className="font-medium text-[#3c1e1e] underline">카테고리</Link>
           <Link href="/admin/cities" className="font-medium text-[#3c1e1e] underline">도시</Link>

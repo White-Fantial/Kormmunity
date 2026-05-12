@@ -41,9 +41,6 @@ export default async function AdminReportOptionsPage({
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">관리자 — 신고 옵션 관리</h1>
         <nav className="flex gap-3 text-sm">
-          <Link href="/admin/reports" className="font-medium text-[#3c1e1e] underline">
-            신고 내역
-          </Link>
           <Link href="/admin/post-permissions" className="font-medium text-[#3c1e1e] underline">
             게시글 권한
           </Link>
