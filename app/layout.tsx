@@ -32,20 +32,20 @@ const metadataBaseUrl = getMetadataBaseUrl();
 export const metadata: Metadata = {
   metadataBase: metadataBaseUrl ? new URL(metadataBaseUrl) : undefined,
   title: {
-    default: '한인 커뮤니티',
-    template: '%s | 한인 커뮤니티',
+    default: 'Kormmunity 한인 커뮤니티',
+    template: '%s | Kormmunity 한인 커뮤니티',
   },
   description: '전 세계 한인 이민자를 위한 지역 커뮤니티',
   openGraph: {
     type: 'website',
     locale: 'ko_KR',
-    title: '한인 커뮤니티',
+    title: 'Kormmunity 한인 커뮤니티',
     description: '전 세계 한인 이민자를 위한 지역 커뮤니티',
-    siteName: '한인 커뮤니티',
+    siteName: 'Kormmunity 한인 커뮤니티',
   },
   twitter: {
     card: 'summary_large_image',
-    title: '한인 커뮤니티',
+    title: 'Kormmunity 한인 커뮤니티',
     description: '전 세계 한인 이민자를 위한 지역 커뮤니티',
   },
   robots: {
@@ -66,7 +66,14 @@ export default async function RootLayout({
           <header className="sticky top-0 z-10 border-b border-[#e8e8e8] bg-white/95 px-4 py-3 backdrop-blur">
             <div className="mb-3 flex items-center justify-between">
               <Link href="/posts" className="flex items-center gap-2 text-lg font-bold">
-                <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[#fee500] text-base font-black text-[#3c1e1e]">K</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="https://github.com/user-attachments/assets/ea3c202e-ee31-4622-bf82-c9b93f3d0d67"
+                  alt="Kormmunity"
+                  width={28}
+                  height={28}
+                  className="rounded-md"
+                />
                 <span>한인 커뮤니티</span>
               </Link>
               <Suspense fallback={<div className="w-16" />}>
