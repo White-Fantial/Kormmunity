@@ -142,9 +142,9 @@ export function PostContactAction({
           onClick={openComposerAndFocus}
           className={primaryActionButtonClass}
         >
-          Comment before contacting
+          댓글을 남기고 연락하기
         </button>
-        <p className="text-sm text-[#888]">Leave a quick comment to unlock Kakao contact.</p>
+        <p className="text-sm text-[#888]">댓글을 남기면 카카오 연락처가 열려요.</p>
       </div>
     );
   }
@@ -159,7 +159,7 @@ export function PostContactAction({
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
         <path fill="currentColor" d="M12 3C6.477 3 2 6.477 2 10.8c0 2.7 1.62 5.085 4.073 6.525L5.1 21l4.89-2.925c.65.09 1.32.135 2.01.135 5.523 0 10-3.477 10-7.8S17.523 3 12 3z" />
       </svg>
-      Contact via Kakao
+      카카오로 연락하기
     </a>
   );
 }
@@ -254,7 +254,7 @@ export function PostCommentComposer({
         >
           {state.message}
           {state.status === 'success' && shouldLockContact && isContactUnlocked
-            ? ' Kakao contact will unlock right away.'
+            ? ' 카카오 연락처가 바로 열려요.'
             : null}
         </p>
       ) : null}
