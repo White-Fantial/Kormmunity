@@ -10,6 +10,10 @@ import { NeighbourWarmthLabel } from '@/components/ui/neighbour-warmth-label';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { prisma } from '@/lib/db/prisma';
 
+
+export const runtime = "nodejs";
+export const preferredRegion = "syd1";
+
 export const dynamic = 'force-dynamic';
 const POST_PREVIEW_LENGTH = 40;
 const PAGE_SIZE = 20;

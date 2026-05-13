@@ -15,6 +15,10 @@ import { buildPinnedPostCursorWhere, PINNED_POST_ORDER_ASC, PINNED_POST_ORDER_DE
 import { getActiveCategories, getActiveCities, getActiveCitiesByCountry } from '@/lib/posts/reference-data';
 import { measureServerTiming } from '@/lib/performance/server';
 
+
+export const runtime = "nodejs";
+export const preferredRegion = "syd1";
+
 export const metadata: Metadata = {
   title: '홈',
   description: '한인 커뮤니티의 최신 게시글을 확인해 보세요.',

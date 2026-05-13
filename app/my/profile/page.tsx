@@ -8,9 +8,13 @@ import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { KakaoOpenLinkInput } from '@/components/ui/kakao-open-link-input';
 import { updateProfileAction } from './actions';
 import {
+
   deleteSearchAlertAction,
   updateSearchAlertAction,
 } from '@/app/posts/search-alert-actions';
+
+export const runtime = "nodejs";
+export const preferredRegion = "syd1";
 
 export const dynamic = 'force-dynamic';
 

@@ -7,6 +7,10 @@ import { getPostCreationFormOptions } from '@/lib/permissions';
 import { getProfileCityRequiredHref, hasValidProfileCity } from '@/lib/posts/profile-city';
 import { redirect } from 'next/navigation';
 
+
+export const runtime = "nodejs";
+export const preferredRegion = "syd1";
+
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: '글쓰기',

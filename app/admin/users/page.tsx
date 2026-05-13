@@ -7,6 +7,10 @@ import { prisma } from '@/lib/db/prisma';
 import { canMakeFinalUserDecision } from '@/lib/permissions';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 
+
+export const runtime = "nodejs";
+export const preferredRegion = "syd1";
+
 export const dynamic = 'force-dynamic';
 const MAX_REVIEW_REQUESTS_PER_USER = 5;
 const MIN_REVIEW_REQUEST_LOOKUP = 20;

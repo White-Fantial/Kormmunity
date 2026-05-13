@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 
 import {
+
   createReportOptionAction,
   toggleReportOptionActiveAction,
 } from '@/app/admin/actions';
@@ -9,6 +10,9 @@ import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { canMakeFinalUserDecision } from '@/lib/permissions';
+
+export const runtime = "nodejs";
+export const preferredRegion = "syd1";
 
 export const dynamic = 'force-dynamic';
 

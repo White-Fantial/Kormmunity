@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 
 import { retryKakaoMessageDeliveryAction } from '@/app/coordinator/actions';
 import {
+
   coordinatorManagementNavItems,
   ManagementSectionNav,
 } from '@/components/admin/management-section-nav';
@@ -9,6 +10,9 @@ import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { canHoldPost } from '@/lib/permissions';
+
+export const runtime = "nodejs";
+export const preferredRegion = "syd1";
 
 export const dynamic = 'force-dynamic';
 

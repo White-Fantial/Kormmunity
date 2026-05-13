@@ -11,6 +11,10 @@ import { prisma } from '@/lib/db/prisma';
 import { decodeCursor, encodeCursor } from '@/lib/posts/cursor';
 import { measureServerTiming } from '@/lib/performance/server';
 
+
+export const runtime = "nodejs";
+export const preferredRegion = "syd1";
+
 export const dynamic = 'force-dynamic';
 const BODY_PREVIEW_LENGTH = 40;
 const PAGE_SIZE = 20;
