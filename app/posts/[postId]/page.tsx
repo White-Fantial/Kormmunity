@@ -166,22 +166,22 @@ const getPostComments = cache(async (
           ? direction === 'prev'
             ? {
                 OR: [
-                  { createdAt: { lt: cursor.createdAt } },
-                  { AND: [{ createdAt: cursor.createdAt }, { id: { lt: cursor.id } }] },
+                  { createdAt: { gt: cursor.createdAt } },
+                  { AND: [{ createdAt: cursor.createdAt }, { id: { gt: cursor.id } }] },
                 ],
               }
             : {
                 OR: [
-                  { createdAt: { gt: cursor.createdAt } },
-                  { AND: [{ createdAt: cursor.createdAt }, { id: { gt: cursor.id } }] },
+                  { createdAt: { lt: cursor.createdAt } },
+                  { AND: [{ createdAt: cursor.createdAt }, { id: { lt: cursor.id } }] },
                 ],
               }
           : {}),
       },
       orderBy:
         direction === 'prev'
-          ? [{ createdAt: 'desc' }, { id: 'desc' }]
-          : [{ createdAt: 'asc' }, { id: 'asc' }],
+          ? [{ createdAt: 'asc' }, { id: 'asc' }]
+          : [{ createdAt: 'desc' }, { id: 'desc' }],
       take: COMMENT_PAGE_SIZE + 1,
       select: {
         id: true,
@@ -1041,7 +1041,7 @@ async function CommentsSection({
             const myCommentReport = myCommentReportMap.get(comment.id) ?? null;
 
             return (
-              <li key={comment.id} className="rounded-xl border border-[#e8e8e8] p-3">
+              <li key={comment.id} className="rounded-2xl border border-[#e8e8e8] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
                 {comment.status === 'HELD' && !isCoordinator ? (
                   <p className="text-sm italic text-[#aaa]">운영 검토 중인 댓글입니다.</p>
                 ) : (
@@ -1051,30 +1051,46 @@ async function CommentsSection({
                         운영 검토 중
                       </span>
                     ) : null}
-                    <p className="whitespace-pre-wrap text-sm">{comment.body}</p>
+                    <p className="whitespace-pre-wrap text-[15px] leading-6 text-[#222]">{comment.body}</p>
                   </>
                 )}
                 {isBestComment ? (
-                  <p className="mt-2 inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
+                  <p className="mt-3 inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
                     베스트 댓글
                   </p>
                 ) : null}
-                <div className="mt-2 flex items-center justify-between text-xs text-[#888]">
-                  <div className="flex items-center gap-2">
-                    <UserAvatar
-                      displayName={comment.author.displayName}
-                      profileImageUrl={comment.author.profileImageUrl}
-                      className="h-6 w-6"
-                      sizes="24px"
-                    />
-                    <span>
-                      {comment.author.displayName} ·{' '}
-                      <NeighbourWarmthLabel warmth={comment.author.neighbourWarmth} />
-                      {' '}·{' '}
-                      {new Date(comment.createdAt).toLocaleString('ko-KR')}
-                    </span>
+                <div className="mt-3 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <UserAvatar
+                        displayName={comment.author.displayName}
+                        profileImageUrl={comment.author.profileImageUrl}
+                        className="h-7 w-7"
+                        sizes="28px"
+                      />
+                      <div className="min-w-0 text-xs text-[#777]">
+                        <p className="truncate text-sm font-medium text-[#444]">
+                          {comment.author.displayName}
+                        </p>
+                        <p className="truncate">
+                          <NeighbourWarmthLabel warmth={comment.author.neighbourWarmth} /> ·{' '}
+                          {new Date(comment.createdAt).toLocaleString('ko-KR')}
+                        </p>
+                      </div>
+                    </div>
+                    {canDelete ? (
+                      <form action={deleteCommentAction}>
+                        <input type="hidden" name="postId" value={postId} />
+                        <input type="hidden" name="commentId" value={comment.id} />
+                        <FormSubmitButton
+                          idleLabel="삭제"
+                          pendingLabel="삭제 중..."
+                          className="rounded-md px-2 py-1 text-xs text-red-500 hover:bg-red-50"
+                        />
+                      </form>
+                    ) : null}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {currentUser ? (
                       <form action={toggleCommentLikeAction}>
                         <input type="hidden" name="postId" value={postId} />
@@ -1082,11 +1098,11 @@ async function CommentsSection({
                         <FormSubmitButton
                           idleLabel={isCommentLikedByCurrentUser ? `좋아요 취소 (${comment._count.commentLikes})` : `좋아요 (${comment._count.commentLikes})`}
                           pendingLabel="처리 중..."
-                          className="rounded-md border border-[#e8e8e8] px-2 py-1 text-xs hover:bg-[#f9f9f9]"
+                          className="rounded-md border border-[#e8e8e8] px-2.5 py-1 text-xs hover:bg-[#f9f9f9]"
                         />
                       </form>
                     ) : (
-                      <Link href="/login" className="underline">
+                      <Link href="/login" className="rounded-md border border-[#e8e8e8] px-2.5 py-1 text-xs text-[#555] hover:bg-[#f9f9f9]">
                         좋아요 {comment._count.commentLikes}
                       </Link>
                     )}
@@ -1097,7 +1113,7 @@ async function CommentsSection({
                           <FormSubmitButton
                             idleLabel="베스트 댓글 해제"
                             pendingLabel="처리 중..."
-                            className="rounded-md border border-amber-200 px-2 py-1 text-xs text-amber-700 hover:bg-amber-50"
+                            className="rounded-md border border-amber-200 px-2.5 py-1 text-xs text-amber-700 hover:bg-amber-50"
                           />
                         </form>
                       ) : (
@@ -1107,21 +1123,10 @@ async function CommentsSection({
                           <FormSubmitButton
                             idleLabel="베스트 댓글"
                             pendingLabel="처리 중..."
-                            className="rounded-md border border-amber-200 px-2 py-1 text-xs text-amber-700 hover:bg-amber-50"
+                            className="rounded-md border border-amber-200 px-2.5 py-1 text-xs text-amber-700 hover:bg-amber-50"
                           />
                         </form>
                       )
-                    ) : null}
-                    {canDelete ? (
-                      <form action={deleteCommentAction}>
-                        <input type="hidden" name="postId" value={postId} />
-                        <input type="hidden" name="commentId" value={comment.id} />
-                        <FormSubmitButton
-                          idleLabel="삭제"
-                          pendingLabel="삭제 중..."
-                          className="text-red-500"
-                        />
-                      </form>
                     ) : null}
                   </div>
                 </div>
@@ -1165,8 +1170,8 @@ async function CommentsSection({
                 ) : null}
                 {canReport && reportOptions.length > 0 ? (
                   <div className="mt-2">
-                    <details className="group space-y-2">
-                      <summary className="flex cursor-pointer list-none items-center justify-between rounded-xl border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">
+                    <details className="group mt-3 space-y-2 border-t border-[#f0f0f0] pt-3">
+                      <summary className="flex cursor-pointer list-none items-center justify-between rounded-xl border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50">
                         <span>신고하기</span>
                         <span aria-hidden="true" className="text-xs text-red-400 transition-transform group-open:rotate-180">
                           ▼
