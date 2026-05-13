@@ -200,11 +200,13 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     price: string | null;
     thumbnailUrl: string | null;
     commentCount: number;
+    likeCount: number;
+    isLikedByCurrentUser: boolean;
     reportCount?: number;
     postTags: { id: string; label: string }[];
     category: { name: string; type: CategoryType; color: string | null };
     city: { name: string } | null;
-    author: { displayName: string; profileImageUrl: string | null };
+    author: { displayName: string; profileImageUrl: string | null; neighbourWarmth: number };
   }> = [];
   let hasNextPage = false;
   let hasPrevPage = false;
@@ -236,7 +238,13 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
             select: {
               displayName: true,
               profileImageUrl: true,
+              neighbourWarmth: true,
             },
+          },
+          postLikes: {
+            where: { userId: currentUser?.id ?? '__anonymous__' },
+            select: { id: true },
+            take: 1,
           },
           images: {
             select: { url: true },
@@ -248,6 +256,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
               comments: {
                 where: { status: 'PUBLISHED' },
               },
+              postLikes: true,
               reports: true,
             },
           },
@@ -277,6 +286,8 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
       price: post.price ? post.price.toString() : null,
       thumbnailUrl: post.images[0]?.url ?? null,
       commentCount: post._count.comments,
+      likeCount: post._count.postLikes,
+      isLikedByCurrentUser: post.postLikes.length > 0,
       reportCount: post._count.reports,
       category: post.category,
       city: post.city,
@@ -309,7 +320,13 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
             select: {
               displayName: true,
               profileImageUrl: true,
+              neighbourWarmth: true,
             },
+          },
+          postLikes: {
+            where: { userId: currentUser?.id ?? '__anonymous__' },
+            select: { id: true },
+            take: 1,
           },
           images: {
             select: { url: true },
@@ -321,6 +338,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
               comments: {
                 where: { status: 'PUBLISHED' },
               },
+              postLikes: true,
             },
           },
         },
@@ -349,6 +367,8 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
       price: post.price ? post.price.toString() : null,
       thumbnailUrl: post.images[0]?.url ?? null,
       commentCount: post._count.comments,
+      likeCount: post._count.postLikes,
+      isLikedByCurrentUser: post.postLikes.length > 0,
       category: post.category,
       city: post.city,
       author: post.author,
@@ -564,6 +584,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
                   ...post,
                 }}
                 href={createDetailHref(post.id)}
+                showLikeButton={Boolean(currentUser)}
               />
             ))}
           </div>
