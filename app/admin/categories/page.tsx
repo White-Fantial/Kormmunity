@@ -61,17 +61,19 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
   const [categories, tagOptions] = await Promise.all([
     prisma.category.findMany({
       orderBy: { sortOrder: 'asc' },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        type: true,
-        visibilityMode: true,
-        color: true,
-        isActive: true,
-        sortOrder: true,
-        _count: { select: { posts: true } },
-      },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          type: true,
+          visibilityMode: true,
+          color: true,
+          requireCommentBeforeContactDefault: true,
+          quickCommentTemplates: true,
+          isActive: true,
+          sortOrder: true,
+          _count: { select: { posts: true } },
+        },
     }),
     prisma.postTagOption.findMany({
       orderBy: [{ categoryType: 'asc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
@@ -153,6 +155,23 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
               </div>
             </div>
             <ColorPaletteInput name="color" defaultValue="" label="카테고리 색상" />
+            <label className="flex items-center gap-2 text-sm text-[#555]">
+              <input
+                type="checkbox"
+                name="requireCommentBeforeContactDefault"
+                className="h-4 w-4 rounded border-[#d9d9d9] text-[#3c1e1e] focus:ring-[#fee500]"
+              />
+              댓글 작성 후 연락 기본값 활성화
+            </label>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-[#555]">빠른 댓글 템플릿 (줄바꿈으로 구분)</label>
+              <textarea
+                name="quickCommentTemplates"
+                rows={4}
+                placeholder="예) 공유해 주셔서 감사합니다."
+                className={INPUT_CLASS}
+              />
+            </div>
             <FormSubmitButton
               idleLabel="카테고리 추가"
               pendingLabel="처리 중..."
@@ -171,6 +190,12 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
           <ul className="space-y-2">
             {categories.map((category) => {
               const tags = tagOptionsByType.get(category.type) ?? [];
+              const quickCommentTemplates = Array.isArray(category.quickCommentTemplates)
+                ? category.quickCommentTemplates
+                    .filter((template): template is string => typeof template === 'string')
+                    .map((template) => template.trim())
+                    .filter((template) => template.length > 0)
+                : [];
 
               return (
                 <li key={category.id}>
@@ -245,6 +270,24 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
                             defaultValue={category.color ?? ''}
                             label="카테고리 색상"
                           />
+                          <label className="flex items-center gap-2 text-sm text-[#555]">
+                            <input
+                              type="checkbox"
+                              name="requireCommentBeforeContactDefault"
+                              defaultChecked={category.requireCommentBeforeContactDefault}
+                              className="h-4 w-4 rounded border-[#d9d9d9] text-[#3c1e1e] focus:ring-[#fee500]"
+                            />
+                            댓글 작성 후 연락 기본값 활성화
+                          </label>
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium text-[#555]">빠른 댓글 템플릿 (줄바꿈으로 구분)</label>
+                            <textarea
+                              name="quickCommentTemplates"
+                              rows={4}
+                              defaultValue={quickCommentTemplates.join('\n')}
+                              className={INPUT_CLASS}
+                            />
+                          </div>
                           <FormSubmitButton
                             idleLabel="설정 저장"
                             pendingLabel="저장 중..."

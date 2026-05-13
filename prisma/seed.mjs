@@ -227,7 +227,7 @@ const categories = [
     visibilityMode: CategoryVisibilityMode.NORMAL,
     color: '#3B82F6',
     requireCommentBeforeContactDefault: false,
-    quickCommentTemplates: ['Thanks for sharing.', 'Following this post.', 'Can you share more details?'],
+    quickCommentTemplates: ['공유해 주셔서 감사합니다.', '이 글 계속 보고 있어요.', '조금 더 자세히 알려주실 수 있나요?'],
   },
   {
     name: '질문답변',
@@ -236,7 +236,7 @@ const categories = [
     visibilityMode: CategoryVisibilityMode.NORMAL,
     color: '#8B5CF6',
     requireCommentBeforeContactDefault: false,
-    quickCommentTemplates: ['I have the same question.', 'Following this post.'],
+    quickCommentTemplates: ['저도 같은 질문이 있어요.', '이 글 계속 보고 있어요.'],
   },
   {
     name: '중고거래',
@@ -246,10 +246,10 @@ const categories = [
     color: '#10B981',
     requireCommentBeforeContactDefault: true,
     quickCommentTemplates: [
-      'Still available?',
-      'Where is pickup?',
-      'Can I pick up today?',
-      'Is price negotiable?',
+      '아직 판매 중인가요?',
+      '어디서 거래하면 될까요?',
+      '오늘 픽업 가능할까요?',
+      '가격 조정 가능할까요?',
     ],
   },
   {
@@ -259,7 +259,7 @@ const categories = [
     visibilityMode: CategoryVisibilityMode.NORMAL,
     color: '#06B6D4',
     requireCommentBeforeContactDefault: true,
-    quickCommentTemplates: ['Is this still available?', 'When can I pick it up?'],
+    quickCommentTemplates: ['아직 나눔 가능한가요?', '언제 가져갈 수 있을까요?'],
   },
   {
     name: '구인구직',
@@ -269,9 +269,9 @@ const categories = [
     color: '#F59E0B',
     requireCommentBeforeContactDefault: false,
     quickCommentTemplates: [
-      'Are you still hiring?',
-      'Can you share work hours?',
-      'What is the pay range?',
+      '아직 채용 중인가요?',
+      '근무 시간을 알려주실 수 있나요?',
+      '급여 범위가 어떻게 되나요?',
     ],
   },
   {
@@ -282,9 +282,9 @@ const categories = [
     color: '#EC4899',
     requireCommentBeforeContactDefault: false,
     quickCommentTemplates: [
-      'Is this still available?',
-      'Can you share the move-in date?',
-      'Is parking included?',
+      '아직 가능한가요?',
+      '입주 가능일을 알려주실 수 있나요?',
+      '주차 포함인가요?',
     ],
   },
   {
@@ -295,9 +295,9 @@ const categories = [
     color: '#6366F1',
     requireCommentBeforeContactDefault: false,
     quickCommentTemplates: [
-      'Can you share pricing?',
-      'Do you have recent reviews?',
-      'How can I book this service?',
+      '가격 안내해 주실 수 있나요?',
+      '최근 후기가 있을까요?',
+      '어떻게 예약하면 되나요?',
     ],
   },
   {
@@ -307,7 +307,7 @@ const categories = [
     visibilityMode: CategoryVisibilityMode.NORMAL,
     color: '#F97316',
     requireCommentBeforeContactDefault: false,
-    quickCommentTemplates: ['I am interested.', 'Is registration still open?', 'Can I bring a friend?'],
+    quickCommentTemplates: ['관심 있습니다.', '아직 신청 가능한가요?', '친구와 함께 가도 되나요?'],
   },
   {
     name: '컬럼',
@@ -316,7 +316,7 @@ const categories = [
     visibilityMode: CategoryVisibilityMode.NORMAL,
     color: '#64748B',
     requireCommentBeforeContactDefault: false,
-    quickCommentTemplates: ['Thanks for sharing.', 'Following this post.', 'This was helpful.'],
+    quickCommentTemplates: ['공유해 주셔서 감사합니다.', '이 글 계속 보고 있어요.', '도움이 많이 됐어요.'],
   },
   {
     name: '광고',
@@ -325,7 +325,7 @@ const categories = [
     visibilityMode: CategoryVisibilityMode.ALWAYS_INCLUDED,
     color: '#EF4444',
     requireCommentBeforeContactDefault: false,
-    quickCommentTemplates: ['Can you share current pricing?', 'Is there a limited-time offer?', 'How do I contact you?'],
+    quickCommentTemplates: ['현재 가격을 알려주실 수 있나요?', '기간 한정 혜택이 있나요?', '어떻게 연락드리면 될까요?'],
   },
   {
     name: '공지사항',
@@ -334,7 +334,7 @@ const categories = [
     visibilityMode: CategoryVisibilityMode.ALWAYS_INCLUDED,
     color: '#FACC15',
     requireCommentBeforeContactDefault: false,
-    quickCommentTemplates: ['Following this update.', 'Thanks for the notice.'],
+    quickCommentTemplates: ['업데이트 계속 확인하고 있어요.', '공지해 주셔서 감사합니다.'],
   },
 ];
 
