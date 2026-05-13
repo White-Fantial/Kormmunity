@@ -240,7 +240,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
             select: { id: true },
             take: 1,
           },
-          savedPosts: {
+          savedBy: {
             where: { userId: currentUser?.id ?? '__anonymous__' },
             select: { id: true },
             take: 1,
@@ -287,7 +287,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
       commentCount: post._count.comments,
       likeCount: post._count.postLikes,
       isLikedByCurrentUser: post.postLikes.length > 0,
-      isSavedByCurrentUser: post.savedPosts.length > 0,
+      isSavedByCurrentUser: post.savedBy.length > 0,
       reportCount: post._count.reports,
       category: post.category,
       city: post.city,
@@ -328,7 +328,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
             select: { id: true },
             take: 1,
           },
-          savedPosts: {
+          savedBy: {
             where: { userId: currentUser?.id ?? '__anonymous__' },
             select: { id: true },
             take: 1,
@@ -374,7 +374,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
       commentCount: post._count.comments,
       likeCount: post._count.postLikes,
       isLikedByCurrentUser: post.postLikes.length > 0,
-      isSavedByCurrentUser: post.savedPosts.length > 0,
+      isSavedByCurrentUser: post.savedBy.length > 0,
       category: post.category,
       city: post.city,
       author: post.author,

@@ -23,6 +23,7 @@ export type PostCardEntity = {
   };
   commentCount?: number;
   likeCount?: number;
+  reportCount?: number;
   isLikedByCurrentUser?: boolean;
   isSavedByCurrentUser?: boolean;
 };
