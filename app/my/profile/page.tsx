@@ -232,7 +232,7 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
       ) : null}
 
       <div className="border-t border-[#e8e8e8] pt-4">
-        <form action={logoutAction}>
+        <form action={logoutAction} aria-label="로그아웃">
           <FormSubmitButton
             idleLabel="로그아웃"
             pendingLabel="로그아웃 중..."
