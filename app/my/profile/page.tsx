@@ -1,7 +1,9 @@
 import { requireUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { INVALID_KAKAO_OPEN_LINK_MESSAGE_KO } from '@/lib/kakao-open-link';
+import { NEIGHBOUR_WARMTH_DEFAULT } from '@/lib/neighbour-warmth';
 import { UserAvatar } from '@/components/ui/user-avatar';
+import { NeighbourWarmthLabel } from '@/components/ui/neighbour-warmth-label';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { KakaoOpenLinkInput } from '@/components/ui/kakao-open-link-input';
 import { updateProfileAction } from './actions';
@@ -23,14 +25,15 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
   const [dbUser, countries, cities, searchAlerts] = await Promise.all([
     prisma.user.findUnique({
       where: { id: user.id },
-      select: {
-        openChatUrl: true,
-        cityId: true,
-        countryId: true,
-        profileImageUrl: true,
-        notifyOnKakaoForSearchAlert: true,
-        notifyOnKakaoForComment: true,
-      },
+        select: {
+          openChatUrl: true,
+          cityId: true,
+          countryId: true,
+          profileImageUrl: true,
+          neighbourWarmth: true,
+          notifyOnKakaoForSearchAlert: true,
+          notifyOnKakaoForComment: true,
+        },
     }),
     prisma.country.findMany({
       where: { isActive: true },
@@ -68,6 +71,9 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
         />
         <p className="text-sm font-medium">{user.displayName}</p>
       </div>
+      <p className="text-sm text-[#666]">
+        <NeighbourWarmthLabel warmth={dbUser?.neighbourWarmth ?? NEIGHBOUR_WARMTH_DEFAULT} />
+      </p>
       <p className="text-sm text-[#888]">역할: {user.role}</p>
       <p className="text-sm text-[#888]">상태: {user.status}</p>
 

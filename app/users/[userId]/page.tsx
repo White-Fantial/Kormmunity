@@ -6,6 +6,7 @@ import { notFound } from 'next/navigation';
 
 import { PostTagBadge } from '@/components/posts/post-tag-badge';
 import { EmptyStateMessage } from '@/components/ui/empty-state-message';
+import { NeighbourWarmthLabel } from '@/components/ui/neighbour-warmth-label';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { prisma } from '@/lib/db/prisma';
 
@@ -25,6 +26,7 @@ const getUserProfile = cache(async (userId: string) => {
       id: true,
       displayName: true,
       profileImageUrl: true,
+      neighbourWarmth: true,
       createdAt: true,
       city: { select: { name: true } },
       country: { select: { name: true } },
@@ -111,6 +113,9 @@ export default async function UserProfilePage({ params, searchParams }: UserProf
           />
           <div>
             <p className="text-base font-semibold">{user.displayName}</p>
+            <p className="text-sm text-[#666]">
+              <NeighbourWarmthLabel warmth={user.neighbourWarmth} />
+            </p>
             {(user.country || user.city) ? (
               <p className="text-sm text-[#888]">
                 {[user.country?.name, user.city?.name].filter(Boolean).join(' · ')}

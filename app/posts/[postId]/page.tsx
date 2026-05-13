@@ -5,12 +5,16 @@ import type { CategoryType } from '@prisma/client';
 import { notFound } from 'next/navigation';
 
 import {
+  togglePostLikeAction,
   reportPostAction,
 } from '@/app/posts/actions';
 import { savePostAction, unsavePostAction } from '@/app/posts/saved-actions';
 import {
   createCommentAction,
   deleteCommentAction,
+  toggleCommentLikeAction,
+  setBestCommentAction,
+  removeBestCommentAction,
 } from '@/app/posts/[postId]/comments/actions';
 import {
   holdPostAction,
@@ -22,6 +26,7 @@ import { PostTagBadge, withPostTagPrefix } from '@/components/posts/post-tag-bad
 import { PostShareButton } from '@/components/posts/post-share-button';
 import { PostMarkdown } from '@/components/posts/post-markdown';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
+import { NeighbourWarmthLabel } from '@/components/ui/neighbour-warmth-label';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
@@ -92,6 +97,7 @@ const getPostWithDetails = cache(async (postId: string) => {
             displayName: true,
             profileImageUrl: true,
             openChatUrl: true,
+            neighbourWarmth: true,
           },
         },
         category: {
@@ -119,6 +125,7 @@ const getPostWithDetails = cache(async (postId: string) => {
             comments: {
               where: { status: 'PUBLISHED' },
             },
+            postLikes: true,
           },
         },
       },
@@ -132,6 +139,7 @@ const getPostComments = cache(async (
   postId: string,
   cursorToken: string,
   direction: 'next' | 'prev',
+  currentUserId: string | null,
 ) => {
   const cursor = cursorToken ? decodeCursor(cursorToken) : null;
   const comments = await measureServerTiming('post-detail:comments', () =>
@@ -169,6 +177,17 @@ const getPostComments = cache(async (
           select: {
             displayName: true,
             profileImageUrl: true,
+            neighbourWarmth: true,
+          },
+        },
+        commentLikes: {
+          where: { userId: currentUserId ?? '__anonymous__' },
+          select: { id: true },
+          take: 1,
+        },
+        _count: {
+          select: {
+            commentLikes: true,
           },
         },
       },
@@ -252,6 +271,7 @@ export default async function PostDetailPage({
   let reportOptions: { id: string; label: string }[] = [];
   let myReport: { optionId: string; additionalReason: string | null } | null = null;
   let isSaved = false;
+  let isPostLiked = false;
   const postContextParams = new URLSearchParams();
   for (const categoryId of toArray(query.category)) {
     if (categoryId.trim()) {
@@ -300,10 +320,20 @@ export default async function PostDetailPage({
       },
       select: { id: true },
     });
+    const postLikePromise = prisma.postLike.findUnique({
+      where: {
+        postId_userId: {
+          postId: post.id,
+          userId: currentUser.id,
+        },
+      },
+      select: { id: true },
+    });
 
     if (canSubmitReport) {
-      const [savedPost, options, report] = await Promise.all([
+      const [savedPost, likedPost, options, report] = await Promise.all([
         savedPostPromise,
+        postLikePromise,
         prisma.reportOption.findMany({
           where: { isActive: true },
           orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
@@ -321,10 +351,13 @@ export default async function PostDetailPage({
       ]);
 
       isSaved = Boolean(savedPost);
+      isPostLiked = Boolean(likedPost);
       reportOptions = options;
       myReport = report;
     } else {
-      isSaved = Boolean(await savedPostPromise);
+      const [savedPost, likedPost] = await Promise.all([savedPostPromise, postLikePromise]);
+      isSaved = Boolean(savedPost);
+      isPostLiked = Boolean(likedPost);
     }
   }
 
@@ -392,11 +425,26 @@ export default async function PostDetailPage({
           <Link href={`/users/${post.author.id}`} className="font-medium text-[#3c1e1e] hover:underline">
             {post.author.displayName}
           </Link>
+          {' '}· <NeighbourWarmthLabel warmth={post.author.neighbourWarmth} />
           {' '}· {new Date(post.createdAt).toLocaleString('ko-KR')}
         </span>
       </div>
 
-      <div className={currentUser ? 'grid grid-cols-2 gap-2' : 'grid grid-cols-1 gap-2'}>
+      <div className={`grid grid-cols-1 gap-2 ${currentUser ? 'sm:grid-cols-3' : ''}`}>
+        {currentUser ? (
+          <form action={togglePostLikeAction}>
+            <input type="hidden" name="postId" value={post.id} />
+            <FormSubmitButton
+              idleLabel={isPostLiked ? `좋아요 취소 (${post._count.postLikes})` : `좋아요 (${post._count.postLikes})`}
+              pendingLabel="처리 중..."
+              className={outlineActionButtonClass}
+            />
+          </form>
+        ) : (
+          <Link href="/login" className={outlineActionButtonClass}>
+            좋아요 {post._count.postLikes}
+          </Link>
+        )}
         {currentUser ? (
           <form action={isSaved ? unsavePostAction : savePostAction}>
             <input type="hidden" name="postId" value={post.id} />
@@ -569,6 +617,8 @@ export default async function PostDetailPage({
       >
         <CommentsSection
           postId={post.id}
+          postAuthorId={post.authorId}
+          bestCommentId={post.bestCommentId}
           commentCount={post._count.comments}
           currentUser={currentUser}
           query={query}
@@ -834,6 +884,8 @@ async function AdjacentPostsSection({
 
 type CommentsSectionProps = {
   postId: string;
+  postAuthorId: string;
+  bestCommentId: string | null;
   commentCount: number;
   currentUser: Awaited<ReturnType<typeof getCurrentUser>>;
   query: Awaited<PostDetailPageProps['searchParams']>;
@@ -841,13 +893,20 @@ type CommentsSectionProps = {
 
 async function CommentsSection({
   postId,
+  postAuthorId,
+  bestCommentId,
   commentCount,
   currentUser,
   query,
 }: CommentsSectionProps) {
   const commentsCursor = toSingle(query.commentsCursor);
   const commentsDirection = toSingle(query.commentsDirection) === 'prev' ? 'prev' : 'next';
-  const { visibleComments, hasPrevPage, hasNextPage } = await getPostComments(postId, commentsCursor, commentsDirection);
+  const { visibleComments, hasPrevPage, hasNextPage } = await getPostComments(
+    postId,
+    commentsCursor,
+    commentsDirection,
+    currentUser?.id ?? null,
+  );
   const firstComment = visibleComments[0];
   const lastComment = visibleComments[visibleComments.length - 1];
 
@@ -934,10 +993,18 @@ async function CommentsSection({
         <ul className="space-y-3">
           {visibleComments.map((comment) => {
             const canDelete = canDeleteComment(currentUser, comment);
+            const isBestComment = comment.id === bestCommentId;
+            const canManageBestComment = currentUser?.id === postAuthorId;
+            const isCommentLikedByCurrentUser = comment.commentLikes.length > 0;
 
             return (
               <li key={comment.id} className="rounded-xl border border-[#e8e8e8] p-3">
                 <p className="whitespace-pre-wrap text-sm">{comment.body}</p>
+                {isBestComment ? (
+                  <p className="mt-2 inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
+                    베스트 댓글
+                  </p>
+                ) : null}
                 <div className="mt-2 flex items-center justify-between text-xs text-[#888]">
                   <div className="flex items-center gap-2">
                     <UserAvatar
@@ -948,20 +1015,61 @@ async function CommentsSection({
                     />
                     <span>
                       {comment.author.displayName} ·{' '}
+                      <NeighbourWarmthLabel warmth={comment.author.neighbourWarmth} />
+                      {' '}·{' '}
                       {new Date(comment.createdAt).toLocaleString('ko-KR')}
                     </span>
                   </div>
-                  {canDelete ? (
-                    <form action={deleteCommentAction}>
-                      <input type="hidden" name="postId" value={postId} />
-                      <input type="hidden" name="commentId" value={comment.id} />
-                      <FormSubmitButton
-                        idleLabel="삭제"
-                        pendingLabel="삭제 중..."
-                        className="text-red-500"
-                      />
-                    </form>
-                  ) : null}
+                  <div className="flex items-center gap-2">
+                    {currentUser ? (
+                      <form action={toggleCommentLikeAction}>
+                        <input type="hidden" name="postId" value={postId} />
+                        <input type="hidden" name="commentId" value={comment.id} />
+                        <FormSubmitButton
+                          idleLabel={isCommentLikedByCurrentUser ? `좋아요 취소 (${comment._count.commentLikes})` : `좋아요 (${comment._count.commentLikes})`}
+                          pendingLabel="처리 중..."
+                          className="rounded-md border border-[#e8e8e8] px-2 py-1 text-xs hover:bg-[#f9f9f9]"
+                        />
+                      </form>
+                    ) : (
+                      <Link href="/login" className="underline">
+                        좋아요 {comment._count.commentLikes}
+                      </Link>
+                    )}
+                    {canManageBestComment ? (
+                      isBestComment ? (
+                        <form action={removeBestCommentAction}>
+                          <input type="hidden" name="postId" value={postId} />
+                          <FormSubmitButton
+                            idleLabel="베스트 댓글 해제"
+                            pendingLabel="처리 중..."
+                            className="rounded-md border border-amber-200 px-2 py-1 text-xs text-amber-700 hover:bg-amber-50"
+                          />
+                        </form>
+                      ) : (
+                        <form action={setBestCommentAction}>
+                          <input type="hidden" name="postId" value={postId} />
+                          <input type="hidden" name="commentId" value={comment.id} />
+                          <FormSubmitButton
+                            idleLabel="베스트 댓글"
+                            pendingLabel="처리 중..."
+                            className="rounded-md border border-amber-200 px-2 py-1 text-xs text-amber-700 hover:bg-amber-50"
+                          />
+                        </form>
+                      )
+                    ) : null}
+                    {canDelete ? (
+                      <form action={deleteCommentAction}>
+                        <input type="hidden" name="postId" value={postId} />
+                        <input type="hidden" name="commentId" value={comment.id} />
+                        <FormSubmitButton
+                          idleLabel="삭제"
+                          pendingLabel="삭제 중..."
+                          className="text-red-500"
+                        />
+                      </form>
+                    ) : null}
+                  </div>
                 </div>
               </li>
             );

@@ -74,6 +74,7 @@ model User {
   kakaoId              String             @unique
   displayName          String
   profileImageUrl      String?
+  neighbourWarmth      Float              @default(36.5)
   kakaoAccessToken     String?
   kakaoRefreshToken    String?
   kakaoAccessTokenExpiresAt DateTime?
@@ -96,6 +97,8 @@ model User {
   searchAlerts         SearchAlert[]
   postReports          PostReport[]
   savedPosts           SavedPost[]
+  postLikes            PostLike[]
+  commentLikes         CommentLike[]
   postPermissions      PostPermission[]
   kakaoMessageDeliveries KakaoMessageDelivery[]
   createdAt            DateTime           @default(now())
@@ -210,7 +213,10 @@ model Post {
   contactUrl    String?
   images        PostImage[]
   tags          PostTag[]
-  comments      Comment[]
+  comments      Comment[]    @relation("PostComments")
+  postLikes     PostLike[]
+  bestCommentId String?
+  bestComment   Comment?     @relation("PostBestComment", fields: [bestCommentId], references: [id], onDelete: SetNull)
   reports       PostReport[]
   savedBy       SavedPost[]
   createdAt     DateTime     @default(now())
@@ -227,6 +233,7 @@ model Post {
   @@index([status, cityId, createdAt, id])
   @@index([status, categoryId, createdAt, id])
   @@index([authorId, status, createdAt])
+  @@index([bestCommentId])
 }
 
 model PostTag {
@@ -302,13 +309,41 @@ model Comment {
   authorId  String
   body      String
   status    CommentStatus @default(PUBLISHED)
-  post      Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post      Post          @relation("PostComments", fields: [postId], references: [id], onDelete: Cascade)
   author    User          @relation(fields: [authorId], references: [id])
+  commentLikes CommentLike[]
+  bestForPosts Post[]     @relation("PostBestComment")
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
   @@index([postId, status, createdAt])
   @@index([postId, status, id])
+}
+
+model PostLike {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model CommentLike {
+  id        String   @id @default(cuid())
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@index([commentId, createdAt])
+  @@index([userId, createdAt])
 }
 
 model ModerationAction {

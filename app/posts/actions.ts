@@ -28,6 +28,10 @@ import {
   type PreUploadedImage,
 } from '@/lib/upload/cloudinary';
 import { getProfileCityRequiredHref, hasValidProfileCity } from '@/lib/posts/profile-city';
+import {
+  NEIGHBOUR_WARMTH_BASE_GAINS,
+  adjustNeighbourWarmth,
+} from '@/lib/neighbour-warmth';
 
 const CREATE_POST_RATE_LIMIT = {
   limit: 5,
@@ -503,6 +507,76 @@ export async function deletePostAction(formData: FormData) {
   revalidatePath('/my/posts');
   revalidatePath(`/posts/${postId}`);
   redirect('/my/posts');
+}
+
+export async function togglePostLikeAction(formData: FormData) {
+  const user = await requireUser();
+  const postId = normalizeText(formData.get('postId'));
+
+  if (!postId) {
+    redirect('/posts?error=게시글 정보가 없습니다.');
+  }
+
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: { id: true, authorId: true, status: true },
+  });
+
+  if (!post || post.status === 'DELETED') {
+    redirect('/posts?error=게시글을 찾을 수 없어요.');
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const existingLike = await tx.postLike.findUnique({
+      where: {
+        postId_userId: {
+          postId,
+          userId: user.id,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (existingLike) {
+      await tx.postLike.delete({ where: { id: existingLike.id } });
+      return;
+    }
+
+    await tx.postLike.create({
+      data: {
+        postId,
+        userId: user.id,
+      },
+    });
+
+    if (post.authorId === user.id) {
+      return;
+    }
+
+    const postAuthor = await tx.user.findUnique({
+      where: { id: post.authorId },
+      select: { id: true, neighbourWarmth: true },
+    });
+
+    if (!postAuthor) {
+      return;
+    }
+
+    await tx.user.update({
+      where: { id: postAuthor.id },
+      data: {
+        neighbourWarmth: adjustNeighbourWarmth(
+          postAuthor.neighbourWarmth,
+          NEIGHBOUR_WARMTH_BASE_GAINS.POST_LIKE_RECEIVED,
+        ),
+      },
+    });
+  });
+
+  revalidatePath('/posts');
+  revalidatePath(`/posts/${postId}`);
+  revalidatePath(`/users/${post.authorId}`);
+  revalidatePath('/my/profile');
 }
 
 export async function reportPostAction(formData: FormData) {

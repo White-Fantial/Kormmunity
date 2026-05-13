@@ -570,12 +570,13 @@ async function main() {
   const profileImageUrl = process.env.ADMIN_PROFILE_IMAGE_URL ?? null;
   await prisma.user.upsert({
     where: { kakaoId: adminKakaoId },
-    update: { role: UserRole.ADMIN },
+    update: { role: UserRole.ADMIN, neighbourWarmth: 68.2 },
     create: {
       kakaoId: adminKakaoId,
       displayName: adminDisplayName,
       profileImageUrl,
       role: UserRole.ADMIN,
+      neighbourWarmth: 68.2,
     },
   });
 
