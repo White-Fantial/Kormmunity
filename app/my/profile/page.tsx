@@ -2,6 +2,7 @@ import { requireUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { INVALID_KAKAO_OPEN_LINK_MESSAGE_KO } from '@/lib/kakao-open-link';
 import { NEIGHBOUR_WARMTH_DEFAULT } from '@/lib/neighbour-warmth';
+import { logoutAction } from '@/app/login/actions';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { NeighbourWarmthLabel } from '@/components/ui/neighbour-warmth-label';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
@@ -229,6 +230,16 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
           </ul>
         </div>
       ) : null}
+
+      <div className="border-t border-[#e8e8e8] pt-4">
+        <form action={logoutAction}>
+          <FormSubmitButton
+            idleLabel="로그아웃"
+            pendingLabel="로그아웃 중..."
+            className="w-full rounded-xl border border-[#e8e8e8] px-4 py-3 text-base font-semibold text-[#555] hover:border-[#fee500] hover:bg-[#fffde7]"
+          />
+        </form>
+      </div>
     </section>
   );
 }

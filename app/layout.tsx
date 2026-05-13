@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 
 import './globals.css';
-import { HeaderAuthButton } from '@/components/ui/header-auth-button';
 import { HeaderNavConditional } from '@/components/ui/header-nav-conditional';
 import { HeaderNavLink } from '@/components/ui/header-nav-link';
 
@@ -87,13 +86,11 @@ export default async function RootLayout({
                   width={210}
                   height={149}
                   className="h-8 w-auto sm:h-6"
-                />
-                <span>한인 커뮤니티</span>
-              </Link>
-              <Suspense fallback={<div className="w-16" />}>
-                <HeaderAuthButton />
-              </Suspense>
-            </div>
+                 />
+                 <span>한인 커뮤니티</span>
+               </Link>
+               <div aria-hidden="true" className="h-9 w-9 shrink-0" />
+             </div>
             <nav className="flex gap-2 overflow-x-auto text-sm [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <HeaderNavLink href="/posts">홈</HeaderNavLink>
               <HeaderNavLink href="/posts/new">글쓰기</HeaderNavLink>
