@@ -52,6 +52,22 @@ function normalizeTextArray(values: FormDataEntryValue[]) {
     .filter(Boolean);
 }
 
+function parseBoolean(value: FormDataEntryValue | null) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  if (value === 'true') {
+    return true;
+  }
+
+  if (value === 'false') {
+    return false;
+  }
+
+  return null;
+}
+
 function parsePrice(rawPrice: string) {
   if (!rawPrice) {
     return { value: null as Decimal | null, invalid: false };
@@ -99,6 +115,7 @@ async function validateCategoryPriceAndTags(
       id: true,
       type: true,
       visibilityMode: true,
+      requireCommentBeforeContactDefault: true,
     },
   });
 
@@ -201,6 +218,9 @@ export async function createPostAction(formData: FormData) {
   }
   const contactUrl = normalizedContactUrl || null;
   const uploadedImages = getUploadedImages(formData);
+  const requireCommentBeforeContactInput = parseBoolean(
+    formData.get('requireCommentBeforeContact'),
+  );
 
   try {
     enforceRateLimit({
@@ -270,6 +290,9 @@ export async function createPostAction(formData: FormData) {
         price: categoryResult.price,
         status: 'PUBLISHED',
         contactUrl,
+        requireCommentBeforeContact:
+          requireCommentBeforeContactInput ??
+          categoryResult.category.requireCommentBeforeContactDefault,
       },
     });
 
@@ -358,6 +381,9 @@ export async function updatePostAction(formData: FormData) {
   const contactUrl = normalizedContactUrl || null;
   const uploadedImages = getUploadedImages(formData);
   const deleteImageIds = formData.getAll('deleteImageIds').filter((v): v is string => typeof v === 'string');
+  const requireCommentBeforeContactInput = parseBoolean(
+    formData.get('requireCommentBeforeContact'),
+  );
 
   if (!body) {
     redirect(`/posts/${postId}/edit?error=글 내용을 입력해 주세요.`);
@@ -431,6 +457,9 @@ export async function updatePostAction(formData: FormData) {
         price: isPostInSaleCategory ? categoryResult.price : null,
         status: 'PUBLISHED',
         contactUrl,
+        requireCommentBeforeContact:
+          requireCommentBeforeContactInput ??
+          categoryResult.category.requireCommentBeforeContactDefault,
       },
     });
 

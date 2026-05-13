@@ -28,6 +28,18 @@ const CREATE_COMMENT_RATE_LIMIT = {
   windowMs: 60_000,
 };
 
+export type CreateInteractiveCommentState = {
+  status: 'idle' | 'success' | 'error';
+  message: string | null;
+  createdCommentId: string | null;
+};
+
+const INITIAL_CREATE_INTERACTIVE_COMMENT_STATE: CreateInteractiveCommentState = {
+  status: 'idle',
+  message: null,
+  createdCommentId: null,
+};
+
 function normalizeText(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value.trim() : '';
 }
@@ -40,28 +52,28 @@ function redirectWithPostError(postId: string, message: string): never {
   redirect(`/posts/${postId}?error=${encodeURIComponent(message)}`);
 }
 
-export async function createCommentAction(formData: FormData) {
-  const user = await requireUser();
-  const postId = normalizeText(formData.get('postId'));
-  const body = normalizeText(formData.get('body'));
-
+async function createComment(
+  user: Awaited<ReturnType<typeof requireUser>>,
+  postId: string,
+  body: string,
+) {
   if (!postId) {
-    redirect('/posts');
+    return { ok: false as const, message: '잘못된 게시글입니다.' };
   }
 
   if (!canCreateComment(user)) {
-    redirectWithPostError(postId, '댓글을 작성할 권한이 없습니다.');
+    return { ok: false as const, message: '댓글을 작성할 권한이 없습니다.' };
   }
 
   if (!body) {
-    redirectWithPostError(postId, '댓글 내용을 입력해 주세요.');
+    return { ok: false as const, message: '댓글 내용을 입력해 주세요.' };
   }
 
   if (body.length > MAX_COMMENT_BODY_LENGTH) {
-    redirectWithPostError(
-      postId,
-      `댓글은 ${MAX_COMMENT_BODY_LENGTH}자 이하로 작성해 주세요.`,
-    );
+    return {
+      ok: false as const,
+      message: `댓글은 ${MAX_COMMENT_BODY_LENGTH}자 이하로 작성해 주세요.`,
+    };
   }
 
   try {
@@ -74,11 +86,13 @@ export async function createCommentAction(formData: FormData) {
 
     assertNoSpamText(body, '광고/도배로 보이는 댓글은 등록할 수 없어요.');
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : '댓글을 등록할 수 없어요. 잠시 후 다시 시도해 주세요.';
-    redirectWithPostError(postId, message);
+    return {
+      ok: false as const,
+      message:
+        error instanceof Error
+          ? error.message
+          : '댓글을 등록할 수 없어요. 잠시 후 다시 시도해 주세요.',
+    };
   }
 
   const post = await prisma.post.findUnique({
@@ -93,23 +107,24 @@ export async function createCommentAction(formData: FormData) {
   });
 
   if (!post || post.status !== 'PUBLISHED') {
-    redirectWithPostError(postId, '댓글을 작성할 수 없는 게시글입니다.');
+    return { ok: false as const, message: '댓글을 작성할 수 없는 게시글입니다.' };
   }
 
-  await prisma.comment.create({
+  const comment = await prisma.comment.create({
     data: {
       postId,
       authorId: user.id,
       body,
       status: COMMENT_STATUS.PUBLISHED,
     },
+    select: { id: true },
   });
 
-  if (post!.authorId !== user.id) {
+  if (post.authorId !== user.id) {
     void notifyCommentForPost({
       postId,
-      postTitle: post!.title,
-      postBody: post!.body,
+      postTitle: post.title,
+      postBody: post.body,
       commenterDisplayName: user.displayName,
       commentBody: body,
     }).catch((error) => {
@@ -123,6 +138,52 @@ export async function createCommentAction(formData: FormData) {
   });
 
   revalidatePath(`/posts/${postId}`);
+
+  return {
+    ok: true as const,
+    postId,
+    commentId: comment.id,
+  };
+}
+
+export async function createCommentAction(formData: FormData) {
+  const user = await requireUser();
+  const postId = normalizeText(formData.get('postId'));
+  const body = normalizeText(formData.get('body'));
+
+  if (!postId) {
+    redirect('/posts');
+  }
+
+  const result = await createComment(user, postId, body);
+
+  if (!result.ok) {
+    redirectWithPostError(postId, result.message);
+  }
+}
+
+export async function createInteractiveCommentAction(
+  _prevState: CreateInteractiveCommentState = INITIAL_CREATE_INTERACTIVE_COMMENT_STATE,
+  formData: FormData,
+): Promise<CreateInteractiveCommentState> {
+  const user = await requireUser();
+  const postId = normalizeText(formData.get('postId'));
+  const body = normalizeText(formData.get('body'));
+  const result = await createComment(user, postId, body);
+
+  if (!result.ok) {
+    return {
+      status: 'error',
+      message: result.message,
+      createdCommentId: null,
+    };
+  }
+
+  return {
+    status: 'success',
+    message: '댓글이 등록되었어요.',
+    createdCommentId: result.commentId,
+  };
 }
 
 export async function deleteCommentAction(formData: FormData) {

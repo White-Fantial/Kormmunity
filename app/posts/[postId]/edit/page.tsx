@@ -47,6 +47,7 @@ export default async function EditPostPage({
         price: true,
         status: true,
         contactUrl: true,
+        requireCommentBeforeContact: true,
         images: {
           select: { id: true, url: true },
           orderBy: { sortOrder: 'asc' },
@@ -84,6 +85,7 @@ export default async function EditPostPage({
             label: category.name,
             type: category.type,
             visibilityMode: category.visibilityMode,
+            requireCommentBeforeContactDefault: category.requireCommentBeforeContactDefault,
             postTagOptions: category.postTagOptions,
           }))}
           allowedTargets={formOptions.allowedTargets}
@@ -101,6 +103,7 @@ export default async function EditPostPage({
             postTagOptionIds: post.tags.map((tag) => tag.postTagOptionId),
             price: post.price?.toString() ?? '',
             contactUrl: post.contactUrl,
+            requireCommentBeforeContact: post.requireCommentBeforeContact,
             images: post.images,
           }}
         />

@@ -30,6 +30,8 @@
 - 댓글 기능
   - 게시글 상세에서 댓글 작성/조회
   - 본인 댓글 삭제 (코디네이터/관리자 삭제 가능)
+  - 카테고리별 quick comment template 버튼
+  - Comment-before-contact 게이트 및 댓글 작성 후 즉시 Kakao 연락 해제
 - Neighbour Warmth 상호작용
   - 게시글/댓글 좋아요, 베스트 댓글 지정
   - 이웃온기 점수(0~100) 및 단계 라벨 표시
@@ -38,6 +40,8 @@
   - 프로필 오픈채팅 링크 등록
   - 게시글별 연락 링크 override
   - 게시글 상세 연락 버튼/미등록 fallback
+  - 카테고리 기본값 기반 `Require comment before Kakao contact` 설정
+  - 판매/나눔 등 투명성이 중요한 글에서 공개 댓글 후 1회 연락 해제
 - 코디네이터 운영 기능
   - 보류/재게시
   - 사용자 관리자 검토 요청
@@ -70,6 +74,27 @@
   - `CommunityScoreEvent` 감사 로그 테이블 추가
   - 코디네이터/관리자 화면에 점수 및 신고 수 표시
   - 상세 문서: `docs/community-score-moderation.md`
+
+## Comment-before-contact system
+- 카테고리별로 `requireCommentBeforeContactDefault` 값을 설정할 수 있습니다.
+- 게시글 작성자는 글 단위로 기본값을 override 할 수 있습니다.
+- 글 작성자 본인과 코디네이터/관리자는 게이트를 우회합니다.
+- 일반 사용자는 삭제/보류되지 않은 댓글 1개만 남겨도 Kakao 연락 버튼이 즉시 열립니다.
+
+## Category quick comment templates
+- 카테고리별 `quickCommentTemplates` JSON 배열로 상세 페이지 quick reply chip을 구성합니다.
+- SALE / GIVEAWAY / RECRUIT / QUESTION 카테고리는 기본 quick template seed를 제공합니다.
+- quick template 클릭 시 댓글 입력창이 즉시 채워져 공개 상호작용을 더 빠르게 유도합니다.
+
+## Community engagement strategy
+- 거래/나눔 글에서 비공개 연락 전에 공개 댓글을 유도해 중복 문의를 줄입니다.
+- quick comment template로 첫 댓글 진입 장벽을 낮춰 커뮤니티 대화를 늘립니다.
+- 공개 질문/답변이 누적되어 같은 문의를 반복하지 않아도 되는 정보 자산을 만듭니다.
+
+## Trade transparency benefits
+- “Still available?” 같은 기본 질문을 공개 댓글로 남기면 다른 사용자도 상태를 확인할 수 있습니다.
+- 픽업 위치/가능 시간/가격 협의 여부가 공개되면 거래 신뢰도와 속도가 높아집니다.
+- 삭제/보류 댓글은 연락 해제 조건에서 제외되어 운영 투명성을 유지합니다.
 
 ## Not Yet Implemented
 - 분석 이벤트 외부 대시보드 연동

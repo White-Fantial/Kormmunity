@@ -149,6 +149,8 @@ model Category {
   type           CategoryType           @default(GENERAL)
   visibilityMode CategoryVisibilityMode @default(NORMAL)
   color          String?
+  requireCommentBeforeContactDefault Boolean @default(false)
+  quickCommentTemplates Json?
   isActive       Boolean                @default(true)
   sortOrder      Int                    @default(0)
   posts          Post[]
@@ -204,6 +206,7 @@ model Post {
   price           Decimal?     @db.Decimal(10, 2)
   status          PostStatus   @default(PUBLISHED)
   communityScore  Float        @default(0)
+  requireCommentBeforeContact Boolean @default(false)
   isPinned        Boolean      @default(false)
   pinnedAt        DateTime?
   heldReason      String?

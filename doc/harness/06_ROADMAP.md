@@ -48,6 +48,8 @@
 - Show comments
 - Delete own comment
 - Basic comment moderation-ready status field
+- Add category quick comment templates
+- Unlock Kakao contact after one valid public comment when enabled
 
 ## Phase 6 — Filters and Search-ready Structure
 - Category filter
@@ -61,6 +63,8 @@
 - Contact button on post detail
 - Fallback message when no contact link exists
 - Optional per-post contact link override
+- Add per-category default for comment-before-contact
+- Let authors override comment-before-contact per post
 
 ## Phase 8 — Coordinator Moderation
 - Coordinator dashboard

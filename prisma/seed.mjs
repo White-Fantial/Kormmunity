@@ -226,6 +226,8 @@ const categories = [
     type: CategoryType.GENERAL,
     visibilityMode: CategoryVisibilityMode.NORMAL,
     color: '#3B82F6',
+    requireCommentBeforeContactDefault: false,
+    quickCommentTemplates: ['Thanks for sharing.', 'Following this post.', 'Can you share more details?'],
   },
   {
     name: '질문답변',
@@ -233,6 +235,8 @@ const categories = [
     type: CategoryType.QUESTION,
     visibilityMode: CategoryVisibilityMode.NORMAL,
     color: '#8B5CF6',
+    requireCommentBeforeContactDefault: false,
+    quickCommentTemplates: ['I have the same question.', 'Following this post.'],
   },
   {
     name: '중고거래',
@@ -240,6 +244,13 @@ const categories = [
     type: CategoryType.SALE,
     visibilityMode: CategoryVisibilityMode.NORMAL,
     color: '#10B981',
+    requireCommentBeforeContactDefault: true,
+    quickCommentTemplates: [
+      'Still available?',
+      'Where is pickup?',
+      'Can I pick up today?',
+      'Is price negotiable?',
+    ],
   },
   {
     name: '무료나눔',
@@ -247,6 +258,8 @@ const categories = [
     type: CategoryType.GIVEAWAY,
     visibilityMode: CategoryVisibilityMode.NORMAL,
     color: '#06B6D4',
+    requireCommentBeforeContactDefault: true,
+    quickCommentTemplates: ['Is this still available?', 'When can I pick it up?'],
   },
   {
     name: '구인구직',
@@ -254,6 +267,12 @@ const categories = [
     type: CategoryType.RECRUIT,
     visibilityMode: CategoryVisibilityMode.NORMAL,
     color: '#F59E0B',
+    requireCommentBeforeContactDefault: false,
+    quickCommentTemplates: [
+      'Are you still hiring?',
+      'Can you share work hours?',
+      'What is the pay range?',
+    ],
   },
   {
     name: '주거',
@@ -261,6 +280,12 @@ const categories = [
     type: CategoryType.HOUSING,
     visibilityMode: CategoryVisibilityMode.NORMAL,
     color: '#EC4899',
+    requireCommentBeforeContactDefault: false,
+    quickCommentTemplates: [
+      'Is this still available?',
+      'Can you share the move-in date?',
+      'Is parking included?',
+    ],
   },
   {
     name: '업체/서비스',
@@ -268,6 +293,12 @@ const categories = [
     type: CategoryType.SERVICE,
     visibilityMode: CategoryVisibilityMode.NORMAL,
     color: '#6366F1',
+    requireCommentBeforeContactDefault: false,
+    quickCommentTemplates: [
+      'Can you share pricing?',
+      'Do you have recent reviews?',
+      'How can I book this service?',
+    ],
   },
   {
     name: '모임/이벤트',
@@ -275,6 +306,8 @@ const categories = [
     type: CategoryType.EVENT,
     visibilityMode: CategoryVisibilityMode.NORMAL,
     color: '#F97316',
+    requireCommentBeforeContactDefault: false,
+    quickCommentTemplates: ['I am interested.', 'Is registration still open?', 'Can I bring a friend?'],
   },
   {
     name: '컬럼',
@@ -282,6 +315,8 @@ const categories = [
     type: CategoryType.COLUMN,
     visibilityMode: CategoryVisibilityMode.NORMAL,
     color: '#64748B',
+    requireCommentBeforeContactDefault: false,
+    quickCommentTemplates: ['Thanks for sharing.', 'Following this post.', 'This was helpful.'],
   },
   {
     name: '광고',
@@ -289,6 +324,8 @@ const categories = [
     type: CategoryType.ADVERTISEMENT,
     visibilityMode: CategoryVisibilityMode.ALWAYS_INCLUDED,
     color: '#EF4444',
+    requireCommentBeforeContactDefault: false,
+    quickCommentTemplates: ['Can you share current pricing?', 'Is there a limited-time offer?', 'How do I contact you?'],
   },
   {
     name: '공지사항',
@@ -296,6 +333,8 @@ const categories = [
     type: CategoryType.NOTICE,
     visibilityMode: CategoryVisibilityMode.ALWAYS_INCLUDED,
     color: '#FACC15',
+    requireCommentBeforeContactDefault: false,
+    quickCommentTemplates: ['Following this update.', 'Thanks for the notice.'],
   },
 ];
 
@@ -513,6 +552,8 @@ async function main() {
           type: category.type,
           visibilityMode: category.visibilityMode,
           color: category.color,
+          requireCommentBeforeContactDefault: category.requireCommentBeforeContactDefault,
+          quickCommentTemplates: category.quickCommentTemplates,
           isActive: true,
           sortOrder: index,
         },
@@ -522,6 +563,8 @@ async function main() {
           type: category.type,
           visibilityMode: category.visibilityMode,
           color: category.color,
+          requireCommentBeforeContactDefault: category.requireCommentBeforeContactDefault,
+          quickCommentTemplates: category.quickCommentTemplates,
           isActive: true,
           sortOrder: index,
         },

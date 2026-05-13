@@ -10,7 +10,6 @@ import {
 } from '@/app/posts/actions';
 import { savePostAction, unsavePostAction } from '@/app/posts/saved-actions';
 import {
-  createCommentAction,
   deleteCommentAction,
   toggleCommentLikeAction,
   setBestCommentAction,
@@ -24,6 +23,11 @@ import {
   restoreCommentAction,
 } from '@/app/coordinator/actions';
 import { DeletePostButton } from '@/components/posts/delete-post-button';
+import {
+  PostCommentComposer,
+  PostContactAction,
+  PostEngagementProvider,
+} from '@/components/posts/post-engagement';
 import { PostImageGallery } from '@/components/posts/post-image-gallery';
 import { PostTagBadge, withPostTagPrefix } from '@/components/posts/post-tag-badge';
 import { PostShareButton } from '@/components/posts/post-share-button';
@@ -110,6 +114,7 @@ const getPostWithDetails = cache(async (postId: string) => {
             name: true,
             type: true,
             color: true,
+            quickCommentTemplates: true,
           },
         },
         tags: {
@@ -384,6 +389,26 @@ export default async function PostDetailPage({
   }
 
   const isOwner = currentUser?.id === post.authorId;
+  const canBypassCommentGate = currentUser ? canHoldPost(currentUser) : false;
+  const hasValidCommentForContact =
+    currentUser && !isOwner && post.requireCommentBeforeContact && !canBypassCommentGate
+      ? Boolean(
+          await prisma.comment.findFirst({
+            where: {
+              postId: post.id,
+              authorId: currentUser.id,
+              status: 'PUBLISHED',
+            },
+            select: { id: true },
+          }),
+        )
+      : false;
+  const quickCommentTemplates = Array.isArray(post.category.quickCommentTemplates)
+    ? post.category.quickCommentTemplates.filter(
+        (template): template is string =>
+          typeof template === 'string' && template.trim().length > 0,
+      )
+    : [];
   const outlineActionButtonClass =
     'inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#e8e8e8] px-4 py-2 text-sm font-medium hover:bg-[#f9f9f9]';
   const primaryActionButtonClass =
@@ -485,169 +510,167 @@ export default async function PostDetailPage({
         />
       </div>
 
-      {contactUrl ? (
-        <a
-          href={contactUrl}
-          target="_blank"
-          rel="noreferrer"
-          className={primaryActionButtonClass}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
-            <path fill="currentColor" d="M12 3C6.477 3 2 6.477 2 10.8c0 2.7 1.62 5.085 4.073 6.525L5.1 21l4.89-2.925c.65.09 1.32.135 2.01.135 5.523 0 10-3.477 10-7.8S17.523 3 12 3z" />
-          </svg>
-          카카오톡으로 연락하기
-        </a>
-      ) : (
-        <p className="text-sm text-[#888]">작성자가 연락 링크를 등록하지 않았어요.</p>
-      )}
-      {isOwner ? (
-        <div className="grid grid-cols-2 gap-2 border-t border-[#e8e8e8] pt-4">
-          <Link href={`/posts/${post.id}/edit`} className={outlineActionButtonClass}>
-            수정
-          </Link>
-          <DeletePostButton
-            postId={post.id}
-            className={dangerActionButtonClass}
-          />
-        </div>
-      ) : null}
+      <PostEngagementProvider
+        contactUrl={contactUrl}
+        requireCommentBeforeContact={post.requireCommentBeforeContact}
+        initialHasUnlockedContact={hasValidCommentForContact}
+        isOwner={isOwner}
+        bypassGate={canBypassCommentGate}
+        quickCommentTemplates={quickCommentTemplates}
+      >
+        <PostContactAction
+          contactUrl={contactUrl}
+          primaryActionButtonClass={primaryActionButtonClass}
+        />
+        {isOwner ? (
+          <div className="grid grid-cols-2 gap-2 border-t border-[#e8e8e8] pt-4">
+            <Link href={`/posts/${post.id}/edit`} className={outlineActionButtonClass}>
+              수정
+            </Link>
+            <DeletePostButton
+              postId={post.id}
+              className={dangerActionButtonClass}
+            />
+          </div>
+        ) : null}
 
-      {canSubmitReport && reportOptions.length > 0 ? (
-        <section className="border-t border-[#e8e8e8] pt-4">
-          <details className="group space-y-2">
-            <summary className="flex cursor-pointer list-none items-center justify-between rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">
-              <span>신고하기</span>
-              <span aria-hidden="true" className="text-xs text-red-400 transition-transform group-open:rotate-180">
-                ▼
-              </span>
-            </summary>
-            <div className="space-y-2 pt-2">
-              {myReport ? (
-                <p className="text-xs text-[#888]">
-                  이미 신고한 글입니다. 다시 제출하면 신고 내용이 업데이트됩니다.
-                </p>
-              ) : null}
-              <form action={reportPostAction} className="space-y-2">
-                <input type="hidden" name="postId" value={post.id} />
-                <label htmlFor="report-option" className="text-xs text-[#555]">
-                  신고 사유
-                </label>
-                <select
-                  id="report-option"
-                  name="optionId"
-                  defaultValue={myReport?.optionId ?? ''}
-                  required
-                  className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
-                >
-                  <option value="" disabled>
-                    신고 사유를 선택해 주세요
-                  </option>
-                  {reportOptions.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <label htmlFor="report-additional-reason" className="text-xs text-[#555]">
-                  추가 사유 (선택)
-                </label>
-                <textarea
-                  id="report-additional-reason"
-                  name="additionalReason"
-                  rows={3}
-                  maxLength={500}
-                  defaultValue={myReport?.additionalReason ?? ''}
-                  placeholder="옵션 외 추가로 설명할 내용이 있다면 입력해 주세요."
-                  className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
-                />
-                <FormSubmitButton
-                  idleLabel={myReport ? '신고 내용 수정' : '신고 접수'}
-                  pendingLabel="접수 중..."
-                  className="rounded-xl border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-                />
-              </form>
-            </div>
-          </details>
-        </section>
-      ) : null}
-
-      {isCoordinator ? (
-        <div className="flex flex-wrap gap-2 border-t border-[#e8e8e8] pt-4">
-          <span className="w-full text-xs text-[#aaa]">운영 관리</span>
-          {post.status === 'PUBLISHED' && currentUser && canHoldPost(currentUser) ? (
-            <details>
-              <summary className="cursor-pointer rounded-xl border border-yellow-300 bg-[#fffde7] px-3 py-2 text-sm font-medium text-[#7a6000]">
-                보류 처리
+        {canSubmitReport && reportOptions.length > 0 ? (
+          <section className="border-t border-[#e8e8e8] pt-4">
+            <details className="group space-y-2">
+              <summary className="flex cursor-pointer list-none items-center justify-between rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">
+                <span>신고하기</span>
+                <span aria-hidden="true" className="text-xs text-red-400 transition-transform group-open:rotate-180">
+                  ▼
+                </span>
               </summary>
-              <form action={holdPostAction} className="mt-2 space-y-2">
+              <div className="space-y-2 pt-2">
+                {myReport ? (
+                  <p className="text-xs text-[#888]">
+                    이미 신고한 글입니다. 다시 제출하면 신고 내용이 업데이트됩니다.
+                  </p>
+                ) : null}
+                <form action={reportPostAction} className="space-y-2">
+                  <input type="hidden" name="postId" value={post.id} />
+                  <label htmlFor="report-option" className="text-xs text-[#555]">
+                    신고 사유
+                  </label>
+                  <select
+                    id="report-option"
+                    name="optionId"
+                    defaultValue={myReport?.optionId ?? ''}
+                    required
+                    className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
+                  >
+                    <option value="" disabled>
+                      신고 사유를 선택해 주세요
+                    </option>
+                    {reportOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <label htmlFor="report-additional-reason" className="text-xs text-[#555]">
+                    추가 사유 (선택)
+                  </label>
+                  <textarea
+                    id="report-additional-reason"
+                    name="additionalReason"
+                    rows={3}
+                    maxLength={500}
+                    defaultValue={myReport?.additionalReason ?? ''}
+                    placeholder="옵션 외 추가로 설명할 내용이 있다면 입력해 주세요."
+                    className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
+                  />
+                  <FormSubmitButton
+                    idleLabel={myReport ? '신고 내용 수정' : '신고 접수'}
+                    pendingLabel="접수 중..."
+                    className="rounded-xl border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                  />
+                </form>
+              </div>
+            </details>
+          </section>
+        ) : null}
+
+        {isCoordinator ? (
+          <div className="flex flex-wrap gap-2 border-t border-[#e8e8e8] pt-4">
+            <span className="w-full text-xs text-[#aaa]">운영 관리</span>
+            {post.status === 'PUBLISHED' && currentUser && canHoldPost(currentUser) ? (
+              <details>
+                <summary className="cursor-pointer rounded-xl border border-yellow-300 bg-[#fffde7] px-3 py-2 text-sm font-medium text-[#7a6000]">
+                  보류 처리
+                </summary>
+                <form action={holdPostAction} className="mt-2 space-y-2">
+                  <input type="hidden" name="postId" value={post.id} />
+                  <input
+                    type="text"
+                    name="reason"
+                    placeholder="보류 사유 (선택)"
+                    className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
+                  />
+                  <FormSubmitButton
+                    idleLabel="보류 확정"
+                    pendingLabel="처리 중..."
+                    className="rounded-xl bg-[#fee500] px-3 py-2 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
+                  />
+                </form>
+              </details>
+            ) : null}
+            {post.status === 'HELD' && currentUser && canRestorePost(currentUser) ? (
+              <form action={restorePostAction}>
                 <input type="hidden" name="postId" value={post.id} />
-                <input
-                  type="text"
-                  name="reason"
-                  placeholder="보류 사유 (선택)"
-                  className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
-                />
                 <FormSubmitButton
-                  idleLabel="보류 확정"
+                  idleLabel="재게시"
                   pendingLabel="처리 중..."
-                  className="rounded-xl bg-[#fee500] px-3 py-2 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
+                  className="rounded-xl border border-green-300 px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-50"
                 />
               </form>
-            </details>
-          ) : null}
-          {post.status === 'HELD' && currentUser && canRestorePost(currentUser) ? (
-            <form action={restorePostAction}>
-              <input type="hidden" name="postId" value={post.id} />
-              <FormSubmitButton
-                idleLabel="재게시"
-                pendingLabel="처리 중..."
-                className="rounded-xl border border-green-300 px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-50"
-              />
-            </form>
-          ) : null}
-        </div>
-      ) : null}
+            ) : null}
+          </div>
+        ) : null}
 
-      <Suspense
-        fallback={(
-          <section className="grid grid-cols-1 gap-2 border-t border-[#e8e8e8] pt-4 sm:grid-cols-2">
-            <button type="button" disabled className={`${outlineActionButtonClass} text-[#888]`}>
-              이전 글을 불러오는 중...
-            </button>
-            <button type="button" disabled className={`${outlineActionButtonClass} text-[#888]`}>
-              다음 글을 불러오는 중...
-            </button>
-          </section>
-        )}
-      >
-        <AdjacentPostsSection
-          post={post}
-          query={query}
-          currentUser={currentUser}
-          createPostHref={createPostHref}
-          outlineActionButtonClass={outlineActionButtonClass}
-        />
-      </Suspense>
+        <Suspense
+          fallback={(
+            <section className="grid grid-cols-1 gap-2 border-t border-[#e8e8e8] pt-4 sm:grid-cols-2">
+              <button type="button" disabled className={`${outlineActionButtonClass} text-[#888]`}>
+                이전 글을 불러오는 중...
+              </button>
+              <button type="button" disabled className={`${outlineActionButtonClass} text-[#888]`}>
+                다음 글을 불러오는 중...
+              </button>
+            </section>
+          )}
+        >
+          <AdjacentPostsSection
+            post={post}
+            query={query}
+            currentUser={currentUser}
+            createPostHref={createPostHref}
+            outlineActionButtonClass={outlineActionButtonClass}
+          />
+        </Suspense>
 
-      <Suspense
-        fallback={(
-          <section className="space-y-3 border-t border-[#e8e8e8] pt-4">
-            <h2 className="text-base font-bold">댓글 {post._count.comments}</h2>
-            <p className="text-sm text-[#888]">댓글을 불러오는 중...</p>
-          </section>
-        )}
-      >
-        <CommentsSection
-          postId={post.id}
-          postAuthorId={post.authorId}
-          bestCommentId={post.bestCommentId}
-          commentCount={post._count.comments}
-          currentUser={currentUser}
-          reportOptions={reportOptions}
-          isCoordinator={isCoordinator}
-          query={query}
-        />
-      </Suspense>
+        <Suspense
+          fallback={(
+            <section className="space-y-3 border-t border-[#e8e8e8] pt-4">
+              <h2 className="text-base font-bold">댓글 {post._count.comments}</h2>
+              <p className="text-sm text-[#888]">댓글을 불러오는 중...</p>
+            </section>
+          )}
+        >
+          <CommentsSection
+            postId={post.id}
+            postAuthorId={post.authorId}
+            bestCommentId={post.bestCommentId}
+            commentCount={post._count.comments}
+            currentUser={currentUser}
+            reportOptions={reportOptions}
+            isCoordinator={isCoordinator}
+            query={query}
+          />
+        </Suspense>
+      </PostEngagementProvider>
     </article>
   );
 }
@@ -998,34 +1021,9 @@ async function CommentsSection({
       <h2 className="text-base font-bold">댓글 {commentCount}</h2>
 
       {currentUser ? (
-        <form action={createCommentAction} className="space-y-2">
-          <input type="hidden" name="postId" value={postId} />
-          <label htmlFor="comment-body" className="sr-only">
-            댓글 입력
-          </label>
-          <textarea
-            id="comment-body"
-            name="body"
-            required
-            rows={3}
-            maxLength={500}
-            placeholder="댓글을 남겨보세요."
-            className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
-          />
-          <FormSubmitButton
-            idleLabel="댓글 작성"
-            pendingLabel="등록 중..."
-            className="rounded-xl bg-[#fee500] px-4 py-2 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
-          />
-        </form>
+        <PostCommentComposer postId={postId} currentUserLoggedIn />
       ) : (
-        <p className="text-sm text-[#888]">
-          댓글을 작성하려면{' '}
-          <Link href="/login" className="font-semibold text-[#3c1e1e] underline">
-            로그인
-          </Link>{' '}
-          이 필요해요.
-        </p>
+        <PostCommentComposer postId={postId} currentUserLoggedIn={false} />
       )}
 
       {visibleComments.length === 0 ? (

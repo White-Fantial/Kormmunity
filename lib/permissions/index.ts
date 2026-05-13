@@ -43,6 +43,7 @@ export type PostFormCategoryOption = {
   name: string;
   type: CategoryType;
   visibilityMode: CategoryVisibilityMode;
+  requireCommentBeforeContactDefault: boolean;
   postTagOptions: {
     id: string;
     label: string;
