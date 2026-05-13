@@ -59,7 +59,7 @@ export default async function UserProfilePage({ params, searchParams }: UserProf
     notFound();
   }
 
-  const [posts, receivedPostLikesCount, receivedCommentLikesCount, bestCommentAwardCount] = await Promise.all([
+  const [posts, receivedPostLikesCount, receivedCommentLikesCount, userBestCommentCount] = await Promise.all([
     prisma.post.findMany({
       where: {
         authorId: userId,
@@ -169,7 +169,7 @@ export default async function UserProfilePage({ params, searchParams }: UserProf
           </div>
           <div className="flex gap-2">
             <dt className="font-medium text-[#333]">베스트 댓글</dt>
-            <dd>{bestCommentAwardCount}개</dd>
+            <dd>{userBestCommentCount}개</dd>
           </div>
         </dl>
       </div>
