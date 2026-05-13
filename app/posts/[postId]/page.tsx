@@ -56,8 +56,6 @@ import { decodeCursor, encodeCursor } from '@/lib/posts/cursor';
 import { buildPinnedPostCursorWhere, PINNED_POST_ORDER_ASC, PINNED_POST_ORDER_DESC } from '@/lib/posts/pinned-order';
 import { measureServerTiming } from '@/lib/performance/server';
 
-export const runtime = "nodejs";
-export const preferredRegion = "syd1";
 
 const TITLE_PREVIEW_LENGTH = 40;
 const DESCRIPTION_PREVIEW_LENGTH = 80;

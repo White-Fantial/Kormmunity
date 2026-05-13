@@ -8,8 +8,6 @@ import { canEditPost, getPostCreationFormOptions } from '@/lib/permissions';
 import { getProfileCityRequiredHref, hasValidProfileCity } from '@/lib/posts/profile-city';
 
 
-export const runtime = "nodejs";
-export const preferredRegion = "syd1";
 
 export const dynamic = 'force-dynamic';
 

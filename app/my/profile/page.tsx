@@ -13,8 +13,6 @@ import {
   updateSearchAlertAction,
 } from '@/app/posts/search-alert-actions';
 
-export const runtime = "nodejs";
-export const preferredRegion = "syd1";
 
 export const dynamic = 'force-dynamic';
 

@@ -12,8 +12,6 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { canMakeFinalUserDecision, USER_ROLES } from '@/lib/permissions';
 
-export const runtime = "nodejs";
-export const preferredRegion = "syd1";
 
 export const dynamic = 'force-dynamic';
 

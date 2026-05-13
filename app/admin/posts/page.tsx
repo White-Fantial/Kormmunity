@@ -10,8 +10,6 @@ import { truncatePostBody } from '@/lib/posts/constants';
 import { PINNED_POST_ORDER_DESC } from '@/lib/posts/pinned-order';
 
 
-export const runtime = "nodejs";
-export const preferredRegion = "syd1";
 
 export const dynamic = 'force-dynamic';
 

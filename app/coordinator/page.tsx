@@ -16,8 +16,6 @@ import { canHoldPost } from '@/lib/permissions';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { truncatePostBody } from '@/lib/posts/constants';
 
-export const runtime = "nodejs";
-export const preferredRegion = "syd1";
 
 export const dynamic = 'force-dynamic';
 

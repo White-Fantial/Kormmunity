@@ -16,8 +16,6 @@ import { getActiveCategories, getActiveCities, getActiveCitiesByCountry } from '
 import { measureServerTiming } from '@/lib/performance/server';
 
 
-export const runtime = "nodejs";
-export const preferredRegion = "syd1";
 
 export const metadata: Metadata = {
   title: '홈',

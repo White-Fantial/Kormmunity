@@ -9,8 +9,6 @@ import { prisma } from '@/lib/db/prisma';
 import { exchangeCodeForToken, getKakaoUserInfo } from '@/lib/kakao/oauth';
 
 
-export const runtime = "nodejs";
-export const preferredRegion = "syd1";
 
 const STATE_COOKIE = 'kakao_oauth_state';
 const DEFAULT_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;

@@ -16,8 +16,6 @@ import {
 } from '@/app/coordinator/actions';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 
-export const runtime = "nodejs";
-export const preferredRegion = "syd1";
 
 export const dynamic = 'force-dynamic';
 

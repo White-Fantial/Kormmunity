@@ -8,7 +8,7 @@
 - ORM: Prisma
 - Auth: NextAuth/Auth.js with Kakao provider, or custom Kakao OAuth flow
 - Image Upload: Cloudinary free tier, UploadThing, Supabase Storage, or S3-compatible storage
-- Hosting: Vercel, AWS Amplify, or similar
+- Hosting: AWS Amplify (권장), or similar
 
 ## Suggested MVP Choices
 초기 MVP에서는 다음 조합을 권장한다:

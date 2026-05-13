@@ -11,8 +11,6 @@ import { decodeCursor, encodeCursor } from '@/lib/posts/cursor';
 import { measureServerTiming } from '@/lib/performance/server';
 
 
-export const runtime = "nodejs";
-export const preferredRegion = "syd1";
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {

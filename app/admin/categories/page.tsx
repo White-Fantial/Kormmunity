@@ -15,8 +15,6 @@ import { prisma } from '@/lib/db/prisma';
 import { canMakeFinalUserDecision } from '@/lib/permissions';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 
-export const runtime = "nodejs";
-export const preferredRegion = "syd1";
 
 export const dynamic = 'force-dynamic';
 
