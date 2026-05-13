@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { Analytics } from '@vercel/analytics/next';
 
 import './globals.css';
 import { HeaderAuthButton } from '@/components/ui/header-auth-button';
@@ -105,6 +106,7 @@ export default async function RootLayout({
           <main className="flex-1 p-4">{children}</main>
         </div>
         <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
