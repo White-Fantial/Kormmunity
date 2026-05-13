@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import type { CategoryType } from '@prisma/client';
-import { HomeStatsBar } from '@/components/home/HomeStatsBar';
 import { PublicHomeHero } from '@/components/home/PublicHomeHero';
 import { PostCard } from '@/components/posts/post-card';
 import { EmptyStateMessage } from '@/components/ui/empty-state-message';
@@ -37,7 +36,6 @@ type PostsPageProps = {
 
 const PAGE_SIZE = 20;
 const BODY_PREVIEW_LENGTH = 220;
-const DEFAULT_POPULAR_KEYWORDS = ['플랫', '중고', '구인'];
 
 function toArray(value: string | string[] | undefined) {
   if (!value) {
@@ -65,15 +63,9 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
 
   const userCountryId = currentUser?.countryId ?? null;
 
-  const [categories, cities, popularKeywordOptions] = await Promise.all([
+  const [categories, cities] = await Promise.all([
     getActiveCategories(),
     userCountryId ? getActiveCitiesByCountry(userCountryId) : getActiveCities(),
-    prisma.postTagOption.findMany({
-      where: { isActive: true },
-      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
-      take: 3,
-      select: { label: true },
-    }),
   ]);
 
   const alwaysIncludedCategories = categories.filter(
@@ -377,14 +369,6 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
   }
 
   const hasFilters = shouldFilterByCountry || shouldFilterByCategory || shouldFilterByCity || hasKeyword;
-  const todayUTCStart = new Date();
-  todayUTCStart.setUTCHours(0, 0, 0, 0);
-  const statsTodayNewPosts = await prisma.post.count({
-    where: {
-      status: 'PUBLISHED',
-      createdAt: { gte: todayUTCStart },
-    },
-  });
   const firstPost = normalizedPosts[0];
   const lastPost = normalizedPosts[normalizedPosts.length - 1];
   const prevCursor = firstPost
@@ -412,20 +396,9 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
         title: '아직 올라온 글이 없어요.',
         description: '첫 글을 남겨서 동네 소식을 나눠보세요.',
       };
-  const statsActiveCityCount = cities.length;
-  const popularKeywords =
-    popularKeywordOptions.length > 0
-      ? popularKeywordOptions.map((option) => option.label)
-      : DEFAULT_POPULAR_KEYWORDS;
-
   return (
     <section className="space-y-4">
       {!currentUser && <PublicHomeHero />}
-      <HomeStatsBar
-        todayNewPosts={statsTodayNewPosts}
-        activeCityCount={statsActiveCityCount}
-        popularKeywords={popularKeywords}
-      />
 
       {params.success ? (
         <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
