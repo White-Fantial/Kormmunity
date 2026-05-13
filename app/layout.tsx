@@ -83,7 +83,7 @@ export default async function RootLayout({
                   alt="Kormmunity logo"
                   width={210}
                   height={149}
-                  className="h-6 w-auto"
+                  className="h-8 w-auto sm:h-6"
                 />
                 <span>한인 커뮤니티</span>
               </Link>
