@@ -16,6 +16,7 @@ import {
   COMMUNITY_SCORE_BASE_DELTAS,
   applyCommunityScoreChange,
 } from '@/lib/community-score';
+import { createNotification } from '@/lib/notifications';
 
 function normalizeText(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value.trim() : '';
@@ -55,7 +56,7 @@ export async function holdPostAction(formData: FormData) {
 
   const post = await prisma.post.findUnique({
     where: { id: postId },
-    select: { id: true, status: true },
+    select: { id: true, status: true, authorId: true },
   });
 
   if (!post || post.status === 'DELETED') {
@@ -97,6 +98,14 @@ export async function holdPostAction(formData: FormData) {
     reason: 'COORDINATOR_HOLDS',
   }).catch((err) => {
     console.error('[holdPostAction] community score update failed', err);
+  });
+
+  void createNotification({
+    recipientId: post.authorId,
+    type: 'POST_HELD',
+    relatedPostId: postId,
+  }).catch((err) => {
+    console.error('[holdPostAction] notification creation failed', err);
   });
 
   revalidatePath('/coordinator');
@@ -223,6 +232,15 @@ export async function holdCommentAction(formData: FormData) {
     reason: 'COORDINATOR_HOLDS',
   }).catch((err) => {
     console.error('[holdCommentAction] community score update failed', err);
+  });
+
+  void createNotification({
+    recipientId: comment.authorId,
+    type: 'COMMENT_HELD',
+    relatedPostId: postId,
+    relatedCommentId: commentId,
+  }).catch((err) => {
+    console.error('[holdCommentAction] notification creation failed', err);
   });
 
   revalidatePath('/coordinator');

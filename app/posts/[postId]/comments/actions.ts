@@ -17,6 +17,7 @@ import {
   COMMUNITY_SCORE_BASE_DELTAS,
   applyCommunityScoreChange,
 } from '@/lib/community-score';
+import { createNotification } from '@/lib/notifications';
 
 const MAX_COMMENT_BODY_LENGTH = 500;
 const COMMENT_STATUS = {
@@ -129,6 +130,16 @@ async function createComment(
       commentBody: body,
     }).catch((error) => {
       console.error('[createCommentAction] failed to send comment notification', error);
+    });
+
+    void createNotification({
+      recipientId: post.authorId,
+      type: 'COMMENT_CREATED',
+      relatedPostId: postId,
+      relatedCommentId: comment.id,
+      actorId: user.id,
+    }).catch((error) => {
+      console.error('[createCommentAction] notification creation failed', error);
     });
   }
 
@@ -295,6 +306,16 @@ export async function toggleCommentLikeAction(formData: FormData) {
     }).catch((err) => {
       console.error('[toggleCommentLikeAction] community score update failed', err);
     });
+
+    void createNotification({
+      recipientId: comment.authorId,
+      type: 'COMMENT_LIKE',
+      relatedPostId: postId,
+      relatedCommentId: commentId,
+      actorId: user.id,
+    }).catch((err) => {
+      console.error('[toggleCommentLikeAction] notification creation failed', err);
+    });
   }
 
   revalidatePath('/posts');
@@ -374,6 +395,16 @@ export async function setBestCommentAction(formData: FormData) {
       reason: 'BEST_COMMENT_SELECTED',
     }).catch((err) => {
       console.error('[setBestCommentAction] community score update failed', err);
+    });
+
+    void createNotification({
+      recipientId: comment.authorId,
+      type: 'BEST_COMMENT_SELECTED',
+      relatedPostId: postId,
+      relatedCommentId: commentId,
+      actorId: user.id,
+    }).catch((err) => {
+      console.error('[setBestCommentAction] notification creation failed', err);
     });
   }
 

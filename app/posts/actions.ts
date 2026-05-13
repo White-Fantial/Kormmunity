@@ -36,6 +36,7 @@ import {
   COMMUNITY_SCORE_BASE_DELTAS,
   applyCommunityScoreChange,
 } from '@/lib/community-score';
+import { createNotification } from '@/lib/notifications';
 
 const CREATE_POST_RATE_LIMIT = {
   limit: 5,
@@ -559,6 +560,8 @@ export async function togglePostLikeAction(formData: FormData) {
     redirect('/posts?error=게시글을 찾을 수 없어요.');
   }
 
+  let isNewPostLike = false;
+
   await prisma.$transaction(async (tx) => {
     const existingLike = await tx.postLike.findUnique({
       where: {
@@ -575,6 +578,7 @@ export async function togglePostLikeAction(formData: FormData) {
       return;
     }
 
+    isNewPostLike = true;
     await tx.postLike.create({
       data: {
         postId,
@@ -615,6 +619,17 @@ export async function togglePostLikeAction(formData: FormData) {
   }).catch((err) => {
     console.error('[togglePostLikeAction] community score update failed', err);
   });
+
+  if (isNewPostLike && post.authorId !== user.id) {
+    void createNotification({
+      recipientId: post.authorId,
+      type: 'POST_LIKE',
+      relatedPostId: postId,
+      actorId: user.id,
+    }).catch((err) => {
+      console.error('[togglePostLikeAction] notification creation failed', err);
+    });
+  }
 
   revalidatePath('/posts');
   revalidatePath(`/posts/${postId}`);
