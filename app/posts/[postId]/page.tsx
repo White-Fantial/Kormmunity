@@ -430,7 +430,7 @@ export default async function PostDetailPage({
         </span>
       </div>
 
-      <div className={currentUser ? 'grid grid-cols-3 gap-2' : 'grid grid-cols-1 gap-2'}>
+      <div className={currentUser ? 'grid grid-cols-1 gap-2 sm:grid-cols-3' : 'grid grid-cols-1 gap-2'}>
         {currentUser ? (
           <form action={togglePostLikeAction}>
             <input type="hidden" name="postId" value={post.id} />

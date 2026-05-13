@@ -39,10 +39,7 @@ export function PostCard({ post, href, showLikeButton = false }: PostCardProps) 
 
   return (
     <article className="space-y-2 rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
-      <Link
-        href={href ?? `/posts/${post.id}`}
-        className="block space-y-2 rounded-lg transition hover:bg-[#fafafa] active:scale-[0.995]"
-      >
+      <div className="space-y-2">
         <div className="flex flex-wrap gap-2 text-xs">
           {post.isPinned ? (
             <span className="rounded-full bg-amber-100 px-2 py-1 font-semibold text-amber-800">📌 고정</span>
@@ -64,7 +61,11 @@ export function PostCard({ post, href, showLikeButton = false }: PostCardProps) 
             </span>
           ) : null}
         </div>
-        {post.thumbnailUrl ? (
+        <Link
+          href={href ?? `/posts/${post.id}`}
+          className="block space-y-2 rounded-lg transition hover:bg-[#fafafa] active:scale-[0.995]"
+        >
+          {post.thumbnailUrl ? (
           <div className="relative h-40 overflow-hidden rounded-lg">
             <Image
               src={post.thumbnailUrl}
@@ -75,9 +76,10 @@ export function PostCard({ post, href, showLikeButton = false }: PostCardProps) 
               className="object-cover"
             />
           </div>
-        ) : null}
-        {hasTitle ? <p className="text-base font-semibold leading-6">{preview}</p> : null}
-        <p className="line-clamp-2 text-sm text-[#555]">{post.bodyPreview}</p>
+          ) : null}
+          {hasTitle ? <p className="text-base font-semibold leading-6">{preview}</p> : null}
+          <p className="line-clamp-2 text-sm text-[#555]">{post.bodyPreview}</p>
+        </Link>
         <div className="flex flex-wrap items-center gap-2 text-sm text-[#888]">
           <UserAvatar
             displayName={post.author.displayName}
@@ -101,7 +103,7 @@ export function PostCard({ post, href, showLikeButton = false }: PostCardProps) 
             </>
           ) : null}
         </div>
-      </Link>
+      </div>
       <div className="flex items-center justify-between border-t border-[#f0f0f0] pt-2 text-xs text-[#666]">
         <span>좋아요 {post.likeCount}</span>
         {showLikeButton ? (
