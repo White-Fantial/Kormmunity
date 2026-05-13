@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 
 import { requireUser } from '@/lib/auth/session';
 import { getNotifications } from '@/lib/notifications';
+import { PostCard } from '@/components/posts/post-card';
 import { EmptyStateMessage } from '@/components/ui/empty-state-message';
 import { markAllNotificationsReadAction } from './actions';
 
@@ -69,33 +69,24 @@ export default async function NotificationsPage() {
       {notifications.length === 0 ? (
         <EmptyStateMessage title="아직 알림이 없어요." />
       ) : (
-        <ul className="divide-y divide-[#e8e8e8] rounded-xl border border-[#e8e8e8] bg-white">
+        <ul className="space-y-2">
           {notifications.map((notification) => {
             const href = getNotificationHref(notification);
             const label = NOTIFICATION_LABELS[notification.type] ?? '새 알림이 있어요.';
-            const content = (
-              <div className={`flex items-start gap-3 px-4 py-3 ${!notification.isRead ? 'bg-[#fffde7]' : ''}`}>
-                <span
-                  className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${!notification.isRead ? 'bg-[#fee500]' : 'bg-transparent'}`}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm text-[#1a1a1a]">{label}</p>
-                  <p className="mt-0.5 text-xs text-[#888]">
-                    {formatRelativeTime(notification.createdAt)}
-                  </p>
-                </div>
-              </div>
-            );
 
             return (
               <li key={notification.id}>
-                {href ? (
-                  <Link href={href} className="block hover:bg-[#fafafa] transition-colors">
-                    {content}
-                  </Link>
-                ) : (
-                  content
-                )}
+                <PostCard
+                  variant="minimal"
+                  post={{
+                    id: notification.id,
+                    title: label,
+                    bodyPreview: formatRelativeTime(notification.createdAt),
+                    createdAt: notification.createdAt,
+                    href: href ?? undefined,
+                    isUnread: !notification.isRead,
+                  }}
+                />
               </li>
             );
           })}

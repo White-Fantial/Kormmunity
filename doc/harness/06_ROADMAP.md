@@ -91,3 +91,4 @@
 - [x] SEO metadata (레이아웃/목록/상세 메타데이터 보강)
 - [x] Basic analytics (클라이언트 전환 이벤트 + 서버 이벤트 로깅)
 - [x] Abuse prevention: rate limits, spam checks (게시글/댓글 작성 보호)
+- [x] UI system standardization (공통 PostCard variant + 공통 Badge 기반 카드 디자인 통일)

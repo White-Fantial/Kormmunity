@@ -3,9 +3,10 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 
 import './globals.css';
-import { HeaderNavConditional } from '@/components/ui/header-nav-conditional';
+import { HeaderAuthButton } from '@/components/ui/header-auth-button';
 import { HeaderNavLink } from '@/components/ui/header-nav-link';
 import { NotificationBell } from '@/components/ui/notification-bell';
+import { HeaderProfileMenu } from '@/components/ui/header-profile-menu';
 
 function getMetadataBaseUrl() {
   const normalizeSiteUrl = (value: string) => {
@@ -94,18 +95,18 @@ export default async function RootLayout({
                 <Suspense fallback={<div aria-hidden="true" className="h-9 w-9 shrink-0" />}>
                   <NotificationBell />
                 </Suspense>
+                <Suspense fallback={null}>
+                  <HeaderProfileMenu />
+                </Suspense>
+                <Suspense fallback={null}>
+                  <HeaderAuthButton />
+                </Suspense>
               </div>
             </div>
             <nav className="flex gap-2 overflow-x-auto text-sm [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <HeaderNavLink href="/posts">홈</HeaderNavLink>
               <HeaderNavLink href="/posts/new">글쓰기</HeaderNavLink>
-              <HeaderNavLink href="/my/posts">내 글</HeaderNavLink>
-              <HeaderNavLink href="/my/saved">저장한 글</HeaderNavLink>
               <HeaderNavLink href="/my/notifications">알림</HeaderNavLink>
-              <HeaderNavLink href="/my/profile">내 프로필</HeaderNavLink>
-              <Suspense fallback={null}>
-                <HeaderNavConditional />
-              </Suspense>
             </nav>
           </header>
           <main className="flex-1 p-4">{children}</main>

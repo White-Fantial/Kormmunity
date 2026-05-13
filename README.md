@@ -62,6 +62,10 @@
   - 제목/본문/작성자 닉네임 통합 검색
   - 검색어 저장 및 카카오톡 알림 수신 여부 설정
   - 조건 매칭 새 글 등록 시 카카오톡 메시지 자동 발송 (글 링크/사진 링크 포함)
+- Unified Post Card system
+  - 공통 `PostCard` variant 시스템(`featured` / `compact` / `minimal`)으로 목록 UI 통합
+  - `/posts`는 featured, `/my/posts`·`/my/saved`·`/users/[userId]`는 compact, `/my/notifications`는 minimal 적용
+  - 공통 Badge 컴포넌트(`components/posts/post-badge.tsx`) 기반 태그 스타일 통일
 - category-based configurable post tag/status system
   - 카테고리별 태그 옵션 관리(활성/기본/정렬/색상)
   - 글 작성/수정/상세/목록에서 설정 기반 태그 선택 및 표시
@@ -99,6 +103,20 @@
 ## Not Yet Implemented
 - 분석 이벤트 외부 대시보드 연동
 - 검색 고도화 및 운영 자동화
+
+## Post Card Component Structure
+```txt
+components/posts/
+  PostCard/
+   ├─ PostCard.tsx
+   ├─ PostCardFeatured.tsx
+   ├─ PostCardCompact.tsx
+   ├─ PostCardMinimal.tsx
+   ├─ PostCardActions.tsx
+   ├─ PostCardMeta.tsx
+   ├─ PostCardBadges.tsx
+   └─ types.ts
+```
 
 ## Local Setup
 1. 의존성 설치

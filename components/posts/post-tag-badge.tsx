@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { Badge } from '@/components/posts/post-badge';
 
 type PostTagBadgeProps = {
   label: string;
@@ -6,32 +6,15 @@ type PostTagBadgeProps = {
   className?: string;
 };
 
-const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/;
-
-function isHexColor(value: string) {
-  return HEX_COLOR_REGEX.test(value);
-}
-
-function getStyle(categoryColor?: string | null): CSSProperties | undefined {
-  if (!categoryColor || !isHexColor(categoryColor)) {
-    return undefined;
-  }
-
-  return {
-    color: categoryColor,
-    borderColor: `${categoryColor}55`,
-    backgroundColor: `${categoryColor}14`,
-  };
-}
-
 export function PostTagBadge({ label, categoryColor, className }: PostTagBadgeProps) {
   return (
-    <span
-      className={className ?? 'rounded-full border px-2 py-1 text-xs font-medium'}
-      style={getStyle(categoryColor)}
+    <Badge
+      variant="tag"
+      className={className}
+      accentColor={categoryColor}
     >
       {label}
-    </span>
+    </Badge>
   );
 }
 

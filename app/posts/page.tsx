@@ -195,6 +195,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     commentCount: number;
     likeCount: number;
     isLikedByCurrentUser: boolean;
+    isSavedByCurrentUser: boolean;
     reportCount?: number;
     postTags: { id: string; label: string }[];
     category: { name: string; type: CategoryType; color: string | null };
@@ -235,6 +236,11 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
             },
           },
           postLikes: {
+            where: { userId: currentUser?.id ?? '__anonymous__' },
+            select: { id: true },
+            take: 1,
+          },
+          savedBy: {
             where: { userId: currentUser?.id ?? '__anonymous__' },
             select: { id: true },
             take: 1,
@@ -281,6 +287,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
       commentCount: post._count.comments,
       likeCount: post._count.postLikes,
       isLikedByCurrentUser: post.postLikes.length > 0,
+      isSavedByCurrentUser: post.savedBy.length > 0,
       reportCount: post._count.reports,
       category: post.category,
       city: post.city,
@@ -317,6 +324,11 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
             },
           },
           postLikes: {
+            where: { userId: currentUser?.id ?? '__anonymous__' },
+            select: { id: true },
+            take: 1,
+          },
+          savedBy: {
             where: { userId: currentUser?.id ?? '__anonymous__' },
             select: { id: true },
             take: 1,
@@ -362,6 +374,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
       commentCount: post._count.comments,
       likeCount: post._count.postLikes,
       isLikedByCurrentUser: post.postLikes.length > 0,
+      isSavedByCurrentUser: post.savedBy.length > 0,
       category: post.category,
       city: post.city,
       author: post.author,
@@ -550,11 +563,11 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
             {normalizedPosts.map((post) => (
               <PostCard
                 key={post.id}
-                post={{
-                  ...post,
-                }}
-                href={createDetailHref(post.id)}
-                showLikeButton={Boolean(currentUser)}
+                variant="featured"
+                post={{ ...post, href: createDetailHref(post.id), isRecommended: post.likeCount >= 10 }}
+                showLikeAction={Boolean(currentUser)}
+                showSaveAction={Boolean(currentUser)}
+                returnTo={returnTo}
               />
             ))}
           </div>

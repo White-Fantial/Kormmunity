@@ -1,10 +1,9 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { cache } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
-import { PostTagBadge } from '@/components/posts/post-tag-badge';
+import { PostCard } from '@/components/posts/post-card';
 import { EmptyStateMessage } from '@/components/ui/empty-state-message';
 import { NeighbourWarmthLabel } from '@/components/ui/neighbour-warmth-label';
 import { UserAvatar } from '@/components/ui/user-avatar';
@@ -186,52 +185,25 @@ export default async function UserProfilePage({ params, searchParams }: UserProf
           description={`${user.displayName}님이 글을 올리면 여기에서 확인할 수 있어요.`}
         />
       ) : (
-        <ul className="space-y-3">
+          <ul className="space-y-3">
           {visiblePosts.map((post) => {
-            const titleText = post.title?.trim() ?? '';
-            const bodyPreview = post.body.slice(0, POST_PREVIEW_LENGTH);
-            const postHeading = titleText || bodyPreview;
-            const thumbnailAlt = titleText
-              ? `게시글 썸네일: ${titleText}`
-              : '게시글 썸네일: 제목 없는 게시글';
-
             return (
-              <li key={post.id} className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
-                <Link href={`/posts/${post.id}`} className="flex gap-3">
-                  {post.images[0]?.url ? (
-                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-[#e8e8e8]">
-                      <Image
-                        src={post.images[0].url}
-                        alt={thumbnailAlt}
-                        fill
-                        sizes="(max-width: 640px) 80px, 80px"
-                        className="object-cover"
-                      />
-                    </div>
-                  ) : null}
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <div className="flex flex-wrap gap-2 text-xs">
-                      <span className="rounded-full bg-[#fffde7] px-2 py-1 font-medium text-[#7a6000]">{post.category.name}</span>
-                      {post.tags.map((tag) => (
-                        <PostTagBadge
-                          key={tag.postTagOption.id}
-                          label={tag.postTagOption.label}
-                          categoryColor={post.category.color}
-                        />
-                      ))}
-                      <span className="rounded-full bg-[#f5f5f5] px-2 py-1 text-[#555]">{post.city?.name ?? '전 지역'}</span>
-                    </div>
-                    <h3 className="text-base font-semibold">{postHeading}</h3>
-                    <p className="line-clamp-2 text-sm text-[#555]">{post.body}</p>
-                    <div className="flex flex-wrap items-center gap-2 text-sm text-[#888]">
-                      <span>댓글 {post._count.comments}</span>
-                      <span aria-hidden="true">·</span>
-                      <time dateTime={post.createdAt.toISOString()}>
-                        {post.createdAt.toLocaleString('ko-KR')}
-                      </time>
-                    </div>
-                  </div>
-                </Link>
+              <li key={post.id}>
+                <PostCard
+                  variant="compact"
+                  post={{
+                    id: post.id,
+                    title: post.title,
+                    bodyPreview: post.body.slice(0, POST_PREVIEW_LENGTH),
+                    href: `/posts/${post.id}`,
+                    createdAt: post.createdAt,
+                    thumbnailUrl: post.images[0]?.url ?? null,
+                    category: post.category,
+                    city: post.city,
+                    tags: post.tags.map((tag) => tag.postTagOption),
+                    commentCount: post._count.comments,
+                  }}
+                />
               </li>
             );
           })}
