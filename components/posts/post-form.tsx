@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useMemo, useRef, useState, useTransition } from 'react';
 import {
   validateClientImageFiles,
   uploadImagesToCloudinary,
@@ -207,10 +207,12 @@ export function PostForm({
   const [fileError, setFileError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [requireCommentBeforeContact, setRequireCommentBeforeContact] = useState(
-    defaultValues?.requireCommentBeforeContact ?? false,
+  const [commentGateCategoryId, setCommentGateCategoryId] = useState<string | null>(
+    defaultValues?.categoryId ?? null,
   );
-  const [hasInitializedCommentGate, setHasInitializedCommentGate] = useState(false);
+  const [commentGateOverride, setCommentGateOverride] = useState<boolean | null>(
+    defaultValues?.postId ? (defaultValues.requireCommentBeforeContact ?? false) : null,
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isSubmitting = isPending || isUploading;
@@ -327,27 +329,12 @@ export function PostForm({
     : isPending
       ? '처리 중...'
       : submitLabel;
-
-  useEffect(() => {
-    if (!selectedCategory) {
-      return;
-    }
-
-    if (!hasInitializedCommentGate) {
-      setRequireCommentBeforeContact(
-        defaultValues?.requireCommentBeforeContact ??
-          selectedCategory.requireCommentBeforeContactDefault,
-      );
-      setHasInitializedCommentGate(true);
-      return;
-    }
-
-    setRequireCommentBeforeContact(selectedCategory.requireCommentBeforeContactDefault);
-  }, [
-    defaultValues?.requireCommentBeforeContact,
-    hasInitializedCommentGate,
-    selectedCategory,
-  ]);
+  const requireCommentBeforeContact =
+    commentGateCategoryId === selectedCategoryId && commentGateOverride !== null
+      ? commentGateOverride
+      : defaultValues?.postId && selectedCategoryId === defaultValues.categoryId
+        ? (defaultValues.requireCommentBeforeContact ?? false)
+        : (selectedCategory?.requireCommentBeforeContactDefault ?? false);
 
   return (
     <form
@@ -461,6 +448,12 @@ export function PostForm({
           onChange={(event) => {
             const nextCategoryId = event.target.value;
             setCategoryId(nextCategoryId);
+            setCommentGateCategoryId(nextCategoryId);
+            setCommentGateOverride(
+              defaultValues?.postId && nextCategoryId === defaultValues.categoryId
+                ? (defaultValues.requireCommentBeforeContact ?? false)
+                : null,
+            );
             const nextCategory = categories.find((category) => category.id === nextCategoryId);
             const validIds = new Set((nextCategory?.postTagOptions ?? []).map((option) => option.id));
             setSelectedPostTagOptionIds((prev) => prev.filter((id) => validIds.has(id)));
@@ -585,7 +578,10 @@ export function PostForm({
             id="requireCommentBeforeContact"
             type="checkbox"
             checked={requireCommentBeforeContact}
-            onChange={(event) => setRequireCommentBeforeContact(event.target.checked)}
+            onChange={(event) => {
+              setCommentGateCategoryId(selectedCategoryId);
+              setCommentGateOverride(event.target.checked);
+            }}
             className="mt-1 h-4 w-4 rounded border-[#d8d8d8] accent-[#fee500]"
           />
         </div>

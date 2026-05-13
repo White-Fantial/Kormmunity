@@ -163,9 +163,10 @@ export async function createCommentAction(formData: FormData) {
 }
 
 export async function createInteractiveCommentAction(
-  _prevState: CreateInteractiveCommentState = INITIAL_CREATE_INTERACTIVE_COMMENT_STATE,
+  previousState: CreateInteractiveCommentState = INITIAL_CREATE_INTERACTIVE_COMMENT_STATE,
   formData: FormData,
 ): Promise<CreateInteractiveCommentState> {
+  void previousState;
   const user = await requireUser();
   const postId = normalizeText(formData.get('postId'));
   const body = normalizeText(formData.get('body'));
