@@ -1,12 +1,13 @@
 import { redirect } from 'next/navigation';
 
-import { adminDeletePostAction, adminRestorePostAction } from '@/app/admin/actions';
+import { adminDeletePostAction, adminRestorePostAction, pinPostAction, unpinPostAction } from '@/app/admin/actions';
 import { adminManagementNavItems, ManagementSectionNav } from '@/components/admin/management-section-nav';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { canMakeFinalUserDecision } from '@/lib/permissions';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { truncatePostBody } from '@/lib/posts/constants';
+import { PINNED_POST_ORDER_DESC } from '@/lib/posts/pinned-order';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,13 +29,14 @@ export default async function AdminPostsPage({ searchParams }: AdminPostsPagePro
     where: {
       status: statusFilter as 'PUBLISHED' | 'HELD' | 'DELETED',
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: PINNED_POST_ORDER_DESC,
     take: 50,
     select: {
       id: true,
       title: true,
       body: true,
       status: true,
+      isPinned: true,
       heldReason: true,
       deletedReason: true,
       heldAt: true,
@@ -137,6 +139,9 @@ export default async function AdminPostsPage({ searchParams }: AdminPostsPagePro
                   >
                     {post.status === 'HELD' ? '보류' : post.status === 'DELETED' ? '삭제됨' : '게시됨'}
                   </span>
+                  {post.isPinned ? (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-800">📌 고정</span>
+                  ) : null}
                 </div>
 
                 <p className="text-sm font-medium">
@@ -153,6 +158,21 @@ export default async function AdminPostsPage({ searchParams }: AdminPostsPagePro
                 ) : null}
 
                 <div className="flex flex-wrap gap-2">
+                  {post.status === 'PUBLISHED' ? (
+                    <form action={post.isPinned ? unpinPostAction : pinPostAction}>
+                      <input type="hidden" name="postId" value={post.id} />
+                      <FormSubmitButton
+                        idleLabel={post.isPinned ? '고정 해제' : '상단 고정'}
+                        pendingLabel="처리 중..."
+                        className={`rounded-xl px-2 py-1 text-xs font-medium ${
+                          post.isPinned
+                            ? 'border border-amber-300 text-amber-800 hover:bg-amber-50'
+                            : 'border border-[#e8e8e8] hover:bg-[#f9f9f9]'
+                        }`}
+                      />
+                    </form>
+                  ) : null}
+
                   {post.status !== 'DELETED' ? (
                     <details>
                       <summary className="cursor-pointer rounded-xl border border-red-200 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50">

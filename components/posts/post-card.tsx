@@ -9,6 +9,7 @@ type PostCardProps = {
     title: string | null;
     bodyPreview: string;
     createdAt: Date;
+    isPinned: boolean;
     price: string | null;
     thumbnailUrl: string | null;
     commentCount: number;
@@ -35,6 +36,9 @@ export function PostCard({ post, href }: PostCardProps) {
       className="block space-y-2 rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm transition hover:border-[#fee500] hover:shadow-md active:scale-[0.995]"
     >
       <div className="flex flex-wrap gap-2 text-xs">
+        {post.isPinned ? (
+          <span className="rounded-full bg-amber-100 px-2 py-1 font-semibold text-amber-800">📌 고정</span>
+        ) : null}
         <span className="rounded-full bg-[#fffde7] px-2 py-1 font-medium text-[#7a6000]">{post.category.name}</span>
         {post.postTags.map((tag) => (
           <PostTagBadge key={tag.id} label={tag.label} categoryColor={post.category.color} />

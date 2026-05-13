@@ -184,6 +184,8 @@ export async function adminDeletePostAction(formData: FormData) {
       where: { id: postId },
       data: {
         status: 'DELETED',
+        isPinned: false,
+        pinnedAt: null,
         deletedAt: new Date(),
         deletedReason: reason || 'ADMIN_DELETED',
       },
@@ -201,7 +203,9 @@ export async function adminDeletePostAction(formData: FormData) {
   });
 
   revalidatePath('/admin/posts');
+  revalidatePath('/coordinator');
   revalidatePath('/posts');
+  revalidatePath(`/posts/${postId}`);
   redirect('/admin/posts');
 }
 
@@ -230,6 +234,8 @@ export async function adminRestorePostAction(formData: FormData) {
       where: { id: postId },
       data: {
         status: 'PUBLISHED',
+        isPinned: false,
+        pinnedAt: null,
         heldAt: null,
         heldReason: null,
       },
@@ -247,7 +253,105 @@ export async function adminRestorePostAction(formData: FormData) {
   });
 
   revalidatePath('/admin/posts');
+  revalidatePath('/coordinator');
   revalidatePath('/posts');
+  revalidatePath(`/posts/${postId}`);
+  redirect('/admin/posts');
+}
+
+export async function pinPostAction(formData: FormData) {
+  const user = await requireUser();
+  requireAdmin(user);
+
+  const postId = normalizeText(formData.get('postId'));
+
+  if (!postId) {
+    redirect('/admin/posts?error=게시글 ID가 없습니다.');
+  }
+
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: { id: true, status: true, isPinned: true },
+  });
+
+  if (!post) {
+    redirect('/admin/posts?error=게시글을 찾을 수 없습니다.');
+  }
+
+  if (post.status !== 'PUBLISHED') {
+    redirect('/admin/posts?error=게시된 글만 고정할 수 있습니다.');
+  }
+
+  if (!post.isPinned) {
+    await prisma.$transaction(async (tx) => {
+      await tx.post.update({
+        where: { id: postId },
+        data: {
+          isPinned: true,
+          pinnedAt: new Date(),
+        },
+      });
+
+      await tx.moderationAction.create({
+        data: {
+          actorId: user.id,
+          targetType: 'POST',
+          targetId: postId,
+          actionType: 'PIN_POST',
+        },
+      });
+    });
+  }
+
+  revalidatePath('/admin/posts');
+  revalidatePath('/posts');
+  revalidatePath(`/posts/${postId}`);
+  redirect('/admin/posts');
+}
+
+export async function unpinPostAction(formData: FormData) {
+  const user = await requireUser();
+  requireAdmin(user);
+
+  const postId = normalizeText(formData.get('postId'));
+
+  if (!postId) {
+    redirect('/admin/posts?error=게시글 ID가 없습니다.');
+  }
+
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: { id: true, isPinned: true },
+  });
+
+  if (!post) {
+    redirect('/admin/posts?error=게시글을 찾을 수 없습니다.');
+  }
+
+  if (post.isPinned) {
+    await prisma.$transaction(async (tx) => {
+      await tx.post.update({
+        where: { id: postId },
+        data: {
+          isPinned: false,
+          pinnedAt: null,
+        },
+      });
+
+      await tx.moderationAction.create({
+        data: {
+          actorId: user.id,
+          targetType: 'POST',
+          targetId: postId,
+          actionType: 'UNPIN_POST',
+        },
+      });
+    });
+  }
+
+  revalidatePath('/admin/posts');
+  revalidatePath('/posts');
+  revalidatePath(`/posts/${postId}`);
   redirect('/admin/posts');
 }
 

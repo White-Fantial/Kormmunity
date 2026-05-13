@@ -8,6 +8,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { canMakeFinalUserDecision } from '@/lib/permissions';
 import { decodeCursor, encodeCursor } from '@/lib/posts/cursor';
+import { buildPinnedPostCursorWhere, PINNED_POST_ORDER_ASC, PINNED_POST_ORDER_DESC } from '@/lib/posts/pinned-order';
 import { getActiveCategories, getActiveCities, getActiveCitiesByCountry } from '@/lib/posts/reference-data';
 import { measureServerTiming } from '@/lib/performance/server';
 
@@ -167,31 +168,10 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     });
   }
   if (paginationCursor) {
-    andConditions.push(
-      paginationDirection === 'prev'
-        ? {
-            OR: [
-              { createdAt: { gt: paginationCursor.createdAt } },
-              {
-                AND: [
-                  { createdAt: paginationCursor.createdAt },
-                  { id: { gt: paginationCursor.id } },
-                ],
-              },
-            ],
-          }
-        : {
-            OR: [
-              { createdAt: { lt: paginationCursor.createdAt } },
-              {
-                AND: [
-                  { createdAt: paginationCursor.createdAt },
-                  { id: { lt: paginationCursor.id } },
-                ],
-              },
-            ],
-          },
-    );
+    const paginationWhere = buildPinnedPostCursorWhere(paginationCursor, paginationDirection);
+    if (paginationWhere) {
+      andConditions.push(paginationWhere);
+    }
   }
 
   const postWhere = {
@@ -205,6 +185,8 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     title: string | null;
     bodyPreview: string;
     createdAt: Date;
+    isPinned: boolean;
+    pinnedAt: Date | null;
     price: string | null;
     thumbnailUrl: string | null;
     commentCount: number;
@@ -221,16 +203,15 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     const posts = await measureServerTiming('posts:list:with-reports', () =>
       prisma.post.findMany({
         where: postWhere,
-        orderBy:
-          paginationDirection === 'prev'
-            ? [{ createdAt: 'asc' }, { id: 'asc' }]
-            : [{ createdAt: 'desc' }, { id: 'desc' }],
+        orderBy: paginationDirection === 'prev' ? PINNED_POST_ORDER_ASC : PINNED_POST_ORDER_DESC,
         take: PAGE_SIZE + 1,
         select: {
           id: true,
           title: true,
           body: true,
           createdAt: true,
+          isPinned: true,
+          pinnedAt: true,
           tags: {
             select: {
               postTagOption: {
@@ -280,6 +261,8 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
       title: post.title,
       bodyPreview: post.body.slice(0, BODY_PREVIEW_LENGTH),
       createdAt: post.createdAt,
+      isPinned: post.isPinned,
+      pinnedAt: post.pinnedAt,
       postTags: post.tags.map((tag) => tag.postTagOption),
       price: post.price ? post.price.toString() : null,
       thumbnailUrl: post.images[0]?.url ?? null,
@@ -293,16 +276,15 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     const posts = await measureServerTiming('posts:list', () =>
       prisma.post.findMany({
         where: postWhere,
-        orderBy:
-          paginationDirection === 'prev'
-            ? [{ createdAt: 'asc' }, { id: 'asc' }]
-            : [{ createdAt: 'desc' }, { id: 'desc' }],
+        orderBy: paginationDirection === 'prev' ? PINNED_POST_ORDER_ASC : PINNED_POST_ORDER_DESC,
         take: PAGE_SIZE + 1,
         select: {
           id: true,
           title: true,
           body: true,
           createdAt: true,
+          isPinned: true,
+          pinnedAt: true,
           tags: {
             select: {
               postTagOption: {
@@ -351,6 +333,8 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
       title: post.title,
       bodyPreview: post.body.slice(0, BODY_PREVIEW_LENGTH),
       createdAt: post.createdAt,
+      isPinned: post.isPinned,
+      pinnedAt: post.pinnedAt,
       postTags: post.tags.map((tag) => tag.postTagOption),
       price: post.price ? post.price.toString() : null,
       thumbnailUrl: post.images[0]?.url ?? null,
@@ -365,10 +349,20 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
   const firstPost = normalizedPosts[0];
   const lastPost = normalizedPosts[normalizedPosts.length - 1];
   const prevCursor = firstPost
-    ? encodeCursor({ id: firstPost.id, createdAt: firstPost.createdAt })
+    ? encodeCursor({
+        id: firstPost.id,
+        createdAt: firstPost.createdAt,
+        isPinned: firstPost.isPinned,
+        pinnedAt: firstPost.pinnedAt,
+      })
     : null;
   const nextCursor = lastPost
-    ? encodeCursor({ id: lastPost.id, createdAt: lastPost.createdAt })
+    ? encodeCursor({
+        id: lastPost.id,
+        createdAt: lastPost.createdAt,
+        isPinned: lastPost.isPinned,
+        pinnedAt: lastPost.pinnedAt,
+      })
     : null;
   const emptyState = hasFilters
     ? {

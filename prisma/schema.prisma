@@ -199,6 +199,8 @@ model Post {
   body          String
   price         Decimal?     @db.Decimal(10, 2)
   status        PostStatus   @default(PUBLISHED)
+  isPinned      Boolean      @default(false)
+  pinnedAt      DateTime?
   heldReason    String?
   deletedReason String?
   author        User         @relation(fields: [authorId], references: [id])
@@ -220,6 +222,7 @@ model Post {
   @@index([cityId, categoryId, status, createdAt])
   @@index([authorId, createdAt])
   @@index([status, createdAt])
+  @@index([status, isPinned(sort: Desc), pinnedAt(sort: Desc), createdAt(sort: Desc), id])
   @@index([status, countryId, createdAt, id])
   @@index([status, cityId, createdAt, id])
   @@index([status, categoryId, createdAt, id])

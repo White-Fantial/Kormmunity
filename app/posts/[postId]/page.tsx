@@ -39,6 +39,7 @@ import {
 } from '@/lib/posts/reference-data';
 import { truncatePostBody } from '@/lib/posts/constants';
 import { decodeCursor, encodeCursor } from '@/lib/posts/cursor';
+import { buildPinnedPostCursorWhere, PINNED_POST_ORDER_ASC, PINNED_POST_ORDER_DESC } from '@/lib/posts/pinned-order';
 import { measureServerTiming } from '@/lib/performance/server';
 
 const TITLE_PREVIEW_LENGTH = 40;
@@ -352,6 +353,9 @@ export default async function PostDetailPage({
       ) : null}
 
       <div className="flex flex-wrap gap-2 text-xs">
+        {post.isPinned ? (
+          <span className="rounded-full bg-amber-100 px-2 py-1 font-semibold text-amber-800">📌 고정</span>
+        ) : null}
         <span className="rounded-full bg-[#fffde7] px-2 py-1 font-medium text-[#7a6000]">{post.category.name}</span>
         {post.tags.map((tag) => (
           <PostTagBadge
@@ -705,28 +709,27 @@ async function AdjacentPostsSection({
       });
     }
 
-    const postWhere = {
-      status: 'PUBLISHED' as const,
-      categoryId: { in: selectedCategoryIds },
-      AND: andConditions.length > 0 ? andConditions : undefined,
+    const postCursor = {
+      id: post.id,
+      createdAt: post.createdAt,
+      isPinned: post.isPinned,
+      pinnedAt: post.pinnedAt,
     };
+    const previousCursorWhere = buildPinnedPostCursorWhere(postCursor, 'prev');
+    const nextCursorWhere = buildPinnedPostCursorWhere(postCursor, 'next');
 
     [previousPost, nextPost] = await measureServerTiming('post-detail:adjacent', () =>
       Promise.all([
         prisma.post.findFirst({
           where: {
-            ...postWhere,
-            OR: [
-              { createdAt: { gt: post.createdAt } },
-              {
-                AND: [
-                  { createdAt: post.createdAt },
-                  { id: { gt: post.id } },
-                ],
-              },
+            status: 'PUBLISHED',
+            categoryId: { in: selectedCategoryIds },
+            AND: [
+              ...andConditions,
+              ...(previousCursorWhere ? [previousCursorWhere] : []),
             ],
           },
-          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          orderBy: PINNED_POST_ORDER_ASC,
           select: {
             id: true,
             title: true,
@@ -743,18 +746,14 @@ async function AdjacentPostsSection({
         }),
         prisma.post.findFirst({
           where: {
-            ...postWhere,
-            OR: [
-              { createdAt: { lt: post.createdAt } },
-              {
-                AND: [
-                  { createdAt: post.createdAt },
-                  { id: { lt: post.id } },
-                ],
-              },
+            status: 'PUBLISHED',
+            categoryId: { in: selectedCategoryIds },
+            AND: [
+              ...andConditions,
+              ...(nextCursorWhere ? [nextCursorWhere] : []),
             ],
           },
-          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          orderBy: PINNED_POST_ORDER_DESC,
           select: {
             id: true,
             title: true,

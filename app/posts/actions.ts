@@ -490,13 +490,18 @@ export async function deletePostAction(formData: FormData) {
     where: { id: postId },
     data: {
       status: 'DELETED',
+      isPinned: false,
+      pinnedAt: null,
       deletedAt: new Date(),
       deletedReason: 'USER_DELETED',
     },
   });
 
   revalidatePath('/posts');
+  revalidatePath('/admin/posts');
+  revalidatePath('/coordinator');
   revalidatePath('/my/posts');
+  revalidatePath(`/posts/${postId}`);
   redirect('/my/posts');
 }
 
