@@ -197,7 +197,7 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
 
               return (
                 <li key={category.id}>
-                  <details className="group rounded-xl border border-[#e8e8e8]">
+                  <details name="admin-category-accordion" className="group rounded-xl border border-[#e8e8e8]">
                     <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-2.5 select-none">
                       {category.color ? (
                         <span
