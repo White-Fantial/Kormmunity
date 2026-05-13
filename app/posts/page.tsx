@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import type { CategoryType } from '@prisma/client';
+import { LoggedInHomeBanner } from '@/components/home/LoggedInHomeBanner';
+import { HomeStatsBar } from '@/components/home/HomeStatsBar';
+import { PublicHomeHero } from '@/components/home/PublicHomeHero';
 import { PostCard } from '@/components/posts/post-card';
 import { EmptyStateMessage } from '@/components/ui/empty-state-message';
 import { saveSearchAlertAction } from '@/app/posts/search-alert-actions';
@@ -373,9 +376,23 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
         title: '아직 올라온 글이 없어요.',
         description: '첫 글을 남겨서 동네 소식을 나눠보세요.',
       };
+  const popularKeywords = ['플랫', '중고', '구인'];
+  const statsTodayNewPosts = 43;
+  const statsActiveCityCount = cities.length > 0 ? cities.length : 24;
 
   return (
     <section className="space-y-4">
+      {currentUser ? (
+        <LoggedInHomeBanner nickname={currentUser.displayName} cityId={activeProfileCityId} />
+      ) : (
+        <PublicHomeHero />
+      )}
+      <HomeStatsBar
+        todayNewPosts={statsTodayNewPosts}
+        activeCityCount={statsActiveCityCount}
+        popularKeywords={popularKeywords}
+      />
+
       {params.success ? (
         <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
           검색 조건이 저장되었어요.
@@ -390,100 +407,102 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
           도시 기반 필터와 글쓰기를 위해 <Link href="/my/profile" className="underline">기본 지역</Link>을 선택해 주세요.
         </p>
       ) : null}
-      <form key={returnToParams.toString()}>
-        <div className="mb-3 flex flex-col gap-2 sm:flex-row">
-          <input
-            type="search"
-            name="q"
-            defaultValue={keyword}
-            placeholder="제목, 내용, 닉네임으로 검색"
-            aria-label="게시글 검색어"
-            className="w-full rounded-xl border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
-          />
-          <button
-            type="submit"
-            className="rounded-xl bg-[#fee500] px-4 py-2 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
-          >
-            검색
-          </button>
-        </div>
-        <details className="group rounded-xl border border-[#e8e8e8] bg-white p-3 shadow-sm">
-          <summary className="flex cursor-pointer items-center justify-between text-sm font-medium">
-            <span>필터</span>
-            <span className="group-open:hidden text-[#888]">펼치기</span>
-            <span className="hidden group-open:inline text-[#888]">접기</span>
-          </summary>
+      <div className="sticky top-[8.25rem] z-[5] -mx-1 rounded-2xl bg-[#f9f8f4]/95 px-1 py-1 backdrop-blur">
+        <form key={returnToParams.toString()}>
+          <div className="mb-3 flex items-center gap-2">
+            <input
+              type="search"
+              name="q"
+              defaultValue={keyword}
+              placeholder="제목, 내용, 닉네임으로 검색"
+              aria-label="게시글 검색어"
+              className="min-w-0 flex-1 rounded-xl border border-[#e8e8e8] bg-white px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
+            />
+            <button
+              type="submit"
+              className="w-[84px] shrink-0 rounded-xl bg-[#fee500] px-3 py-2 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
+            >
+              검색
+            </button>
+          </div>
+          <details className="group rounded-xl border border-[#e8e8e8] bg-white p-3 shadow-sm">
+            <summary className="flex cursor-pointer items-center justify-between text-sm font-medium">
+              <span>필터</span>
+              <span className="group-open:hidden text-[#888]">펼치기</span>
+              <span className="hidden group-open:inline text-[#888]">접기</span>
+            </summary>
 
-          <div className="mt-3 hidden grid-cols-1 gap-4 group-open:grid sm:grid-cols-2">
-            <fieldset className="space-y-2 text-sm">
-              <legend className="font-medium">카테고리 선택</legend>
-              <div className="flex flex-wrap gap-2">
-                {filterCategories.map((category) => (
-                  <label
-                    key={category.id}
-                    className="flex cursor-pointer items-center gap-2 rounded-full border border-[#e8e8e8] px-3 py-1.5 hover:border-[#fee500] hover:bg-[#fffde7]"
-                  >
-                    <input
-                      type="checkbox"
-                      name="category"
-                      value={category.id}
-                      defaultChecked={selectedFilterCategoryIds.includes(category.id)}
-                      className="accent-[#fee500]"
-                    />
-                    <span>{category.name}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-
-            <fieldset className="space-y-2 text-sm">
-              <legend className="font-medium">지역 선택</legend>
-              <div className="flex flex-wrap gap-2">
-                {cities.map((city) => {
-                  const isProfileCity = city.id === profileCityId;
-
-                  return (
+            <div className="mt-3 hidden grid-cols-1 gap-4 group-open:grid sm:grid-cols-2">
+              <fieldset className="space-y-2 text-sm">
+                <legend className="font-medium">카테고리 선택</legend>
+                <div className="flex flex-wrap gap-2">
+                  {filterCategories.map((category) => (
                     <label
-                      key={city.id}
+                      key={category.id}
                       className="flex cursor-pointer items-center gap-2 rounded-full border border-[#e8e8e8] px-3 py-1.5 hover:border-[#fee500] hover:bg-[#fffde7]"
                     >
                       <input
                         type="checkbox"
-                        name="city"
-                        value={city.id}
-                        defaultChecked={selectedCityIds.includes(city.id)}
-                        disabled={isProfileCity || !hasActiveProfileCity}
-                        aria-label={
-                          isProfileCity
-                            ? `${city.name} (프로필 기본 지역으로 항상 선택됨)`
-                            : city.name
-                        }
+                        name="category"
+                        value={category.id}
+                        defaultChecked={selectedFilterCategoryIds.includes(category.id)}
                         className="accent-[#fee500]"
                       />
-                      <span>{city.name}</span>
-                      {isProfileCity ? (
-                        <span className="text-xs text-[#888]">(기본 지역)</span>
-                      ) : null}
+                      <span>{category.name}</span>
                     </label>
-                  );
-                })}
-              </div>
-            </fieldset>
+                  ))}
+                </div>
+              </fieldset>
 
-            <div className="flex flex-wrap gap-2 sm:col-span-2">
-              <button
-                type="submit"
-                className="rounded-xl bg-[#fee500] px-4 py-2 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
-              >
-                필터 적용
-              </button>
-              <Link href="/posts" className="rounded-xl border border-[#e8e8e8] px-4 py-2 text-sm hover:bg-[#f9f9f9]">
-                초기화
-              </Link>
+              <fieldset className="space-y-2 text-sm">
+                <legend className="font-medium">지역 선택</legend>
+                <div className="flex flex-wrap gap-2">
+                  {cities.map((city) => {
+                    const isProfileCity = city.id === profileCityId;
+
+                    return (
+                      <label
+                        key={city.id}
+                        className="flex cursor-pointer items-center gap-2 rounded-full border border-[#e8e8e8] px-3 py-1.5 hover:border-[#fee500] hover:bg-[#fffde7]"
+                      >
+                        <input
+                          type="checkbox"
+                          name="city"
+                          value={city.id}
+                          defaultChecked={selectedCityIds.includes(city.id)}
+                          disabled={isProfileCity || !hasActiveProfileCity}
+                          aria-label={
+                            isProfileCity
+                              ? `${city.name} (프로필 기본 지역으로 항상 선택됨)`
+                              : city.name
+                          }
+                          className="accent-[#fee500]"
+                        />
+                        <span>{city.name}</span>
+                        {isProfileCity ? (
+                          <span className="text-xs text-[#888]">(기본 지역)</span>
+                        ) : null}
+                      </label>
+                    );
+                  })}
+                </div>
+              </fieldset>
+
+              <div className="flex flex-wrap gap-2 sm:col-span-2">
+                <button
+                  type="submit"
+                  className="rounded-xl bg-[#fee500] px-4 py-2 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
+                >
+                  필터 적용
+                </button>
+                <Link href="/posts" className="rounded-xl border border-[#e8e8e8] px-4 py-2 text-sm hover:bg-[#f9f9f9]">
+                  초기화
+                </Link>
+              </div>
             </div>
-          </div>
-        </details>
-      </form>
+          </details>
+        </form>
+      </div>
 
       {currentUser && hasKeyword ? (
         <section className="space-y-3 rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
