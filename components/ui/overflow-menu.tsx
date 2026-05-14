@@ -14,9 +14,9 @@ export function OverflowMenu({ children, className = '', panelClassName = '' }: 
     <details className={`group relative ${className}`}>
       <summary
         className="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-full text-lg leading-none text-[#9aa0a6] opacity-55 transition hover:bg-[#f5f5f5] hover:opacity-100 group-open:bg-[#f5f5f5] group-open:opacity-100"
-        aria-label="더보기"
       >
-        ⋯
+        <span className="sr-only">더보기</span>
+        <span aria-hidden="true">⋯</span>
       </summary>
       <div
         role="menu"
