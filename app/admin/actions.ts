@@ -40,6 +40,11 @@ function normalizeText(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function redirectWithQuery(path: string, query: Record<string, string>): never {
+  const searchParams = new URLSearchParams(query);
+  redirect(`${path}?${searchParams.toString()}`);
+}
+
 function normalizeQuickCommentTemplates(value: FormDataEntryValue | null) {
   if (typeof value !== 'string') return [];
   return value
@@ -1110,12 +1115,16 @@ export async function updateReputationSettingsAction(formData: FormData) {
   for (const field of REPUTATION_SETTING_FIELDS) {
     const raw = normalizeText(formData.get(field.key));
     if (!raw) {
-      redirect('/admin/reputation-settings?error=모든 설정 값을 입력해 주세요.');
+      redirectWithQuery('/admin/reputation-settings', {
+        error: '모든 설정 값을 입력해 주세요.',
+      });
     }
 
     const value = Number(raw);
     if (!Number.isFinite(value)) {
-      redirect('/admin/reputation-settings?error=모든 설정 값은 숫자여야 합니다.');
+      redirectWithQuery('/admin/reputation-settings', {
+        error: '모든 설정 값은 숫자여야 합니다.',
+      });
     }
 
     updates.push({ key: field.key, value: String(value) });
@@ -1135,7 +1144,9 @@ export async function updateReputationSettingsAction(formData: FormData) {
   );
 
   if (!(minWarmth <= baseWarmth && baseWarmth <= maxWarmth)) {
-    redirect('/admin/reputation-settings?error=minWarmth ≤ baseWarmth ≤ maxWarmth 이어야 합니다.');
+    redirectWithQuery('/admin/reputation-settings', {
+      error: 'minWarmth ≤ baseWarmth ≤ maxWarmth 이어야 합니다.',
+    });
   }
 
   await prisma.$transaction(
@@ -1151,5 +1162,7 @@ export async function updateReputationSettingsAction(formData: FormData) {
   await logModerationAction(user.id, 'APP_SETTING', 'REPUTATION', 'UPDATE_REPUTATION_SETTINGS');
 
   revalidatePath('/admin/reputation-settings');
-  redirect('/admin/reputation-settings?success=설정을 저장했어요.');
+  redirectWithQuery('/admin/reputation-settings', {
+    success: '설정을 저장했어요.',
+  });
 }
