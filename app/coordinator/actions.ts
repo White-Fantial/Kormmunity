@@ -17,7 +17,15 @@ import {
   COMMUNITY_SCORE_BASE_DELTAS,
   applyCommunityScoreChange,
 } from '@/lib/community-score';
+import { adjustNeighbourWarmth } from '@/lib/neighbour-warmth';
 import { createNotification } from '@/lib/notifications';
+
+const MODERATION_WARMTH_DELTAS = {
+  VALID_POST_REPORT: -1.0,
+  VALID_COMMENT_REPORT: -1.2,
+  COORDINATOR_HOLDS: -3.0,
+  FALSE_REPORT: -2.0,
+} as const;
 
 function normalizeText(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value.trim() : '';
@@ -51,6 +59,22 @@ async function logModerationAction(
       targetId,
       actionType,
       reason: reason || null,
+    },
+  });
+}
+
+async function applyWarmthDelta(userId: string, baseDelta: number) {
+  const targetUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, neighbourWarmth: true },
+  });
+
+  if (!targetUser) return;
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      neighbourWarmth: adjustNeighbourWarmth(targetUser.neighbourWarmth, baseDelta),
     },
   });
 }
@@ -103,6 +127,10 @@ export async function holdPostAction(formData: FormData) {
         reason: reason || null,
       },
     });
+  });
+
+  void applyWarmthDelta(post.authorId, MODERATION_WARMTH_DELTAS.COORDINATOR_HOLDS).catch((err) => {
+    console.error('[holdPostAction] neighbour warmth update failed', err);
   });
 
   void applyCommunityScoreChange({
@@ -179,6 +207,10 @@ export async function restorePostAction(formData: FormData) {
         reason: reason || null,
       },
     });
+  });
+
+  void applyWarmthDelta(comment.authorId, MODERATION_WARMTH_DELTAS.COORDINATOR_HOLDS).catch((err) => {
+    console.error('[holdCommentAction] neighbour warmth update failed', err);
   });
 
   void applyCommunityScoreChange({
@@ -336,7 +368,15 @@ export async function reviewPostReportAction(formData: FormData) {
 
   const report = await prisma.postReport.findUnique({
     where: { id: reportId },
-    select: { id: true },
+    select: {
+      id: true,
+      postId: true,
+      reporterId: true,
+      reviewStatus: true,
+      post: {
+        select: { authorId: true },
+      },
+    },
   });
 
   if (!report) {
@@ -358,6 +398,20 @@ export async function reviewPostReportAction(formData: FormData) {
     reportId,
     reviewStatus === ReportReviewStatus.VALID ? 'REPORT_VALIDATED' : 'REPORT_MARKED_FALSE',
   );
+
+  if (report.reviewStatus === ReportReviewStatus.PENDING) {
+    if (reviewStatus === ReportReviewStatus.VALID) {
+      void applyWarmthDelta(report.post.authorId, MODERATION_WARMTH_DELTAS.VALID_POST_REPORT).catch(
+        (err) => {
+          console.error('[reviewPostReportAction] neighbour warmth update failed', err);
+        },
+      );
+    } else if (reviewStatus === ReportReviewStatus.FALSE_REPORT) {
+      void applyWarmthDelta(report.reporterId, MODERATION_WARMTH_DELTAS.FALSE_REPORT).catch((err) => {
+        console.error('[reviewPostReportAction] neighbour warmth update failed', err);
+      });
+    }
+  }
 
   revalidatePath('/coordinator');
   revalidatePath('/coordinator/reports');
@@ -385,7 +439,14 @@ export async function reviewCommentReportAction(formData: FormData) {
 
   const report = await prisma.commentReport.findUnique({
     where: { id: reportId },
-    select: { id: true },
+    select: {
+      id: true,
+      reporterId: true,
+      reviewStatus: true,
+      comment: {
+        select: { authorId: true },
+      },
+    },
   });
 
   if (!report) {
@@ -407,6 +468,21 @@ export async function reviewCommentReportAction(formData: FormData) {
     reportId,
     reviewStatus === ReportReviewStatus.VALID ? 'REPORT_VALIDATED' : 'REPORT_MARKED_FALSE',
   );
+
+  if (report.reviewStatus === ReportReviewStatus.PENDING) {
+    if (reviewStatus === ReportReviewStatus.VALID) {
+      void applyWarmthDelta(
+        report.comment.authorId,
+        MODERATION_WARMTH_DELTAS.VALID_COMMENT_REPORT,
+      ).catch((err) => {
+        console.error('[reviewCommentReportAction] neighbour warmth update failed', err);
+      });
+    } else if (reviewStatus === ReportReviewStatus.FALSE_REPORT) {
+      void applyWarmthDelta(report.reporterId, MODERATION_WARMTH_DELTAS.FALSE_REPORT).catch((err) => {
+        console.error('[reviewCommentReportAction] neighbour warmth update failed', err);
+      });
+    }
+  }
 
   revalidatePath('/coordinator');
   revalidatePath('/coordinator/reports');

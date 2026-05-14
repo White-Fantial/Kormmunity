@@ -18,12 +18,16 @@ import {
   COMMUNITY_SCORE_BASE_DELTAS,
   applyCommunityScoreChange,
 } from '@/lib/community-score';
+import { adjustNeighbourWarmth } from '@/lib/neighbour-warmth';
 
 const VALID_CATEGORY_TYPES = Object.values(CategoryType) as CategoryType[];
 const VALID_CATEGORY_VISIBILITY_MODES = Object.values(
   CategoryVisibilityMode,
 ) as CategoryVisibilityMode[];
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+const ADMIN_MODERATION_WARMTH_DELTAS = {
+  ADMIN_DELETES: -6.0,
+} as const;
 
 function normalizeHexColor(value: string) {
   if (!value) return null;
@@ -63,6 +67,22 @@ async function logModerationAction(
       targetId,
       actionType,
       reason: reason || null,
+    },
+  });
+}
+
+async function applyWarmthDelta(userId: string, baseDelta: number) {
+  const targetUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, neighbourWarmth: true },
+  });
+
+  if (!targetUser) return;
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      neighbourWarmth: adjustNeighbourWarmth(targetUser.neighbourWarmth, baseDelta),
     },
   });
 }
@@ -185,11 +205,15 @@ export async function adminDeletePostAction(formData: FormData) {
 
   const post = await prisma.post.findUnique({
     where: { id: postId },
-    select: { id: true, status: true },
+    select: { id: true, status: true, authorId: true },
   });
 
   if (!post) {
     redirect('/admin/posts?error=게시글을 찾을 수 없습니다.');
+  }
+
+  if (post.status === 'DELETED') {
+    redirect(`/admin/posts?success=${encodeURIComponent('이미 삭제된 게시글입니다.')}`);
   }
 
   await prisma.$transaction(async (tx) => {
@@ -223,6 +247,10 @@ export async function adminDeletePostAction(formData: FormData) {
     reason: 'ADMIN_DELETES',
   }).catch((err) => {
     console.error('[adminDeletePostAction] community score update failed', err);
+  });
+
+  void applyWarmthDelta(post.authorId, ADMIN_MODERATION_WARMTH_DELTAS.ADMIN_DELETES).catch((err) => {
+    console.error('[adminDeletePostAction] neighbour warmth update failed', err);
   });
 
   revalidatePath('/admin/posts');
