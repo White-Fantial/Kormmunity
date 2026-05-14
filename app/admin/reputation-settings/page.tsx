@@ -55,7 +55,10 @@ export default async function AdminReputationSettingsPage({
             <div className="grid gap-3 md:grid-cols-2">
               {REPUTATION_SETTING_FIELDS.filter((field) => field.section === section).map((field) => (
                 <label key={field.key} className="space-y-1 text-sm">
-                  <span className="block text-[#555]">{field.label}</span>
+                  <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[#555]">
+                    <span>{field.label}</span>
+                    <span className="text-xs text-[#888]">기준값: {REPUTATION_SETTING_DEFAULTS[field.key]}</span>
+                  </span>
                   <input
                     name={field.key}
                     type="number"
