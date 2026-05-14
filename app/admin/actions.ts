@@ -18,6 +18,8 @@ import {
   COMMUNITY_SCORE_BASE_DELTAS,
   applyCommunityScoreChange,
 } from '@/lib/community-score';
+import { NEIGHBOUR_WARMTH_BASE_DEDUCTIONS } from '@/lib/neighbour-warmth';
+import { applyUserWarmthDelta } from '@/lib/neighbour-warmth/update';
 
 const VALID_CATEGORY_TYPES = Object.values(CategoryType) as CategoryType[];
 const VALID_CATEGORY_VISIBILITY_MODES = Object.values(
@@ -185,11 +187,15 @@ export async function adminDeletePostAction(formData: FormData) {
 
   const post = await prisma.post.findUnique({
     where: { id: postId },
-    select: { id: true, status: true },
+    select: { id: true, status: true, authorId: true },
   });
 
   if (!post) {
     redirect('/admin/posts?error=게시글을 찾을 수 없습니다.');
+  }
+
+  if (post.status === 'DELETED') {
+    redirect(`/admin/posts?error=${encodeURIComponent('이미 삭제된 게시글입니다.')}`);
   }
 
   await prisma.$transaction(async (tx) => {
@@ -224,6 +230,12 @@ export async function adminDeletePostAction(formData: FormData) {
   }).catch((err) => {
     console.error('[adminDeletePostAction] community score update failed', err);
   });
+
+  void applyUserWarmthDelta(post.authorId, NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.ADMIN_DELETES).catch(
+    (err) => {
+      console.error('[adminDeletePostAction] neighbour warmth update failed', err);
+    },
+  );
 
   revalidatePath('/admin/posts');
   revalidatePath('/coordinator');

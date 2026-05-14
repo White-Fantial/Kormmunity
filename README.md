@@ -79,6 +79,9 @@
   - `CommunityScoreEvent` 감사 로그 테이블 추가
   - 코디네이터/관리자 화면에 점수 및 신고 수 표시
   - 상세 문서: `docs/community-score-moderation.md`
+- **사용자 온기 감점 정책 (moderation-confirmed only)**
+  - 신고 제출 시점에는 `neighbourWarmth`를 감점하지 않음
+  - 확정된 조치에 대해서만 감점: 게시글 신고확정(-1.0), 댓글 신고확정(-1.2), 운영진 보류확정(-3.0), 관리자 삭제확정(-6.0), 허위 신고확정(-2.0)
 
 ## Comment-before-contact system
 - 카테고리별로 `requireCommentBeforeContactDefault` 값을 설정할 수 있습니다.

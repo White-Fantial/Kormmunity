@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   NEIGHBOUR_WARMTH_BASE_GAINS,
+  NEIGHBOUR_WARMTH_BASE_DEDUCTIONS,
   NEIGHBOUR_WARMTH_DEFAULT,
   adjustNeighbourWarmth,
 } from '../lib/neighbour-warmth.ts';
@@ -240,4 +241,12 @@ test('warmth clamped between 0 and 100', () => {
   assert.equal(adjustNeighbourWarmth(-999, 0), 0);
   assert.equal(adjustNeighbourWarmth(999, 0), 100);
   assert.equal(adjustNeighbourWarmth(99.99, 50), 100);
+});
+
+test('moderation deduction constants match policy', () => {
+  assert.equal(NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.VALID_POST_REPORT, -1.0);
+  assert.equal(NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.VALID_COMMENT_REPORT, -1.2);
+  assert.equal(NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.COORDINATOR_HOLDS, -3.0);
+  assert.equal(NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.ADMIN_DELETES, -6.0);
+  assert.equal(NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.FALSE_REPORT, -2.0);
 });

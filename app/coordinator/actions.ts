@@ -17,6 +17,8 @@ import {
   COMMUNITY_SCORE_BASE_DELTAS,
   applyCommunityScoreChange,
 } from '@/lib/community-score';
+import { NEIGHBOUR_WARMTH_BASE_DEDUCTIONS } from '@/lib/neighbour-warmth';
+import { applyUserWarmthDelta } from '@/lib/neighbour-warmth/update';
 import { createNotification } from '@/lib/notifications';
 
 function normalizeText(value: FormDataEntryValue | null) {
@@ -104,6 +106,12 @@ export async function holdPostAction(formData: FormData) {
       },
     });
   });
+
+  void applyUserWarmthDelta(post.authorId, NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.COORDINATOR_HOLDS).catch(
+    (err) => {
+      console.error('[holdPostAction] neighbour warmth update failed', err);
+    },
+  );
 
   void applyCommunityScoreChange({
     targetType: 'POST',
@@ -239,6 +247,12 @@ export async function holdCommentAction(formData: FormData) {
     });
   });
 
+  void applyUserWarmthDelta(comment.authorId, NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.COORDINATOR_HOLDS).catch(
+    (err) => {
+      console.error('[holdCommentAction] neighbour warmth update failed', err);
+    },
+  );
+
   void applyCommunityScoreChange({
     targetType: 'COMMENT',
     targetId: commentId,
@@ -336,7 +350,15 @@ export async function reviewPostReportAction(formData: FormData) {
 
   const report = await prisma.postReport.findUnique({
     where: { id: reportId },
-    select: { id: true },
+    select: {
+      id: true,
+      postId: true,
+      reporterId: true,
+      reviewStatus: true,
+      post: {
+        select: { authorId: true },
+      },
+    },
   });
 
   if (!report) {
@@ -358,6 +380,25 @@ export async function reviewPostReportAction(formData: FormData) {
     reportId,
     reviewStatus === ReportReviewStatus.VALID ? 'REPORT_VALIDATED' : 'REPORT_MARKED_FALSE',
   );
+
+  if (report.reviewStatus === ReportReviewStatus.PENDING) {
+    if (reviewStatus === ReportReviewStatus.VALID) {
+      void applyUserWarmthDelta(
+        report.post.authorId,
+        NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.VALID_POST_REPORT,
+      ).catch(
+        (err) => {
+          console.error('[reviewPostReportAction] neighbour warmth update failed', err);
+        },
+      );
+    } else if (reviewStatus === ReportReviewStatus.FALSE_REPORT) {
+      void applyUserWarmthDelta(report.reporterId, NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.FALSE_REPORT).catch(
+        (err) => {
+          console.error('[reviewPostReportAction] neighbour warmth update failed', err);
+        },
+      );
+    }
+  }
 
   revalidatePath('/coordinator');
   revalidatePath('/coordinator/reports');
@@ -385,7 +426,14 @@ export async function reviewCommentReportAction(formData: FormData) {
 
   const report = await prisma.commentReport.findUnique({
     where: { id: reportId },
-    select: { id: true },
+    select: {
+      id: true,
+      reporterId: true,
+      reviewStatus: true,
+      comment: {
+        select: { authorId: true },
+      },
+    },
   });
 
   if (!report) {
@@ -407,6 +455,24 @@ export async function reviewCommentReportAction(formData: FormData) {
     reportId,
     reviewStatus === ReportReviewStatus.VALID ? 'REPORT_VALIDATED' : 'REPORT_MARKED_FALSE',
   );
+
+  if (report.reviewStatus === ReportReviewStatus.PENDING) {
+    if (reviewStatus === ReportReviewStatus.VALID) {
+      void applyUserWarmthDelta(
+        report.comment.authorId,
+        NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.VALID_COMMENT_REPORT,
+      ).catch((err) => {
+        console.error('[reviewCommentReportAction] neighbour warmth update failed', err);
+      });
+    } else if (reviewStatus === ReportReviewStatus.FALSE_REPORT) {
+      void applyUserWarmthDelta(
+        report.reporterId,
+        NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.FALSE_REPORT,
+      ).catch((err) => {
+        console.error('[reviewCommentReportAction] neighbour warmth update failed', err);
+      });
+    }
+  }
 
   revalidatePath('/coordinator');
   revalidatePath('/coordinator/reports');

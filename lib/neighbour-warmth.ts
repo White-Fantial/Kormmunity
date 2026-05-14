@@ -8,6 +8,14 @@ export const NEIGHBOUR_WARMTH_BASE_GAINS = {
   BEST_COMMENT_SELECTED: 3.0,
 } as const;
 
+export const NEIGHBOUR_WARMTH_BASE_DEDUCTIONS = {
+  VALID_POST_REPORT: -1.0,
+  VALID_COMMENT_REPORT: -1.2,
+  COORDINATOR_HOLDS: -3.0,
+  ADMIN_DELETES: -6.0,
+  FALSE_REPORT: -2.0,
+} as const;
+
 export function clampNeighbourWarmth(value: number): number {
   if (!Number.isFinite(value)) {
     return NEIGHBOUR_WARMTH_DEFAULT;
