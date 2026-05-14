@@ -557,7 +557,12 @@ export default async function PostDetailPage({
         {post.isPinned ? (
           <span className="rounded-full bg-amber-100 px-2 py-1 font-semibold text-amber-800">📌 고정</span>
         ) : null}
-        <span className="rounded-full bg-[#f5f5f5] px-2 py-1 text-[#555]">{post.city?.name ?? '전 지역'}</span>
+        <span className="inline-flex items-center gap-1 rounded-full bg-[#f5f5f5] px-2 py-1 text-[#555]">
+          <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3 w-3 fill-current">
+            <path d="M12 2a7 7 0 0 0-7 7c0 4.98 6.15 12.36 6.41 12.67a.75.75 0 0 0 1.16 0C12.85 21.36 19 13.98 19 9a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z" />
+          </svg>
+          {post.city?.name ?? '전 지역'}
+        </span>
         <span className="rounded-full bg-[#fffde7] px-2 py-1 font-medium text-[#7a6000]">{post.category.name}</span>
         {post.tags.map((tag) => (
           <PostTagBadge
