@@ -1,7 +1,7 @@
+import Image from 'next/image';
 import Link from 'next/link';
 
-const HERO_PHONE_IMAGE_PATH = '/images/hero/kormmunity-hero-phone.png';
-const HERO_BG_IMAGE_PATH = '/images/hero/kormmunity-hero-bg.png';
+const HERO_PHONE_MOCKUP_PATH = '/images/hero/kormmunity-hero-phone-mockup.svg';
 
 export function PublicHomeHero() {
   return (
@@ -43,30 +43,15 @@ export function PublicHomeHero() {
             <p className="text-xs text-[#777]">카카오 로그인으로 간편하게 시작해보세요</p>
           </div>
         </div>
-        <div
-          aria-label="Kormmunity 모바일 앱 미리보기"
-          className="mx-auto flex h-[300px] w-full max-w-[220px] items-center justify-center rounded-[2rem] border border-[#f0e4a0] bg-[#fff8cf] p-3 shadow-inner sm:h-[340px]"
-          style={{
-            backgroundImage: `linear-gradient(180deg, rgba(255, 248, 207, 0.92), rgba(255, 253, 240, 0.95)), url(${HERO_BG_IMAGE_PATH})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        >
-          <div
-            className="h-full w-full rounded-[1.5rem] border border-[#e8e8e8] bg-white shadow-md"
-            style={{
-              backgroundImage: `linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.96)), url(${HERO_PHONE_IMAGE_PATH})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center top',
-            }}
-          >
-            <div className="space-y-2 p-3">
-              <div className="h-3 w-1/2 rounded-full bg-[#fee500]/50" />
-              <div className="h-8 rounded-xl bg-[#f7f7f7]" />
-              <div className="h-12 rounded-xl bg-[#f7f7f7]" />
-              <div className="h-12 rounded-xl bg-[#f7f7f7]" />
-            </div>
-          </div>
+        <div className="mx-auto flex w-full max-w-[240px] items-center justify-center sm:max-w-[260px]">
+          <Image
+            src={HERO_PHONE_MOCKUP_PATH}
+            alt="Kormmunity 모바일 앱 미리보기"
+            width={430}
+            height={820}
+            className="h-auto w-full drop-shadow-xl"
+            unoptimized
+          />
         </div>
       </div>
     </section>
