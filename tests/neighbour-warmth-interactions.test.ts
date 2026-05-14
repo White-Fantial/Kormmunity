@@ -240,7 +240,8 @@ test('warmth increases more from best comment', () => {
 test('warmth clamped between 0 and 100', () => {
   assert.equal(adjustNeighbourWarmth(-999, 0), 0);
   assert.equal(adjustNeighbourWarmth(999, 0), 100);
-  assert.equal(adjustNeighbourWarmth(99.99, 50), 100);
+  assert.ok(adjustNeighbourWarmth(99.99, 50) <= 100);
+  assert.ok(adjustNeighbourWarmth(99.99, 50) > 99.99);
 });
 
 test('moderation deduction constants match policy', () => {
@@ -249,4 +250,16 @@ test('moderation deduction constants match policy', () => {
   assert.equal(NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.COORDINATOR_HOLDS, -3.0);
   assert.equal(NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.ADMIN_DELETES, -6.0);
   assert.equal(NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.FALSE_REPORT, -2.0);
+});
+
+test('positive warmth delta scales down near max warmth', () => {
+  const gainAtBase = adjustNeighbourWarmth(36.5, 1) - 36.5;
+  const gainNearMax = adjustNeighbourWarmth(95, 1) - 95;
+  assert.ok(gainNearMax < gainAtBase);
+});
+
+test('negative warmth delta scales down near min warmth', () => {
+  const dropAtBase = adjustNeighbourWarmth(36.5, -1) - 36.5;
+  const dropNearMin = adjustNeighbourWarmth(5, -1) - 5;
+  assert.ok(Math.abs(dropNearMin) < Math.abs(dropAtBase));
 });
