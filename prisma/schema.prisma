@@ -120,6 +120,7 @@ model User {
   notifications        Notification[]
   reviewedPostReports  PostReport[]         @relation("PostReportReviewer")
   reviewedCommentReports CommentReport[]    @relation("CommentReportReviewer")
+  warmthLogs           NeighbourWarmthLog[]
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 }
@@ -508,4 +509,18 @@ model AppSetting {
   value     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model NeighbourWarmthLog {
+  id             String   @id @default(cuid())
+  userId         String
+  reason         String
+  baseDelta      Float
+  actualDelta    Float
+  previousWarmth Float
+  newWarmth      Float
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
 }

@@ -41,6 +41,7 @@ import { PostImageGallery } from '@/components/posts/post-image-gallery';
 import { PostTagBadge, withPostTagPrefix } from '@/components/posts/post-tag-badge';
 import { PostShareButton } from '@/components/posts/post-share-button';
 import { PostMarkdown } from '@/components/posts/post-markdown';
+import { ScoreLogViewer } from '@/components/moderation/score-log-viewer';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { NeighbourWarmthLabel } from '@/components/ui/neighbour-warmth-label';
 import { OverflowMenu, overflowMenuItemClassName } from '@/components/ui/overflow-menu';
@@ -660,6 +661,10 @@ export default async function PostDetailPage({
         )}
         <PostShareButton title={post.title} body={post.body} />
       </PostActionButtons>
+
+      {canModerateCurrentPost ? (
+        <ScoreLogViewer postId={post.id} />
+      ) : null}
 
       <PostEngagementProvider
         contactUrl={contactUrl}

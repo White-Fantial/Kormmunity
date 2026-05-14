@@ -11,10 +11,24 @@ export async function applyUserWarmthDelta(userId: string, reason: WarmthReason)
   if (!targetUser) return;
   const { baseDelta, curve } = await getWarmthConfig(reason);
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      neighbourWarmth: adjustNeighbourWarmth(targetUser.neighbourWarmth, baseDelta, curve),
-    },
-  });
+  const previousWarmth = targetUser.neighbourWarmth;
+  const newWarmth = adjustNeighbourWarmth(previousWarmth, baseDelta, curve);
+  const actualDelta = newWarmth - previousWarmth;
+
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: userId },
+      data: { neighbourWarmth: newWarmth },
+    }),
+    prisma.neighbourWarmthLog.create({
+      data: {
+        userId,
+        reason,
+        baseDelta,
+        actualDelta,
+        previousWarmth,
+        newWarmth,
+      },
+    }),
+  ]);
 }

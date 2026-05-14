@@ -7,7 +7,10 @@ import { PostCard } from '@/components/posts/post-card';
 import { EmptyStateMessage } from '@/components/ui/empty-state-message';
 import { NeighbourWarmthLabel } from '@/components/ui/neighbour-warmth-label';
 import { UserAvatar } from '@/components/ui/user-avatar';
+import { WarmthLogViewer } from '@/components/moderation/warmth-log-viewer';
+import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
+import { canHoldPost } from '@/lib/permissions';
 
 
 
@@ -54,7 +57,10 @@ export default async function UserProfilePage({ params, searchParams }: UserProf
   const { page: pageParam } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? '1', 10) || 1);
 
-  const user = await getUserProfile(userId);
+  const [user, currentUser] = await Promise.all([
+    getUserProfile(userId),
+    getCurrentUser(),
+  ]);
 
   if (!user) {
     notFound();
@@ -175,6 +181,9 @@ export default async function UserProfilePage({ params, searchParams }: UserProf
             <dd>{receivedBestCommentsCount}개</dd>
           </div>
         </dl>
+        {canHoldPost(currentUser) ? (
+          <WarmthLogViewer userId={userId} />
+        ) : null}
       </div>
 
       <h2 className="px-1 text-base font-bold">게시물 목록</h2>
