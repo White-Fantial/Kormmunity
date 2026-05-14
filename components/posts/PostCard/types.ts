@@ -1,4 +1,5 @@
 export type PostCardVariant = 'featured' | 'compact' | 'minimal';
+export type PostCardDisplayVariant = 'feed' | 'my-posts' | 'saved';
 
 export type PostCardTag = {
   id: string;
@@ -30,6 +31,7 @@ export type PostCardEntity = {
 
 export type PostCardFeaturedProps = {
   variant: 'featured';
+  displayVariant?: PostCardDisplayVariant;
   post: PostCardEntity;
   showLikeAction?: boolean;
   showSaveAction?: boolean;
@@ -38,6 +40,7 @@ export type PostCardFeaturedProps = {
 
 export type PostCardCompactProps = {
   variant: 'compact';
+  displayVariant?: PostCardDisplayVariant;
   post: PostCardEntity;
   clickable?: boolean;
   showActiveBookmark?: boolean;

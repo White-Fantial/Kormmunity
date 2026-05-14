@@ -564,6 +564,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
               <PostCard
                 key={post.id}
                 variant="featured"
+                displayVariant="feed"
                 post={{ ...post, href: createDetailHref(post.id), isRecommended: post.likeCount >= 10 }}
                 showLikeAction={Boolean(currentUser)}
                 showSaveAction={Boolean(currentUser)}

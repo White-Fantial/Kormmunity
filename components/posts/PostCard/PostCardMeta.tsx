@@ -4,6 +4,8 @@ type PostCardMetaProps = {
   likeCount?: number;
   authorName?: string;
   compact?: boolean;
+  showCommentCount?: boolean;
+  showLikeCount?: boolean;
 };
 
 export function PostCardMeta({
@@ -12,11 +14,13 @@ export function PostCardMeta({
   likeCount,
   authorName,
   compact = false,
+  showCommentCount = true,
+  showLikeCount = true,
 }: PostCardMetaProps) {
   const metaItems = [
     authorName,
-    typeof commentCount === 'number' ? `댓글 ${commentCount}` : null,
-    typeof likeCount === 'number' ? `좋아요 ${likeCount}` : null,
+    showCommentCount && typeof commentCount === 'number' ? `댓글 ${commentCount}` : null,
+    showLikeCount && typeof likeCount === 'number' ? `좋아요 ${likeCount}` : null,
     new Date(createdAt).toLocaleString('ko-KR'),
   ].filter(Boolean);
 

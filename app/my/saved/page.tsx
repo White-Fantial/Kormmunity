@@ -143,6 +143,7 @@ export default async function MySavedPostsPage({ searchParams }: MySavedPostsPag
               <li key={postId}>
                 <PostCard
                   variant="compact"
+                  displayVariant="saved"
                   post={{
                     id: post.id,
                     title: post.title,

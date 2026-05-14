@@ -84,6 +84,7 @@ export default async function MyPostsPage({ searchParams }: MyPostsPageProps) {
             comments: {
               where: { status: 'PUBLISHED' },
             },
+            postLikes: true,
           },
         },
       },
@@ -128,22 +129,24 @@ export default async function MyPostsPage({ searchParams }: MyPostsPageProps) {
            {visiblePosts.map((post) => {
              return (
                <li key={post.id}>
-                 <PostCard
-                   variant="compact"
-                   post={{
-                     id: post.id,
-                     title: post.title,
-                     bodyPreview: post.body.slice(0, BODY_PREVIEW_LENGTH),
+                  <PostCard
+                    variant="compact"
+                    displayVariant="my-posts"
+                    post={{
+                      id: post.id,
+                      title: post.title,
+                      bodyPreview: post.body.slice(0, BODY_PREVIEW_LENGTH),
                      href: `/posts/${post.id}`,
                      createdAt: post.createdAt,
                      thumbnailUrl: post.images[0]?.url ?? null,
                      category: post.category,
                      city: post.city,
-                     tags: post.tags.map((tag) => tag.postTagOption),
-                     commentCount: post._count.comments,
-                   }}
-                   moreMenu={{ editHref: `/posts/${post.id}/edit`, postId: post.id }}
-                 />
+                      tags: post.tags.map((tag) => tag.postTagOption),
+                      commentCount: post._count.comments,
+                      likeCount: post._count.postLikes,
+                    }}
+                    moreMenu={{ editHref: `/posts/${post.id}/edit`, postId: post.id }}
+                  />
                </li>
              );
            })}

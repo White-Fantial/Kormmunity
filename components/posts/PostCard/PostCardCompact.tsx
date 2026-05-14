@@ -17,11 +17,33 @@ function BookmarkIcon() {
 
 export function PostCardCompact({
   post,
+  displayVariant,
   clickable = true,
   showActiveBookmark = false,
   moreMenu,
 }: Omit<PostCardCompactProps, 'variant'>) {
   const href = post.href ?? `/posts/${post.id}`;
+  const variantConfig = {
+    feed: {
+      showMetaStats: false,
+      showSavedBadge: false,
+      showMoreMenu: false,
+    },
+    'my-posts': {
+      showMetaStats: true,
+      showSavedBadge: false,
+      showMoreMenu: true,
+    },
+    saved: {
+      showMetaStats: true,
+      showSavedBadge: true,
+      showMoreMenu: false,
+    },
+  } as const;
+  const config = displayVariant ? variantConfig[displayVariant] : null;
+  const shouldShowSavedBadge = config ? config.showSavedBadge : showActiveBookmark;
+  const shouldShowMoreMenu = config ? config.showMoreMenu : Boolean(moreMenu);
+
   const content = (
     <>
       {post.thumbnailUrl ? (
@@ -47,6 +69,8 @@ export function PostCardCompact({
           authorName={post.author?.displayName}
           commentCount={post.commentCount}
           likeCount={post.likeCount}
+          showCommentCount={config ? config.showMetaStats : true}
+          showLikeCount={config ? config.showMetaStats : true}
         />
       </div>
     </>
@@ -64,13 +88,13 @@ export function PostCardCompact({
         )}
 
         <div className="flex shrink-0 items-center gap-2">
-          {showActiveBookmark ? (
+          {shouldShowSavedBadge ? (
             <Badge variant="status" className="gap-1">
               <BookmarkIcon />
               저장됨
             </Badge>
           ) : null}
-          {moreMenu ? (
+          {shouldShowMoreMenu && moreMenu ? (
             <PostCardCompactMoreMenu editHref={moreMenu.editHref} postId={moreMenu.postId} />
           ) : null}
         </div>

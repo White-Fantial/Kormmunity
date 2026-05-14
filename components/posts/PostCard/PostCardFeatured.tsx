@@ -9,11 +9,22 @@ import type { PostCardFeaturedProps } from './types';
 
 export function PostCardFeatured({
   post,
+  displayVariant,
   showLikeAction = false,
   showSaveAction = false,
   returnTo,
 }: Omit<PostCardFeaturedProps, 'variant'>) {
   const href = post.href ?? `/posts/${post.id}`;
+  const config =
+    displayVariant === 'feed'
+      ? {
+          showMetaStats: false,
+          showActionBar: true,
+        }
+      : {
+          showMetaStats: true,
+          showActionBar: true,
+        };
 
   return (
     <article className="overflow-hidden rounded-xl border border-[#e8e8e8] bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
@@ -54,19 +65,23 @@ export function PostCardFeatured({
             createdAt={post.createdAt}
             commentCount={post.commentCount}
             likeCount={post.likeCount}
+            showCommentCount={config.showMetaStats}
+            showLikeCount={config.showMetaStats}
           />
         </div>
       </Link>
 
-      <div className="px-3 pb-3 sm:px-4 sm:pb-4">
-        <PostCardActions
-          post={post}
-          href={href}
-          showLikeAction={showLikeAction}
-          showSaveAction={showSaveAction}
-          returnTo={returnTo}
-        />
-      </div>
+      {config.showActionBar ? (
+        <div className="px-3 pb-3 sm:px-4 sm:pb-4">
+          <PostCardActions
+            post={post}
+            href={href}
+            showLikeAction={showLikeAction}
+            showSaveAction={showSaveAction}
+            returnTo={returnTo}
+          />
+        </div>
+      ) : null}
     </article>
   );
 }
