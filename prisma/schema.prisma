@@ -502,3 +502,10 @@ model Notification {
   @@index([recipientId, isRead, createdAt(sort: Desc)])
   @@index([recipientId, createdAt(sort: Desc)])
 }
+
+model AppSetting {
+  key       String   @id
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

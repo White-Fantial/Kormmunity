@@ -15,11 +15,14 @@ import { canMakeFinalUserDecision, USER_ROLES } from '@/lib/permissions';
 import type { SessionUser } from '@/lib/auth/types';
 import type { UserRole, UserStatus } from '@prisma/client';
 import {
-  COMMUNITY_SCORE_BASE_DELTAS,
   applyCommunityScoreChange,
 } from '@/lib/community-score';
-import { NEIGHBOUR_WARMTH_BASE_DEDUCTIONS } from '@/lib/neighbour-warmth';
 import { applyUserWarmthDelta } from '@/lib/neighbour-warmth/update';
+import {
+  REPUTATION_SETTING_DEFAULTS,
+  REPUTATION_SETTING_FIELDS,
+  type ReputationSettingKey,
+} from '@/lib/reputation-settings';
 
 const VALID_CATEGORY_TYPES = Object.values(CategoryType) as CategoryType[];
 const VALID_CATEGORY_VISIBILITY_MODES = Object.values(
@@ -225,13 +228,12 @@ export async function adminDeletePostAction(formData: FormData) {
     targetType: 'POST',
     targetId: postId,
     actorId: user.id,
-    baseDelta: COMMUNITY_SCORE_BASE_DELTAS.ADMIN_DELETES,
     reason: 'ADMIN_DELETES',
   }).catch((err) => {
     console.error('[adminDeletePostAction] community score update failed', err);
   });
 
-  void applyUserWarmthDelta(post.authorId, NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.ADMIN_DELETES).catch(
+  void applyUserWarmthDelta(post.authorId, 'ADMIN_DELETES').catch(
     (err) => {
       console.error('[adminDeletePostAction] neighbour warmth update failed', err);
     },
@@ -292,7 +294,6 @@ export async function adminRestorePostAction(formData: FormData) {
     targetType: 'POST',
     targetId: postId,
     actorId: user.id,
-    baseDelta: COMMUNITY_SCORE_BASE_DELTAS.ADMIN_RESTORES,
     reason: 'ADMIN_RESTORES',
   }).catch((err) => {
     console.error('[adminRestorePostAction] community score update failed', err);
@@ -1098,4 +1099,57 @@ export async function assignCityCountryAction(formData: FormData) {
 
   revalidatePath('/admin/cities');
   redirect('/admin/cities');
+}
+
+export async function updateReputationSettingsAction(formData: FormData) {
+  const user = await requireUser();
+  requireAdmin(user);
+
+  const updates: Array<{ key: ReputationSettingKey; value: string }> = [];
+
+  for (const field of REPUTATION_SETTING_FIELDS) {
+    const raw = normalizeText(formData.get(field.key));
+    if (!raw) {
+      redirect('/admin/reputation-settings?error=모든 설정 값을 입력해 주세요.');
+    }
+
+    const value = Number(raw);
+    if (!Number.isFinite(value)) {
+      redirect('/admin/reputation-settings?error=모든 설정 값은 숫자여야 합니다.');
+    }
+
+    updates.push({ key: field.key, value: String(value) });
+  }
+
+  const minWarmth = Number(
+    updates.find((item) => item.key === 'NEIGHBOUR_WARMTH_MIN_WARMTH')?.value ??
+      REPUTATION_SETTING_DEFAULTS.NEIGHBOUR_WARMTH_MIN_WARMTH,
+  );
+  const baseWarmth = Number(
+    updates.find((item) => item.key === 'NEIGHBOUR_WARMTH_BASE_WARMTH')?.value ??
+      REPUTATION_SETTING_DEFAULTS.NEIGHBOUR_WARMTH_BASE_WARMTH,
+  );
+  const maxWarmth = Number(
+    updates.find((item) => item.key === 'NEIGHBOUR_WARMTH_MAX_WARMTH')?.value ??
+      REPUTATION_SETTING_DEFAULTS.NEIGHBOUR_WARMTH_MAX_WARMTH,
+  );
+
+  if (!(minWarmth <= baseWarmth && baseWarmth <= maxWarmth)) {
+    redirect('/admin/reputation-settings?error=minWarmth ≤ baseWarmth ≤ maxWarmth 이어야 합니다.');
+  }
+
+  await prisma.$transaction(
+    updates.map((item) =>
+      prisma.appSetting.upsert({
+        where: { key: item.key },
+        update: { value: item.value },
+        create: { key: item.key, value: item.value },
+      }),
+    ),
+  );
+
+  await logModerationAction(user.id, 'APP_SETTING', 'REPUTATION', 'UPDATE_REPUTATION_SETTINGS');
+
+  revalidatePath('/admin/reputation-settings');
+  redirect('/admin/reputation-settings?success=설정을 저장했어요.');
 }

@@ -16,29 +16,104 @@ export const NEIGHBOUR_WARMTH_BASE_DEDUCTIONS = {
   FALSE_REPORT: -2.0,
 } as const;
 
-export function clampNeighbourWarmth(value: number): number {
+export type NeighbourWarmthAdjustmentConfig = {
+  baseWarmth: number;
+  minWarmth: number;
+  maxWarmth: number;
+  growthCurve: number;
+  dropCurve: number;
+};
+
+export const DEFAULT_NEIGHBOUR_WARMTH_ADJUSTMENT_CONFIG: NeighbourWarmthAdjustmentConfig = {
+  baseWarmth: NEIGHBOUR_WARMTH_DEFAULT,
+  minWarmth: NEIGHBOUR_WARMTH_MIN,
+  maxWarmth: NEIGHBOUR_WARMTH_MAX,
+  growthCurve: 1.6,
+  dropCurve: 1.4,
+};
+
+function normalizeConfig(config?: NeighbourWarmthAdjustmentConfig): NeighbourWarmthAdjustmentConfig {
+  if (!config) {
+    return DEFAULT_NEIGHBOUR_WARMTH_ADJUSTMENT_CONFIG;
+  }
+
+  const minWarmth = Number.isFinite(config.minWarmth)
+    ? config.minWarmth
+    : DEFAULT_NEIGHBOUR_WARMTH_ADJUSTMENT_CONFIG.minWarmth;
+  const maxWarmth = Number.isFinite(config.maxWarmth)
+    ? Math.max(config.maxWarmth, minWarmth)
+    : DEFAULT_NEIGHBOUR_WARMTH_ADJUSTMENT_CONFIG.maxWarmth;
+  const baseWarmth = Number.isFinite(config.baseWarmth)
+    ? Math.min(maxWarmth, Math.max(minWarmth, config.baseWarmth))
+    : DEFAULT_NEIGHBOUR_WARMTH_ADJUSTMENT_CONFIG.baseWarmth;
+  const growthCurve = Number.isFinite(config.growthCurve)
+    ? Math.max(0, config.growthCurve)
+    : DEFAULT_NEIGHBOUR_WARMTH_ADJUSTMENT_CONFIG.growthCurve;
+  const dropCurve = Number.isFinite(config.dropCurve)
+    ? Math.max(0, config.dropCurve)
+    : DEFAULT_NEIGHBOUR_WARMTH_ADJUSTMENT_CONFIG.dropCurve;
+
+  return {
+    baseWarmth,
+    minWarmth,
+    maxWarmth,
+    growthCurve,
+    dropCurve,
+  };
+}
+
+export function clampNeighbourWarmth(
+  value: number,
+  config?: NeighbourWarmthAdjustmentConfig,
+): number {
+  const resolvedConfig = normalizeConfig(config);
   if (!Number.isFinite(value)) {
-    return NEIGHBOUR_WARMTH_DEFAULT;
+    return resolvedConfig.baseWarmth;
   }
 
-  return Math.min(NEIGHBOUR_WARMTH_MAX, Math.max(NEIGHBOUR_WARMTH_MIN, value));
+  return Math.min(resolvedConfig.maxWarmth, Math.max(resolvedConfig.minWarmth, value));
 }
 
-export function calculateWarmthGain(currentWarmth: number, baseGain: number): number {
-  const multiplier = Math.max(0.03, 1 - currentWarmth / 100);
-  return baseGain * multiplier;
-}
-
-export function adjustNeighbourWarmth(currentWarmth: number, baseDelta: number): number {
-  const clampedCurrent = clampNeighbourWarmth(currentWarmth);
+export function calculateWarmthDelta(
+  currentWarmth: number,
+  baseDelta: number,
+  config?: NeighbourWarmthAdjustmentConfig,
+): number {
   if (baseDelta === 0) {
-    return clampedCurrent;
+    return 0;
   }
 
-  const actualDelta =
-    baseDelta > 0 ? calculateWarmthGain(clampedCurrent, baseDelta) : baseDelta;
+  const resolvedConfig = normalizeConfig(config);
+  const clampedCurrent = clampNeighbourWarmth(currentWarmth, resolvedConfig);
 
-  return clampNeighbourWarmth(clampedCurrent + actualDelta);
+  if (baseDelta > 0) {
+    const denominator = resolvedConfig.maxWarmth - resolvedConfig.baseWarmth;
+    if (denominator <= 0) {
+      return 0;
+    }
+
+    const ratio = Math.max(0, (resolvedConfig.maxWarmth - clampedCurrent) / denominator);
+    return baseDelta * Math.pow(ratio, resolvedConfig.growthCurve);
+  }
+
+  const denominator = resolvedConfig.baseWarmth - resolvedConfig.minWarmth;
+  if (denominator <= 0) {
+    return 0;
+  }
+
+  const ratio = Math.max(0, (clampedCurrent - resolvedConfig.minWarmth) / denominator);
+  return baseDelta * Math.pow(ratio, resolvedConfig.dropCurve);
+}
+
+export function adjustNeighbourWarmth(
+  currentWarmth: number,
+  baseDelta: number,
+  config?: NeighbourWarmthAdjustmentConfig,
+): number {
+  const resolvedConfig = normalizeConfig(config);
+  const clampedCurrent = clampNeighbourWarmth(currentWarmth, resolvedConfig);
+  const actualDelta = calculateWarmthDelta(clampedCurrent, baseDelta, resolvedConfig);
+  return clampNeighbourWarmth(clampedCurrent + actualDelta, resolvedConfig);
 }
 
 export function getNeighbourWarmthLabel(warmth: number): string {

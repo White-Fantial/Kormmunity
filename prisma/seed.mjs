@@ -491,6 +491,33 @@ const reportOptions = [
   '기타',
 ];
 
+const reputationSettingDefaults = {
+  COMMUNITY_SCORE_DELTA_POST_LIKE_RECEIVED: 1.0,
+  COMMUNITY_SCORE_DELTA_COMMENT_LIKE_RECEIVED: 1.2,
+  COMMUNITY_SCORE_DELTA_BEST_COMMENT_SELECTED: 5.0,
+  COMMUNITY_SCORE_DELTA_COORDINATOR_RESTORES: 3.0,
+  COMMUNITY_SCORE_DELTA_ADMIN_RESTORES: 5.0,
+  COMMUNITY_SCORE_DELTA_POST_REPORT_SUBMITTED: -2.0,
+  COMMUNITY_SCORE_DELTA_COMMENT_REPORT_SUBMITTED: -2.5,
+  COMMUNITY_SCORE_DELTA_COORDINATOR_HOLDS: -5.0,
+  COMMUNITY_SCORE_DELTA_ADMIN_DELETES: -10.0,
+  COMMUNITY_SCORE_POST_AUTO_HOLD_THRESHOLD: -8,
+  COMMUNITY_SCORE_COMMENT_AUTO_HOLD_THRESHOLD: -5,
+  NEIGHBOUR_WARMTH_DELTA_POST_LIKE_RECEIVED: 0.3,
+  NEIGHBOUR_WARMTH_DELTA_COMMENT_LIKE_RECEIVED: 0.5,
+  NEIGHBOUR_WARMTH_DELTA_BEST_COMMENT_SELECTED: 3.0,
+  NEIGHBOUR_WARMTH_DELTA_VALID_POST_REPORT: -1.0,
+  NEIGHBOUR_WARMTH_DELTA_VALID_COMMENT_REPORT: -1.2,
+  NEIGHBOUR_WARMTH_DELTA_COORDINATOR_HOLDS: -3.0,
+  NEIGHBOUR_WARMTH_DELTA_ADMIN_DELETES: -6.0,
+  NEIGHBOUR_WARMTH_DELTA_FALSE_REPORT: -2.0,
+  NEIGHBOUR_WARMTH_BASE_WARMTH: 36.5,
+  NEIGHBOUR_WARMTH_MIN_WARMTH: 0,
+  NEIGHBOUR_WARMTH_MAX_WARMTH: 100,
+  NEIGHBOUR_WARMTH_GROWTH_CURVE: 1.6,
+  NEIGHBOUR_WARMTH_DROP_CURVE: 1.4,
+};
+
 function slugifyText(value) {
   return value
     .normalize('NFKD')
@@ -619,6 +646,16 @@ async function main() {
         where: { label },
         update: { isActive: true, sortOrder: index },
         create: { label, isActive: true, sortOrder: index },
+      }),
+    ),
+  );
+
+  await Promise.all(
+    Object.entries(reputationSettingDefaults).map(([key, value]) =>
+      prisma.appSetting.upsert({
+        where: { key },
+        update: { value: String(value) },
+        create: { key, value: String(value) },
       }),
     ),
   );

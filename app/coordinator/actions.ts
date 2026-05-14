@@ -14,10 +14,8 @@ import {
   canModerateUser,
 } from '@/lib/permissions';
 import {
-  COMMUNITY_SCORE_BASE_DELTAS,
   applyCommunityScoreChange,
 } from '@/lib/community-score';
-import { NEIGHBOUR_WARMTH_BASE_DEDUCTIONS } from '@/lib/neighbour-warmth';
 import { applyUserWarmthDelta } from '@/lib/neighbour-warmth/update';
 import { createNotification } from '@/lib/notifications';
 
@@ -112,7 +110,7 @@ export async function holdPostAction(formData: FormData) {
     });
   });
 
-  void applyUserWarmthDelta(post.authorId, NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.COORDINATOR_HOLDS).catch(
+  void applyUserWarmthDelta(post.authorId, 'COORDINATOR_HOLDS').catch(
     (err) => {
       console.error('[holdPostAction] neighbour warmth update failed', err);
     },
@@ -122,7 +120,6 @@ export async function holdPostAction(formData: FormData) {
     targetType: 'POST',
     targetId: postId,
     actorId: user.id,
-    baseDelta: COMMUNITY_SCORE_BASE_DELTAS.COORDINATOR_HOLDS,
     reason: 'COORDINATOR_HOLDS',
   }).catch((err) => {
     console.error('[holdPostAction] community score update failed', err);
@@ -198,7 +195,6 @@ export async function restorePostAction(formData: FormData) {
     targetType: 'POST',
     targetId: postId,
     actorId: user.id,
-    baseDelta: COMMUNITY_SCORE_BASE_DELTAS.COORDINATOR_RESTORES,
     reason: 'COORDINATOR_RESTORES',
   }).catch((err) => {
     console.error('[restorePostAction] community score update failed', err);
@@ -252,7 +248,7 @@ export async function holdCommentAction(formData: FormData) {
     });
   });
 
-  void applyUserWarmthDelta(comment.authorId, NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.COORDINATOR_HOLDS).catch(
+  void applyUserWarmthDelta(comment.authorId, 'COORDINATOR_HOLDS').catch(
     (err) => {
       console.error('[holdCommentAction] neighbour warmth update failed', err);
     },
@@ -262,7 +258,6 @@ export async function holdCommentAction(formData: FormData) {
     targetType: 'COMMENT',
     targetId: commentId,
     actorId: user.id,
-    baseDelta: COMMUNITY_SCORE_BASE_DELTAS.COORDINATOR_HOLDS,
     reason: 'COORDINATOR_HOLDS',
   }).catch((err) => {
     console.error('[holdCommentAction] community score update failed', err);
@@ -330,7 +325,6 @@ export async function restoreCommentAction(formData: FormData) {
     targetType: 'COMMENT',
     targetId: commentId,
     actorId: user.id,
-    baseDelta: COMMUNITY_SCORE_BASE_DELTAS.COORDINATOR_RESTORES,
     reason: 'COORDINATOR_RESTORES',
   }).catch((err) => {
     console.error('[restoreCommentAction] community score update failed', err);
@@ -409,7 +403,7 @@ export async function reviewPostReportAction(formData: FormData) {
     if (resolvedReviewStatus === ReportReviewStatus.VALID) {
       void applyUserWarmthDelta(
         resolvedReport.post.authorId,
-        NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.VALID_POST_REPORT,
+        'VALID_POST_REPORT',
       ).catch(
         (err) => {
           console.error('[reviewPostReportAction] neighbour warmth update failed', err);
@@ -418,7 +412,7 @@ export async function reviewPostReportAction(formData: FormData) {
     } else if (resolvedReviewStatus === ReportReviewStatus.FALSE_REPORT) {
       void applyUserWarmthDelta(
         resolvedReport.reporterId,
-        NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.FALSE_REPORT,
+        'FALSE_REPORT',
       ).catch(
         (err) => {
           console.error('[reviewPostReportAction] neighbour warmth update failed', err);
@@ -503,14 +497,14 @@ export async function reviewCommentReportAction(formData: FormData) {
     if (resolvedReviewStatus === ReportReviewStatus.VALID) {
       void applyUserWarmthDelta(
         resolvedReport.comment.authorId,
-        NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.VALID_COMMENT_REPORT,
+        'VALID_COMMENT_REPORT',
       ).catch((err) => {
         console.error('[reviewCommentReportAction] neighbour warmth update failed', err);
       });
     } else if (resolvedReviewStatus === ReportReviewStatus.FALSE_REPORT) {
       void applyUserWarmthDelta(
         resolvedReport.reporterId,
-        NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.FALSE_REPORT,
+        'FALSE_REPORT',
       ).catch((err) => {
         console.error('[reviewCommentReportAction] neighbour warmth update failed', err);
       });

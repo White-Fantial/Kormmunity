@@ -29,14 +29,13 @@ import {
 } from '@/lib/upload/cloudinary';
 import { getProfileCityRequiredHref, hasValidProfileCity } from '@/lib/posts/profile-city';
 import {
-  NEIGHBOUR_WARMTH_BASE_GAINS,
   adjustNeighbourWarmth,
 } from '@/lib/neighbour-warmth';
 import {
-  COMMUNITY_SCORE_BASE_DELTAS,
   applyCommunityScoreChange,
 } from '@/lib/community-score';
 import { createNotification } from '@/lib/notifications';
+import { getWarmthConfig } from '@/lib/reputation-settings';
 
 const CREATE_POST_RATE_LIMIT = {
   limit: 5,
@@ -561,6 +560,9 @@ export async function togglePostLikeAction(formData: FormData) {
   }
 
   let isNewPostLike = false;
+  const { baseDelta: postLikeWarmthDelta, curve: warmthCurve } = await getWarmthConfig(
+    'POST_LIKE_RECEIVED',
+  );
 
   await prisma.$transaction(async (tx) => {
     const existingLike = await tx.postLike.findUnique({
@@ -604,7 +606,8 @@ export async function togglePostLikeAction(formData: FormData) {
       data: {
         neighbourWarmth: adjustNeighbourWarmth(
           postAuthor.neighbourWarmth,
-          NEIGHBOUR_WARMTH_BASE_GAINS.POST_LIKE_RECEIVED,
+          postLikeWarmthDelta,
+          warmthCurve,
         ),
       },
     });
@@ -614,7 +617,6 @@ export async function togglePostLikeAction(formData: FormData) {
     targetType: 'POST',
     targetId: postId,
     actorId: user.id,
-    baseDelta: COMMUNITY_SCORE_BASE_DELTAS.POST_LIKE_RECEIVED,
     reason: 'POST_LIKE_RECEIVED',
   }).catch((err) => {
     console.error('[togglePostLikeAction] community score update failed', err);
@@ -703,7 +705,6 @@ export async function reportPostAction(formData: FormData) {
       targetType: 'POST',
       targetId: postId,
       actorId: user.id,
-      baseDelta: COMMUNITY_SCORE_BASE_DELTAS.POST_REPORT_SUBMITTED,
       reason: 'POST_REPORT_SUBMITTED',
     }).catch((err) => {
       console.error('[reportPostAction] community score update failed', err);

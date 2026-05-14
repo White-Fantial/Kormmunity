@@ -10,14 +10,13 @@ import { prisma } from '@/lib/db/prisma';
 import { notifyCommentForPost } from '@/lib/kakao/message';
 import { canCreateComment, canDeleteComment, canReportComment } from '@/lib/permissions';
 import {
-  NEIGHBOUR_WARMTH_BASE_GAINS,
   adjustNeighbourWarmth,
 } from '@/lib/neighbour-warmth';
 import {
-  COMMUNITY_SCORE_BASE_DELTAS,
   applyCommunityScoreChange,
 } from '@/lib/community-score';
 import { createNotification } from '@/lib/notifications';
+import { getWarmthConfig } from '@/lib/reputation-settings';
 
 const MAX_COMMENT_BODY_LENGTH = 500;
 const COMMENT_STATUS = {
@@ -256,6 +255,9 @@ export async function toggleCommentLikeAction(formData: FormData) {
   }
 
   let isNewLike = false;
+  const { baseDelta: commentLikeWarmthDelta, curve: warmthCurve } = await getWarmthConfig(
+    'COMMENT_LIKE_RECEIVED',
+  );
 
   await prisma.$transaction(async (tx) => {
     const existingLike = await tx.commentLike.findUnique({
@@ -290,7 +292,8 @@ export async function toggleCommentLikeAction(formData: FormData) {
       data: {
         neighbourWarmth: adjustNeighbourWarmth(
           comment.author.neighbourWarmth,
-          NEIGHBOUR_WARMTH_BASE_GAINS.COMMENT_LIKE_RECEIVED,
+          commentLikeWarmthDelta,
+          warmthCurve,
         ),
       },
     });
@@ -301,7 +304,6 @@ export async function toggleCommentLikeAction(formData: FormData) {
       targetType: 'COMMENT',
       targetId: commentId,
       actorId: user.id,
-      baseDelta: COMMUNITY_SCORE_BASE_DELTAS.COMMENT_LIKE_RECEIVED,
       reason: 'COMMENT_LIKE_RECEIVED',
     }).catch((err) => {
       console.error('[toggleCommentLikeAction] community score update failed', err);
@@ -364,6 +366,9 @@ export async function setBestCommentAction(formData: FormData) {
 
   const shouldIncreaseWarmth = post.bestCommentId !== comment.id && comment.authorId !== user.id;
   const isNewBestComment = post.bestCommentId !== comment.id && comment.authorId !== user.id;
+  const { baseDelta: bestCommentWarmthDelta, curve: bestCommentWarmthCurve } = await getWarmthConfig(
+    'BEST_COMMENT_SELECTED',
+  );
 
   await prisma.$transaction(async (tx) => {
     await tx.post.update({
@@ -380,7 +385,8 @@ export async function setBestCommentAction(formData: FormData) {
       data: {
         neighbourWarmth: adjustNeighbourWarmth(
           comment.author.neighbourWarmth,
-          NEIGHBOUR_WARMTH_BASE_GAINS.BEST_COMMENT_SELECTED,
+          bestCommentWarmthDelta,
+          bestCommentWarmthCurve,
         ),
       },
     });
@@ -391,7 +397,6 @@ export async function setBestCommentAction(formData: FormData) {
       targetType: 'COMMENT',
       targetId: commentId,
       actorId: user.id,
-      baseDelta: COMMUNITY_SCORE_BASE_DELTAS.BEST_COMMENT_SELECTED,
       reason: 'BEST_COMMENT_SELECTED',
     }).catch((err) => {
       console.error('[setBestCommentAction] community score update failed', err);
@@ -511,7 +516,6 @@ export async function reportCommentAction(formData: FormData) {
       targetType: 'COMMENT',
       targetId: commentId,
       actorId: user.id,
-      baseDelta: COMMUNITY_SCORE_BASE_DELTAS.COMMENT_REPORT_SUBMITTED,
       reason: 'COMMENT_REPORT_SUBMITTED',
     }).catch((err) => {
       console.error('[reportCommentAction] community score update failed', err);

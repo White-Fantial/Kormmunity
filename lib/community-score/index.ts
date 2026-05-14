@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db/prisma';
 import { Prisma } from '@prisma/client';
+import { type CommunityScoreReason, getCommunityScoreConfig } from '@/lib/reputation-settings';
 
 export {
   COMMUNITY_SCORE_POST_AUTO_HOLD_THRESHOLD,
@@ -9,8 +10,6 @@ export {
 } from './scoring';
 
 import {
-  COMMUNITY_SCORE_POST_AUTO_HOLD_THRESHOLD,
-  COMMUNITY_SCORE_COMMENT_AUTO_HOLD_THRESHOLD,
   getNeighbourWarmthWeight,
 } from './scoring';
 
@@ -20,8 +19,7 @@ type ApplyCommunityScoreChangeParams = {
   targetType: 'POST' | 'COMMENT';
   targetId: string;
   actorId: string | null;
-  baseDelta: number;
-  reason: string;
+  reason: CommunityScoreReason;
   metadata?: Record<string, unknown>;
 };
 
@@ -29,10 +27,11 @@ export async function applyCommunityScoreChange({
   targetType,
   targetId,
   actorId,
-  baseDelta,
   reason,
   metadata,
 }: ApplyCommunityScoreChangeParams): Promise<void> {
+  const { baseDelta, postAutoHoldThreshold, commentAutoHoldThreshold } =
+    await getCommunityScoreConfig(reason);
   let weight = 1.0;
 
   if (actorId) {
@@ -72,7 +71,7 @@ export async function applyCommunityScoreChange({
 
       if (
         post.status === 'PUBLISHED' &&
-        post.communityScore < COMMUNITY_SCORE_POST_AUTO_HOLD_THRESHOLD
+        post.communityScore < postAutoHoldThreshold
       ) {
         await tx.post.update({
           where: { id: targetId },
@@ -110,7 +109,7 @@ export async function applyCommunityScoreChange({
 
       if (
         comment.status === 'PUBLISHED' &&
-        comment.communityScore < COMMUNITY_SCORE_COMMENT_AUTO_HOLD_THRESHOLD
+        comment.communityScore < commentAutoHoldThreshold
       ) {
         await tx.comment.update({
           where: { id: targetId },
