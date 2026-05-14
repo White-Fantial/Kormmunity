@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react';
 
+import { IconActionButton, ShareIcon } from '@/components/posts/action-buttons';
+
 const PREVIEW_LENGTH = 80;
 
 type PostShareButtonProps = {
@@ -63,14 +65,14 @@ export function PostShareButton({ title, body, className }: PostShareButtonProps
 
   return (
     <div className="space-y-2">
-      <button
+      <IconActionButton
         type="button"
         onClick={onShare}
-        aria-label="공유"
+        icon={<ShareIcon />}
+        aria-label="공유하기"
+        title="공유하기"
         className={className}
-      >
-        공유
-      </button>
+      />
       {message ? <p aria-live="polite" className="text-xs text-[#666]">{message}</p> : null}
     </div>
   );

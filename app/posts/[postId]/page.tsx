@@ -24,6 +24,15 @@ import {
 } from '@/app/coordinator/actions';
 import { DeletePostButton } from '@/components/posts/delete-post-button';
 import {
+  BookmarkIcon,
+  CommentActionButtons,
+  CommentIcon,
+  HeartIcon,
+  IconActionButton,
+  IconActionLink,
+  PostActionButtons,
+} from '@/components/posts/action-buttons';
+import {
   PostCommentComposer,
   PostContactAction,
   PostEngagementProvider,
@@ -589,38 +598,59 @@ export default async function PostDetailPage({
         </span>
       </div>
 
-      <div className={`grid grid-cols-1 gap-2 ${currentUser ? 'sm:grid-cols-3' : ''}`}>
+      <PostActionButtons>
         {currentUser ? (
           <form action={togglePostLikeAction}>
             <input type="hidden" name="postId" value={post.id} />
-            <FormSubmitButton
-              idleLabel={isPostLiked ? `좋아요 취소 (${post._count.postLikes})` : `좋아요 (${post._count.postLikes})`}
-              pendingLabel="처리 중..."
-              className={outlineActionButtonClass}
+            <IconActionButton
+              type="submit"
+              icon={<HeartIcon filled={isPostLiked} />}
+              count={post._count.postLikes}
+              tone="like"
+              active={isPostLiked}
+              aria-label={isPostLiked ? '좋아요 취소' : '좋아요'}
+              title={isPostLiked ? '좋아요 취소' : '좋아요'}
             />
           </form>
         ) : (
-          <Link href="/login" className={outlineActionButtonClass}>
-            좋아요 {post._count.postLikes}
-          </Link>
+          <IconActionLink
+            href="/login"
+            icon={<HeartIcon />}
+            count={post._count.postLikes}
+            aria-label="좋아요"
+            title="좋아요"
+          />
         )}
+        <IconActionLink
+          href="#comments"
+          icon={<CommentIcon />}
+          count={post._count.comments}
+          aria-label="댓글"
+          title="댓글"
+        />
         {currentUser ? (
           <form action={isSaved ? unsavePostAction : savePostAction}>
             <input type="hidden" name="postId" value={post.id} />
             <input type="hidden" name="returnTo" value={currentPostHref} />
-            <FormSubmitButton
-              idleLabel={isSaved ? '저장 취소' : '저장'}
-              pendingLabel="처리 중..."
-              className={outlineActionButtonClass}
+            <IconActionButton
+              type="submit"
+              icon={<BookmarkIcon filled={isSaved} />}
+              tone="save"
+              active={isSaved}
+              aria-label={isSaved ? '저장 취소' : '저장'}
+              title={isSaved ? '저장 취소' : '저장'}
             />
           </form>
-        ) : null}
-        <PostShareButton
-          title={post.title}
-          body={post.body}
-          className={outlineActionButtonClass}
-        />
-      </div>
+        ) : (
+          <IconActionLink
+            href="/login"
+            icon={<BookmarkIcon />}
+            aria-label="저장"
+            title="저장"
+          />
+        )}
+        <PostShareButton title={post.title} body={post.body} />
+      </PostActionButtons>
 
       <PostEngagementProvider
         contactUrl={contactUrl}
@@ -659,7 +689,7 @@ export default async function PostDetailPage({
         <Suspense
           fallback={(
             <section className="space-y-3 border-t border-[#e8e8e8] pt-4">
-              <h2 className="text-base font-bold">댓글 {post._count.comments}</h2>
+              <h2 className="text-base font-bold">댓글 {post._count.comments}개</h2>
               <p className="text-sm text-[#888]">댓글을 불러오는 중...</p>
             </section>
           )}
@@ -1023,7 +1053,7 @@ async function CommentsSection({
 
   return (
     <section className="space-y-3 border-t border-[#e8e8e8] pt-4">
-      <h2 className="text-base font-bold">댓글 {commentCount}</h2>
+      <h2 id="comments" className="text-base font-bold">댓글 {commentCount}개</h2>
 
       {currentUser ? (
         <PostCommentComposer postId={postId} currentUserLoggedIn />
@@ -1190,21 +1220,31 @@ async function CommentsSection({
                       </div>
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <CommentActionButtons>
                     {currentUser ? (
                       <form action={toggleCommentLikeAction}>
                         <input type="hidden" name="postId" value={postId} />
                         <input type="hidden" name="commentId" value={comment.id} />
-                        <FormSubmitButton
-                          idleLabel={isCommentLikedByCurrentUser ? `좋아요 취소 (${comment._count.commentLikes})` : `좋아요 (${comment._count.commentLikes})`}
-                          pendingLabel="처리 중..."
-                          className="rounded-md border border-[#e8e8e8] px-2.5 py-1 text-xs hover:bg-[#f9f9f9]"
+                        <IconActionButton
+                          type="submit"
+                          size="compact"
+                          icon={<HeartIcon filled={isCommentLikedByCurrentUser} />}
+                          count={comment._count.commentLikes}
+                          tone="like"
+                          active={isCommentLikedByCurrentUser}
+                          aria-label={isCommentLikedByCurrentUser ? '좋아요 취소' : '좋아요'}
+                          title={isCommentLikedByCurrentUser ? '좋아요 취소' : '좋아요'}
                         />
                       </form>
                     ) : (
-                      <Link href="/login" className="rounded-md border border-[#e8e8e8] px-2.5 py-1 text-xs text-[#555] hover:bg-[#f9f9f9]">
-                        좋아요 {comment._count.commentLikes}
-                      </Link>
+                      <IconActionLink
+                        href="/login"
+                        icon={<HeartIcon />}
+                        count={comment._count.commentLikes}
+                        size="compact"
+                        aria-label="좋아요"
+                        title="좋아요"
+                      />
                     )}
                     {canManageBestComment ? (
                       isBestComment ? (
@@ -1228,7 +1268,7 @@ async function CommentsSection({
                         </form>
                       )
                     ) : null}
-                  </div>
+                  </CommentActionButtons>
                 </div>
               </li>
             );

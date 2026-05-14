@@ -3,6 +3,14 @@ import Link from 'next/link';
 import { togglePostLikeAction } from '@/app/posts/actions';
 import { savePostAction, unsavePostAction } from '@/app/posts/saved-actions';
 import { DeletePostButton } from '@/components/posts/delete-post-button';
+import {
+  BookmarkIcon,
+  CommentIcon,
+  HeartIcon,
+  IconActionButton,
+  IconActionLink,
+  PostActionButtons,
+} from '@/components/posts/action-buttons';
 import type { PostCardEntity } from './types';
 
 type PostCardActionsProps = {
@@ -13,33 +21,6 @@ type PostCardActionsProps = {
   returnTo?: string;
 };
 
-function HeartIcon({ filled }: { filled?: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" className={`h-4 w-4 ${filled ? 'fill-current' : 'fill-none'} stroke-current`}>
-      <path d="M12 21s-6.716-4.35-9.193-8.058C.56 9.605 2.053 5 6.138 5c2.24 0 3.38 1.258 3.862 2.005C10.482 6.258 11.622 5 13.862 5 17.947 5 19.44 9.605 21.193 12.942 18.716 16.65 12 21 12 21Z" />
-    </svg>
-  );
-}
-
-function BookmarkIcon({ filled }: { filled?: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" className={`h-4 w-4 ${filled ? 'fill-current' : 'fill-none'} stroke-current`}>
-      <path d="M7 4h10a1 1 0 0 1 1 1v15l-6-3-6 3V5a1 1 0 0 1 1-1Z" />
-    </svg>
-  );
-}
-
-function CommentIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current">
-      <path d="M21 12a8 8 0 0 1-8 8H7l-4 2 1.4-4.2A8 8 0 1 1 21 12Z" />
-    </svg>
-  );
-}
-
-const actionClassName =
-  'inline-flex items-center gap-1 rounded-full border border-[#e8e8e8] px-2.5 py-1 text-xs text-[#666] transition hover:border-[#fee500] hover:bg-[#fffde7]';
-
 export function PostCardActions({
   post,
   href,
@@ -48,43 +29,55 @@ export function PostCardActions({
   returnTo,
 }: PostCardActionsProps) {
   return (
-    <div className="flex items-center gap-2 border-t border-[#f0f0f0] pt-2">
+    <PostActionButtons withDivider>
       {showLikeAction ? (
         <form action={togglePostLikeAction}>
           <input type="hidden" name="postId" value={post.id} />
-          <button type="submit" className={`${actionClassName} ${post.isLikedByCurrentUser ? 'text-red-600' : ''}`}>
-            <HeartIcon filled={post.isLikedByCurrentUser} />
-            <span>{post.likeCount ?? 0}</span>
-          </button>
+          <IconActionButton
+            type="submit"
+            icon={<HeartIcon filled={post.isLikedByCurrentUser} />}
+            count={post.likeCount ?? 0}
+            tone="like"
+            active={post.isLikedByCurrentUser}
+            aria-label={post.isLikedByCurrentUser ? '좋아요 취소' : '좋아요'}
+            title={post.isLikedByCurrentUser ? '좋아요 취소' : '좋아요'}
+          />
         </form>
       ) : (
-        <Link href="/login" className={actionClassName}>
-          <HeartIcon />
-          <span>{post.likeCount ?? 0}</span>
-        </Link>
+        <IconActionLink
+          href="/login"
+          icon={<HeartIcon />}
+          count={post.likeCount ?? 0}
+          aria-label="좋아요"
+          title="좋아요"
+        />
       )}
 
-      <Link href={`${href}#comments`} className={actionClassName}>
-        <CommentIcon />
-        <span>{post.commentCount ?? 0}</span>
-      </Link>
+      <IconActionLink
+        href={`${href}#comments`}
+        icon={<CommentIcon />}
+        count={post.commentCount ?? 0}
+        aria-label="댓글"
+        title="댓글"
+      />
 
       {showSaveAction ? (
         <form action={post.isSavedByCurrentUser ? unsavePostAction : savePostAction}>
           <input type="hidden" name="postId" value={post.id} />
           <input type="hidden" name="returnTo" value={returnTo ?? '/posts'} />
-          <button type="submit" className={`${actionClassName} ${post.isSavedByCurrentUser ? 'text-[#3c1e1e]' : ''}`}>
-            <BookmarkIcon filled={post.isSavedByCurrentUser} />
-            <span className="sr-only">저장</span>
-          </button>
+          <IconActionButton
+            type="submit"
+            icon={<BookmarkIcon filled={post.isSavedByCurrentUser} />}
+            tone="save"
+            active={post.isSavedByCurrentUser}
+            aria-label={post.isSavedByCurrentUser ? '저장 취소' : '저장'}
+            title={post.isSavedByCurrentUser ? '저장 취소' : '저장'}
+          />
         </form>
       ) : (
-        <Link href="/login" className={actionClassName}>
-          <BookmarkIcon />
-          <span className="sr-only">로그인 후 저장</span>
-        </Link>
+        <IconActionLink href="/login" icon={<BookmarkIcon />} aria-label="저장" title="저장" />
       )}
-    </div>
+    </PostActionButtons>
   );
 }
 
