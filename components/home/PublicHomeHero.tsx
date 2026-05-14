@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 
 const HERO_PHONE_MOCKUP_PATH = '/images/hero/kormmunity-hero-phone-mockup.svg';
@@ -43,11 +44,13 @@ export function PublicHomeHero() {
           </div>
         </div>
         <div className="mx-auto flex w-full max-w-[240px] items-center justify-center sm:max-w-[260px]">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={HERO_PHONE_MOCKUP_PATH}
             alt="Kormmunity 모바일 앱 미리보기"
+            width={430}
+            height={820}
             className="h-auto w-full drop-shadow-xl"
+            unoptimized
           />
         </div>
       </div>
