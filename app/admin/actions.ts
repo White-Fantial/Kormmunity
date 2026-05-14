@@ -18,7 +18,8 @@ import {
   COMMUNITY_SCORE_BASE_DELTAS,
   applyCommunityScoreChange,
 } from '@/lib/community-score';
-import { adjustNeighbourWarmth, NEIGHBOUR_WARMTH_BASE_DEDUCTIONS } from '@/lib/neighbour-warmth';
+import { NEIGHBOUR_WARMTH_BASE_DEDUCTIONS } from '@/lib/neighbour-warmth';
+import { applyUserWarmthDelta } from '@/lib/neighbour-warmth/update';
 
 const VALID_CATEGORY_TYPES = Object.values(CategoryType) as CategoryType[];
 const VALID_CATEGORY_VISIBILITY_MODES = Object.values(
@@ -64,22 +65,6 @@ async function logModerationAction(
       targetId,
       actionType,
       reason: reason || null,
-    },
-  });
-}
-
-async function applyWarmthDelta(userId: string, baseDelta: number) {
-  const targetUser = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true, neighbourWarmth: true },
-  });
-
-  if (!targetUser) return;
-
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      neighbourWarmth: adjustNeighbourWarmth(targetUser.neighbourWarmth, baseDelta),
     },
   });
 }
@@ -210,7 +195,7 @@ export async function adminDeletePostAction(formData: FormData) {
   }
 
   if (post.status === 'DELETED') {
-    redirect(`/admin/posts?success=${encodeURIComponent('이미 삭제된 게시글입니다.')}`);
+    redirect(`/admin/posts?error=${encodeURIComponent('이미 삭제된 게시글입니다.')}`);
   }
 
   await prisma.$transaction(async (tx) => {
@@ -246,9 +231,11 @@ export async function adminDeletePostAction(formData: FormData) {
     console.error('[adminDeletePostAction] community score update failed', err);
   });
 
-  void applyWarmthDelta(post.authorId, NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.ADMIN_DELETES).catch((err) => {
-    console.error('[adminDeletePostAction] neighbour warmth update failed', err);
-  });
+  void applyUserWarmthDelta(post.authorId, NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.ADMIN_DELETES).catch(
+    (err) => {
+      console.error('[adminDeletePostAction] neighbour warmth update failed', err);
+    },
+  );
 
   revalidatePath('/admin/posts');
   revalidatePath('/coordinator');

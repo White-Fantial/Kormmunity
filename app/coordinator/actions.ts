@@ -17,7 +17,8 @@ import {
   COMMUNITY_SCORE_BASE_DELTAS,
   applyCommunityScoreChange,
 } from '@/lib/community-score';
-import { adjustNeighbourWarmth, NEIGHBOUR_WARMTH_BASE_DEDUCTIONS } from '@/lib/neighbour-warmth';
+import { NEIGHBOUR_WARMTH_BASE_DEDUCTIONS } from '@/lib/neighbour-warmth';
+import { applyUserWarmthDelta } from '@/lib/neighbour-warmth/update';
 import { createNotification } from '@/lib/notifications';
 
 function normalizeText(value: FormDataEntryValue | null) {
@@ -52,22 +53,6 @@ async function logModerationAction(
       targetId,
       actionType,
       reason: reason || null,
-    },
-  });
-}
-
-async function applyWarmthDelta(userId: string, baseDelta: number) {
-  const targetUser = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true, neighbourWarmth: true },
-  });
-
-  if (!targetUser) return;
-
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      neighbourWarmth: adjustNeighbourWarmth(targetUser.neighbourWarmth, baseDelta),
     },
   });
 }
@@ -122,9 +107,11 @@ export async function holdPostAction(formData: FormData) {
     });
   });
 
-  void applyWarmthDelta(post.authorId, NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.COORDINATOR_HOLDS).catch((err) => {
-    console.error('[holdPostAction] neighbour warmth update failed', err);
-  });
+  void applyUserWarmthDelta(post.authorId, NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.COORDINATOR_HOLDS).catch(
+    (err) => {
+      console.error('[holdPostAction] neighbour warmth update failed', err);
+    },
+  );
 
   void applyCommunityScoreChange({
     targetType: 'POST',
@@ -260,9 +247,11 @@ export async function holdCommentAction(formData: FormData) {
     });
   });
 
-  void applyWarmthDelta(comment.authorId, NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.COORDINATOR_HOLDS).catch((err) => {
-    console.error('[holdCommentAction] neighbour warmth update failed', err);
-  });
+  void applyUserWarmthDelta(comment.authorId, NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.COORDINATOR_HOLDS).catch(
+    (err) => {
+      console.error('[holdCommentAction] neighbour warmth update failed', err);
+    },
+  );
 
   void applyCommunityScoreChange({
     targetType: 'COMMENT',
@@ -394,7 +383,7 @@ export async function reviewPostReportAction(formData: FormData) {
 
   if (report.reviewStatus === ReportReviewStatus.PENDING) {
     if (reviewStatus === ReportReviewStatus.VALID) {
-      void applyWarmthDelta(
+      void applyUserWarmthDelta(
         report.post.authorId,
         NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.VALID_POST_REPORT,
       ).catch(
@@ -403,9 +392,11 @@ export async function reviewPostReportAction(formData: FormData) {
         },
       );
     } else if (reviewStatus === ReportReviewStatus.FALSE_REPORT) {
-      void applyWarmthDelta(report.reporterId, NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.FALSE_REPORT).catch((err) => {
-        console.error('[reviewPostReportAction] neighbour warmth update failed', err);
-      });
+      void applyUserWarmthDelta(report.reporterId, NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.FALSE_REPORT).catch(
+        (err) => {
+          console.error('[reviewPostReportAction] neighbour warmth update failed', err);
+        },
+      );
     }
   }
 
@@ -467,14 +458,17 @@ export async function reviewCommentReportAction(formData: FormData) {
 
   if (report.reviewStatus === ReportReviewStatus.PENDING) {
     if (reviewStatus === ReportReviewStatus.VALID) {
-      void applyWarmthDelta(
+      void applyUserWarmthDelta(
         report.comment.authorId,
         NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.VALID_COMMENT_REPORT,
       ).catch((err) => {
         console.error('[reviewCommentReportAction] neighbour warmth update failed', err);
       });
     } else if (reviewStatus === ReportReviewStatus.FALSE_REPORT) {
-      void applyWarmthDelta(report.reporterId, NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.FALSE_REPORT).catch((err) => {
+      void applyUserWarmthDelta(
+        report.reporterId,
+        NEIGHBOUR_WARMTH_BASE_DEDUCTIONS.FALSE_REPORT,
+      ).catch((err) => {
         console.error('[reviewCommentReportAction] neighbour warmth update failed', err);
       });
     }
