@@ -84,6 +84,11 @@ const countries = [
     cities: ['Reykjavik', 'Kopavogur', 'Hafnarfjordur', 'Akureyri', 'Reykjanesbaer', 'Selfoss', 'Other'],
   },
   {
+    name: 'Indonesia',
+    slug: 'indonesia',
+    cities: ['Jakarta', 'Surabaya', 'Bandung', 'Medan', 'Semarang', 'Denpasar', 'Other'],
+  },
+  {
     name: 'Ireland',
     slug: 'ireland',
     cities: ['Dublin', 'Cork', 'Galway', 'Limerick', 'Waterford', 'Drogheda', 'Other'],
@@ -124,6 +129,11 @@ const countries = [
     cities: ['Luxembourg City', 'Esch-sur-Alzette', 'Differdange', 'Dudelange', 'Ettelbruck', 'Diekirch', 'Other'],
   },
   {
+    name: 'Malaysia',
+    slug: 'malaysia',
+    cities: ['Kuala Lumpur', 'George Town', 'Johor Bahru', 'Ipoh', 'Kota Kinabalu', 'Kuching', 'Other'],
+  },
+  {
     name: 'Mexico',
     slug: 'mexico',
     cities: ['Mexico City', 'Guadalajara', 'Monterrey', 'Puebla', 'Tijuana', 'Leon', 'Merida', 'Other'],
@@ -154,6 +164,11 @@ const countries = [
     name: 'Norway',
     slug: 'norway',
     cities: ['Oslo', 'Bergen', 'Trondheim', 'Stavanger', 'Tromso', 'Kristiansand', 'Other'],
+  },
+  {
+    name: 'Philippines',
+    slug: 'philippines',
+    cities: ['Manila', 'Quezon City', 'Davao', 'Cebu City', 'Makati', 'Pasig', 'Other'],
   },
   {
     name: 'Poland',
@@ -191,9 +206,19 @@ const countries = [
     cities: ['Zurich', 'Geneva', 'Basel', 'Bern', 'Lausanne', 'Lucerne', 'Other'],
   },
   {
+    name: 'Thailand',
+    slug: 'thailand',
+    cities: ['Bangkok', 'Chiang Mai', 'Phuket', 'Pattaya', 'Hat Yai', 'Khon Kaen', 'Other'],
+  },
+  {
     name: 'Turkiye',
     slug: 'turkiye',
     cities: ['Istanbul', 'Ankara', 'Izmir', 'Bursa', 'Antalya', 'Adana', 'Other'],
+  },
+  {
+    name: 'United Arab Emirates',
+    slug: 'united-arab-emirates',
+    cities: ['Dubai', 'Abu Dhabi', 'Sharjah', 'Ajman', 'Ras Al Khaimah', 'Al Ain', 'Other'],
   },
   {
     name: 'United Kingdom',
@@ -216,6 +241,11 @@ const countries = [
       'San Jose',
       'Other',
     ],
+  },
+  {
+    name: 'Vietnam',
+    slug: 'vietnam',
+    cities: ['Ho Chi Minh City', 'Hanoi', 'Da Nang', 'Hai Phong', 'Can Tho', 'Nha Trang', 'Other'],
   },
 ];
 
