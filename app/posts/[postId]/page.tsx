@@ -1121,17 +1121,6 @@ async function CommentsSection({
                           </form>
                         </ReportMoreMenu>
                       ) : null}
-                      {canDelete ? (
-                        <form action={deleteCommentAction} className="shrink-0">
-                          <input type="hidden" name="postId" value={postId} />
-                          <input type="hidden" name="commentId" value={comment.id} />
-                          <FormSubmitButton
-                            idleLabel="삭제"
-                            pendingLabel="삭제 중..."
-                            className="whitespace-nowrap rounded-md px-2 py-1 text-xs text-red-500 hover:bg-red-50"
-                          />
-                        </form>
-                      ) : null}
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -1171,6 +1160,17 @@ async function CommentsSection({
                           />
                         </form>
                       )
+                    ) : null}
+                    {canDelete ? (
+                      <form action={deleteCommentAction}>
+                        <input type="hidden" name="postId" value={postId} />
+                        <input type="hidden" name="commentId" value={comment.id} />
+                        <FormSubmitButton
+                          idleLabel="삭제"
+                          pendingLabel="삭제 중..."
+                          className="whitespace-nowrap rounded-md px-2 py-1 text-xs text-red-500 hover:bg-red-50"
+                        />
+                      </form>
                     ) : null}
                   </div>
                 </div>
