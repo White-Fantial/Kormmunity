@@ -5,7 +5,6 @@ import type { CategoryType } from '@prisma/client';
 import { notFound } from 'next/navigation';
 
 import {
-
   togglePostLikeAction,
   reportPostAction,
 } from '@/app/posts/actions';
@@ -35,16 +34,17 @@ import { PostShareButton } from '@/components/posts/post-share-button';
 import { PostMarkdown } from '@/components/posts/post-markdown';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { NeighbourWarmthLabel } from '@/components/ui/neighbour-warmth-label';
-import { ReportMoreMenu } from '@/components/ui/report-more-menu';
+import { OverflowMenu, overflowMenuItemClassName } from '@/components/ui/overflow-menu';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import {
   canDeleteComment,
+  canDeletePost,
+  canEditPost,
   canHoldPost,
   canReportPost,
   canReportComment,
-  canRestorePost,
 } from '@/lib/permissions';
 import {
   getActiveCategories,
@@ -412,20 +412,129 @@ export default async function PostDetailPage({
           typeof template === 'string' && template.trim().length > 0,
       )
     : [];
+  const canEditCurrentPost = canEditPost(currentUser, post);
+  const canDeleteCurrentPost = canDeletePost(currentUser, post);
+  const canModerateCurrentPost = currentUser ? canHoldPost(currentUser) : false;
+  const canShowPostOverflowMenu =
+    (canSubmitReport && reportOptions.length > 0)
+    || canEditCurrentPost
+    || canDeleteCurrentPost
+    || canModerateCurrentPost;
   const outlineActionButtonClass =
     'inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#e8e8e8] px-4 py-2 text-sm font-medium hover:bg-[#f9f9f9]';
   const primaryActionButtonClass =
     'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#fee500] px-4 py-2 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]';
-  const dangerActionButtonClass =
-    'inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50';
 
   return (
-    <article className="space-y-4 rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
+    <article className="relative space-y-4 rounded-xl border border-[#e8e8e8] bg-white p-4 pr-12 shadow-sm">
       {query.error ? (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{query.error}</p>
       ) : null}
       {query.success ? (
         <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{query.success}</p>
+      ) : null}
+      {canShowPostOverflowMenu ? (
+        <div className="absolute right-3 top-3 z-20">
+          <OverflowMenu>
+            {canSubmitReport && reportOptions.length > 0 ? (
+              <details className="group/report rounded-lg">
+                <summary className={`${overflowMenuItemClassName} flex cursor-pointer list-none items-center justify-between`}>
+                  <span>신고하기</span>
+                  <span className="text-xs text-[#999] transition group-open/report:rotate-180">▼</span>
+                </summary>
+                <div className="mt-2 space-y-2 border-t border-[#f0f0f0] px-1 pt-2">
+                  {myReport ? (
+                    <p className="text-xs text-[#888]">
+                      이미 신고한 글입니다. 다시 제출하면 신고 내용이 업데이트됩니다.
+                    </p>
+                  ) : null}
+                  <form action={reportPostAction} className="space-y-2">
+                    <input type="hidden" name="postId" value={post.id} />
+                    <label htmlFor="report-option" className="text-xs text-[#555]">
+                      신고 사유
+                    </label>
+                    <select
+                      id="report-option"
+                      name="optionId"
+                      defaultValue={myReport?.optionId ?? ''}
+                      required
+                      className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
+                    >
+                      <option value="" disabled>
+                        신고 사유를 선택해 주세요
+                      </option>
+                      {reportOptions.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <label htmlFor="report-additional-reason" className="text-xs text-[#555]">
+                      추가 사유 (선택)
+                    </label>
+                    <textarea
+                      id="report-additional-reason"
+                      name="additionalReason"
+                      rows={3}
+                      maxLength={500}
+                      defaultValue={myReport?.additionalReason ?? ''}
+                      placeholder="옵션 외 추가로 설명할 내용이 있다면 입력해 주세요."
+                      className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
+                    />
+                    <FormSubmitButton
+                      idleLabel={myReport ? '신고 내용 수정' : '신고 접수'}
+                      pendingLabel="접수 중..."
+                      className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm font-medium text-[#444] hover:bg-[#f7f7f7]"
+                    />
+                  </form>
+                </div>
+              </details>
+            ) : null}
+            {canEditCurrentPost ? (
+              <Link href={`/posts/${post.id}/edit`} className={overflowMenuItemClassName}>
+                수정하기
+              </Link>
+            ) : null}
+            {canModerateCurrentPost && post.status === 'PUBLISHED' ? (
+              <details className="group/hold rounded-lg">
+                <summary className={`${overflowMenuItemClassName} flex cursor-pointer list-none items-center justify-between`}>
+                  <span>보류 처리</span>
+                  <span className="text-xs text-[#999] transition group-open/hold:rotate-180">▼</span>
+                </summary>
+                <form action={holdPostAction} className="mt-2 space-y-2 border-t border-[#f0f0f0] px-1 pt-2">
+                  <input type="hidden" name="postId" value={post.id} />
+                  <input
+                    type="text"
+                    name="reason"
+                    placeholder="보류 사유 (선택)"
+                    className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
+                  />
+                  <FormSubmitButton
+                    idleLabel="보류 확정"
+                    pendingLabel="처리 중..."
+                    className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm font-medium text-[#444] hover:bg-[#f7f7f7]"
+                  />
+                </form>
+              </details>
+            ) : null}
+            {canModerateCurrentPost && post.status === 'HELD' ? (
+              <form action={restorePostAction}>
+                <input type="hidden" name="postId" value={post.id} />
+                <FormSubmitButton
+                  idleLabel="재게시"
+                  pendingLabel="처리 중..."
+                  className={overflowMenuItemClassName}
+                />
+              </form>
+            ) : null}
+            {canDeleteCurrentPost ? (
+              <DeletePostButton
+                postId={post.id}
+                className={`${overflowMenuItemClassName} text-red-600`}
+              />
+            ) : null}
+          </OverflowMenu>
+        </div>
       ) : null}
 
       {post.status === 'HELD' ? (
@@ -525,105 +634,6 @@ export default async function PostDetailPage({
           contactUrl={contactUrl}
           primaryActionButtonClass={primaryActionButtonClass}
         />
-        {isOwner ? (
-          <div className="grid grid-cols-2 gap-2 border-t border-[#e8e8e8] pt-4">
-            <Link href={`/posts/${post.id}/edit`} className={outlineActionButtonClass}>
-              수정
-            </Link>
-            <DeletePostButton
-              postId={post.id}
-              className={dangerActionButtonClass}
-            />
-          </div>
-        ) : null}
-
-        {canSubmitReport && reportOptions.length > 0 ? (
-          <section className="flex justify-end border-t border-[#e8e8e8] pt-4">
-            <ReportMoreMenu className="shrink-0">
-              {myReport ? (
-                <p className="text-xs text-[#888]">
-                  이미 신고한 글입니다. 다시 제출하면 신고 내용이 업데이트됩니다.
-                </p>
-              ) : null}
-              <form action={reportPostAction} className="space-y-2">
-                <input type="hidden" name="postId" value={post.id} />
-                <label htmlFor="report-option" className="text-xs text-[#555]">
-                  신고 사유
-                </label>
-                <select
-                  id="report-option"
-                  name="optionId"
-                  defaultValue={myReport?.optionId ?? ''}
-                  required
-                  className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
-                >
-                  <option value="" disabled>
-                    신고 사유를 선택해 주세요
-                  </option>
-                  {reportOptions.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <label htmlFor="report-additional-reason" className="text-xs text-[#555]">
-                  추가 사유 (선택)
-                </label>
-                <textarea
-                  id="report-additional-reason"
-                  name="additionalReason"
-                  rows={3}
-                  maxLength={500}
-                  defaultValue={myReport?.additionalReason ?? ''}
-                  placeholder="옵션 외 추가로 설명할 내용이 있다면 입력해 주세요."
-                  className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
-                />
-                <FormSubmitButton
-                  idleLabel={myReport ? '신고 내용 수정' : '신고 접수'}
-                  pendingLabel="접수 중..."
-                  className="rounded-xl border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-                />
-              </form>
-            </ReportMoreMenu>
-          </section>
-        ) : null}
-
-        {isCoordinator ? (
-          <div className="flex flex-wrap gap-2 border-t border-[#e8e8e8] pt-4">
-            <span className="w-full text-xs text-[#aaa]">운영 관리</span>
-            {post.status === 'PUBLISHED' && currentUser && canHoldPost(currentUser) ? (
-              <details>
-                <summary className="cursor-pointer rounded-xl border border-yellow-300 bg-[#fffde7] px-3 py-2 text-sm font-medium text-[#7a6000]">
-                  보류 처리
-                </summary>
-                <form action={holdPostAction} className="mt-2 space-y-2">
-                  <input type="hidden" name="postId" value={post.id} />
-                  <input
-                    type="text"
-                    name="reason"
-                    placeholder="보류 사유 (선택)"
-                    className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
-                  />
-                  <FormSubmitButton
-                    idleLabel="보류 확정"
-                    pendingLabel="처리 중..."
-                    className="rounded-xl bg-[#fee500] px-3 py-2 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
-                  />
-                </form>
-              </details>
-            ) : null}
-            {post.status === 'HELD' && currentUser && canRestorePost(currentUser) ? (
-              <form action={restorePostAction}>
-                <input type="hidden" name="postId" value={post.id} />
-                <FormSubmitButton
-                  idleLabel="재게시"
-                  pendingLabel="처리 중..."
-                  className="rounded-xl border border-green-300 px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-50"
-                />
-              </form>
-            ) : null}
-          </div>
-        ) : null}
 
         <Suspense
           fallback={(
@@ -1032,9 +1042,117 @@ async function CommentsSection({
             const isCommentLikedByCurrentUser = comment.commentLikes.length > 0;
             const canReport = canReportComment(currentUser, comment);
             const myCommentReport = myCommentReportMap.get(comment.id) ?? null;
+            const canShowCommentOverflowMenu =
+              (canReport && reportOptions.length > 0) || canDelete || isCoordinator;
 
             return (
-              <li key={comment.id} className="rounded-2xl border border-[#e8e8e8] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+              <li key={comment.id} className="relative rounded-2xl border border-[#e8e8e8] bg-white p-4 pr-12 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+                {canShowCommentOverflowMenu ? (
+                  <div className="absolute right-3 top-3 z-10">
+                    <OverflowMenu panelClassName="w-64">
+                      {canReport && reportOptions.length > 0 ? (
+                        <details className="group/report rounded-lg">
+                          <summary className={`${overflowMenuItemClassName} flex cursor-pointer list-none items-center justify-between`}>
+                            <span>신고하기</span>
+                            <span className="text-xs text-[#999] transition group-open/report:rotate-180">▼</span>
+                          </summary>
+                          <div className="mt-2 space-y-2 border-t border-[#f0f0f0] px-1 pt-2">
+                            {myCommentReport ? (
+                              <p className="text-xs text-[#888]">
+                                이미 신고한 댓글입니다. 다시 제출하면 신고 내용이 업데이트됩니다.
+                              </p>
+                            ) : null}
+                            <form action={reportCommentAction} className="space-y-2">
+                              <input type="hidden" name="postId" value={postId} />
+                              <input type="hidden" name="commentId" value={comment.id} />
+                              <label htmlFor={`comment-report-option-${comment.id}`} className="text-xs text-[#555]">
+                                신고 사유
+                              </label>
+                              <select
+                                id={`comment-report-option-${comment.id}`}
+                                name="optionId"
+                                defaultValue={myCommentReport?.optionId ?? ''}
+                                required
+                                className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
+                              >
+                                <option value="" disabled>
+                                  신고 사유를 선택해 주세요
+                                </option>
+                                {reportOptions.map((option) => (
+                                  <option key={option.id} value={option.id}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
+                              <label htmlFor={`comment-report-additional-${comment.id}`} className="text-xs text-[#555]">
+                                추가 사유 (선택)
+                              </label>
+                              <textarea
+                                id={`comment-report-additional-${comment.id}`}
+                                name="additionalReason"
+                                rows={3}
+                                maxLength={500}
+                                defaultValue={myCommentReport?.additionalReason ?? ''}
+                                placeholder="옵션 외 추가로 설명할 내용이 있다면 입력해 주세요."
+                                className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
+                              />
+                              <FormSubmitButton
+                                idleLabel={myCommentReport ? '신고 내용 수정' : '신고 접수'}
+                                pendingLabel="접수 중..."
+                                className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm font-medium text-[#444] hover:bg-[#f7f7f7]"
+                              />
+                            </form>
+                          </div>
+                        </details>
+                      ) : null}
+                      {isCoordinator && comment.status === 'PUBLISHED' ? (
+                        <details className="group/hold rounded-lg">
+                          <summary className={`${overflowMenuItemClassName} flex cursor-pointer list-none items-center justify-between`}>
+                            <span>보류 처리</span>
+                            <span className="text-xs text-[#999] transition group-open/hold:rotate-180">▼</span>
+                          </summary>
+                          <form action={holdCommentAction} className="mt-2 space-y-2 border-t border-[#f0f0f0] px-1 pt-2">
+                            <input type="hidden" name="postId" value={postId} />
+                            <input type="hidden" name="commentId" value={comment.id} />
+                            <input
+                              type="text"
+                              name="reason"
+                              placeholder="보류 사유 (선택)"
+                              className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
+                            />
+                            <FormSubmitButton
+                              idleLabel="보류 확정"
+                              pendingLabel="처리 중..."
+                              className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm font-medium text-[#444] hover:bg-[#f7f7f7]"
+                            />
+                          </form>
+                        </details>
+                      ) : null}
+                      {isCoordinator && comment.status === 'HELD' ? (
+                        <form action={restoreCommentAction}>
+                          <input type="hidden" name="postId" value={postId} />
+                          <input type="hidden" name="commentId" value={comment.id} />
+                          <FormSubmitButton
+                            idleLabel="재게시"
+                            pendingLabel="처리 중..."
+                            className={overflowMenuItemClassName}
+                          />
+                        </form>
+                      ) : null}
+                      {canDelete ? (
+                        <form action={deleteCommentAction}>
+                          <input type="hidden" name="postId" value={postId} />
+                          <input type="hidden" name="commentId" value={comment.id} />
+                          <FormSubmitButton
+                            idleLabel="삭제하기"
+                            pendingLabel="삭제 중..."
+                            className={`${overflowMenuItemClassName} text-red-600`}
+                          />
+                        </form>
+                      ) : null}
+                    </OverflowMenu>
+                  </div>
+                ) : null}
                 {comment.status === 'HELD' && !isCoordinator ? (
                   <p className="text-sm italic text-[#aaa]">운영 검토 중인 댓글입니다.</p>
                 ) : (
@@ -1053,7 +1171,7 @@ async function CommentsSection({
                   </p>
                 ) : null}
                 <div className="mt-3 space-y-3">
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
                     <div className="flex min-w-0 flex-1 items-center gap-2">
                       <UserAvatar
                         displayName={comment.author.displayName}
@@ -1070,57 +1188,6 @@ async function CommentsSection({
                           {new Date(comment.createdAt).toLocaleString('ko-KR')}
                         </p>
                       </div>
-                    </div>
-                    <div className="flex shrink-0 items-start gap-2">
-                      {canReport && reportOptions.length > 0 ? (
-                        <ReportMoreMenu panelClassName="w-64">
-                          {myCommentReport ? (
-                            <p className="text-xs text-[#888]">
-                              이미 신고한 댓글입니다. 다시 제출하면 신고 내용이 업데이트됩니다.
-                            </p>
-                          ) : null}
-                          <form action={reportCommentAction} className="space-y-2">
-                            <input type="hidden" name="postId" value={postId} />
-                            <input type="hidden" name="commentId" value={comment.id} />
-                            <label htmlFor={`comment-report-option-${comment.id}`} className="text-xs text-[#555]">
-                              신고 사유
-                            </label>
-                            <select
-                              id={`comment-report-option-${comment.id}`}
-                              name="optionId"
-                              defaultValue={myCommentReport?.optionId ?? ''}
-                              required
-                              className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
-                            >
-                              <option value="" disabled>
-                                신고 사유를 선택해 주세요
-                              </option>
-                              {reportOptions.map((option) => (
-                                <option key={option.id} value={option.id}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                            <label htmlFor={`comment-report-additional-${comment.id}`} className="text-xs text-[#555]">
-                              추가 사유 (선택)
-                            </label>
-                            <textarea
-                              id={`comment-report-additional-${comment.id}`}
-                              name="additionalReason"
-                              rows={3}
-                              maxLength={500}
-                              defaultValue={myCommentReport?.additionalReason ?? ''}
-                              placeholder="옵션 외 추가로 설명할 내용이 있다면 입력해 주세요."
-                              className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
-                            />
-                            <FormSubmitButton
-                              idleLabel={myCommentReport ? '신고 내용 수정' : '신고 접수'}
-                              pendingLabel="접수 중..."
-                              className="rounded-xl border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-                            />
-                          </form>
-                        </ReportMoreMenu>
-                      ) : null}
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -1161,57 +1228,8 @@ async function CommentsSection({
                         </form>
                       )
                     ) : null}
-                    {canDelete ? (
-                      <form action={deleteCommentAction}>
-                        <input type="hidden" name="postId" value={postId} />
-                        <input type="hidden" name="commentId" value={comment.id} />
-                        <FormSubmitButton
-                          idleLabel="삭제"
-                          pendingLabel="삭제 중..."
-                          className="whitespace-nowrap rounded-md px-2 py-1 text-xs text-red-500 hover:bg-red-50"
-                        />
-                      </form>
-                    ) : null}
                   </div>
                 </div>
-                {isCoordinator ? (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <span className="w-full text-xs text-[#aaa]">운영 관리</span>
-                    {comment.status === 'PUBLISHED' ? (
-                      <details>
-                        <summary className="cursor-pointer rounded-xl border border-yellow-300 bg-[#fffde7] px-2 py-1 text-xs font-medium text-[#7a6000]">
-                          보류 처리
-                        </summary>
-                        <form action={holdCommentAction} className="mt-2 space-y-2">
-                          <input type="hidden" name="postId" value={postId} />
-                          <input type="hidden" name="commentId" value={comment.id} />
-                          <input
-                            type="text"
-                            name="reason"
-                            placeholder="보류 사유 (선택)"
-                            className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
-                          />
-                          <FormSubmitButton
-                            idleLabel="보류 확정"
-                            pendingLabel="처리 중..."
-                            className="rounded-xl bg-[#fee500] px-3 py-2 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
-                          />
-                        </form>
-                      </details>
-                    ) : null}
-                    {comment.status === 'HELD' ? (
-                      <form action={restoreCommentAction}>
-                        <input type="hidden" name="postId" value={postId} />
-                        <input type="hidden" name="commentId" value={comment.id} />
-                        <FormSubmitButton
-                          idleLabel="재게시"
-                          pendingLabel="처리 중..."
-                          className="rounded-xl border border-green-300 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-50"
-                        />
-                      </form>
-                    ) : null}
-                  </div>
-                ) : null}
               </li>
             );
           })}

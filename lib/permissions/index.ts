@@ -400,7 +400,15 @@ export function canDeletePost(
   user: PermissionUser | null | undefined,
   post: PermissionPost,
 ) {
-  return canEditPost(user, post);
+  if (!user || user.status === 'SUSPENDED' || user.status === 'DELETED') {
+    return false;
+  }
+
+  if (canHoldPost(user)) {
+    return true;
+  }
+
+  return user.id === post.authorId;
 }
 
 export function canDeleteComment(
