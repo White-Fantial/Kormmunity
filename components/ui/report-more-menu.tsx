@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useId, useRef, useState, type ReactNode } from 'react';
 
 type ReportMoreMenuProps = {
   children: ReactNode;
@@ -13,35 +13,8 @@ export function ReportMoreMenu({ children, className = '', panelClassName = '', 
   const [isOpen, setIsOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const menuId = useId();
+  const reportContentId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    const handleDocumentClick = (event: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-        setIsReportOpen(false);
-      }
-    };
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsOpen(false);
-        setIsReportOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleDocumentClick);
-    document.addEventListener('keydown', handleEscape);
-
-    return () => {
-      document.removeEventListener('mousedown', handleDocumentClick);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [isOpen]);
 
   const handleToggleMenu = () => {
     setIsOpen((prev) => {
@@ -53,8 +26,28 @@ export function ReportMoreMenu({ children, className = '', panelClassName = '', 
     });
   };
 
+  const closeMenu = () => {
+    setIsOpen(false);
+    setIsReportOpen(false);
+  };
+
   return (
-    <div ref={rootRef} className={`relative ${className}`}>
+    <div
+      ref={rootRef}
+      className={`relative ${className}`}
+      onKeyDownCapture={(event) => {
+        if (event.key === 'Escape') {
+          closeMenu();
+        }
+      }}
+      onBlurCapture={() => {
+        requestAnimationFrame(() => {
+          if (rootRef.current && !rootRef.current.contains(document.activeElement)) {
+            closeMenu();
+          }
+        });
+      }}
+    >
       <button
         type="button"
         className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-[#e8e8e8] text-lg leading-none text-[#777] transition hover:bg-[#f7f7f7]"
@@ -77,6 +70,7 @@ export function ReportMoreMenu({ children, className = '', panelClassName = '', 
             role="menuitem"
             className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-[#444] hover:bg-[#f7f7f7]"
             aria-expanded={isReportOpen}
+            aria-controls={reportContentId}
             onClick={() => setIsReportOpen((prev) => !prev)}
           >
             <span>신고하기</span>
@@ -85,7 +79,12 @@ export function ReportMoreMenu({ children, className = '', panelClassName = '', 
             </span>
           </button>
           {isReportOpen ? (
-            <div className={`space-y-2 border-t border-[#f0f0f0] px-1 pt-2 ${contentClassName}`}>
+            <div
+              id={reportContentId}
+              role="region"
+              aria-label="신고 입력 폼"
+              className={`space-y-2 border-t border-[#f0f0f0] px-1 pt-2 ${contentClassName}`}
+            >
               {children}
             </div>
           ) : null}
