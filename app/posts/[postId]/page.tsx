@@ -35,6 +35,7 @@ import { PostShareButton } from '@/components/posts/post-share-button';
 import { PostMarkdown } from '@/components/posts/post-markdown';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { NeighbourWarmthLabel } from '@/components/ui/neighbour-warmth-label';
+import { ReportMoreMenu } from '@/components/ui/report-more-menu';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
@@ -537,61 +538,53 @@ export default async function PostDetailPage({
         ) : null}
 
         {canSubmitReport && reportOptions.length > 0 ? (
-          <section className="border-t border-[#e8e8e8] pt-4">
-            <details className="group space-y-2">
-              <summary className="flex cursor-pointer list-none items-center justify-between rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">
-                <span>신고하기</span>
-                <span aria-hidden="true" className="text-xs text-red-400 transition-transform group-open:rotate-180">
-                  ▼
-                </span>
-              </summary>
-              <div className="space-y-2 pt-2">
-                {myReport ? (
-                  <p className="text-xs text-[#888]">
-                    이미 신고한 글입니다. 다시 제출하면 신고 내용이 업데이트됩니다.
-                  </p>
-                ) : null}
-                <form action={reportPostAction} className="space-y-2">
-                  <input type="hidden" name="postId" value={post.id} />
-                  <label htmlFor="report-option" className="text-xs text-[#555]">
-                    신고 사유
-                  </label>
-                  <select
-                    id="report-option"
-                    name="optionId"
-                    defaultValue={myReport?.optionId ?? ''}
-                    required
-                    className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
-                  >
-                    <option value="" disabled>
-                      신고 사유를 선택해 주세요
+          <section className="flex justify-end border-t border-[#e8e8e8] pt-4">
+            <ReportMoreMenu className="shrink-0">
+              {myReport ? (
+                <p className="text-xs text-[#888]">
+                  이미 신고한 글입니다. 다시 제출하면 신고 내용이 업데이트됩니다.
+                </p>
+              ) : null}
+              <form action={reportPostAction} className="space-y-2">
+                <input type="hidden" name="postId" value={post.id} />
+                <label htmlFor="report-option" className="text-xs text-[#555]">
+                  신고 사유
+                </label>
+                <select
+                  id="report-option"
+                  name="optionId"
+                  defaultValue={myReport?.optionId ?? ''}
+                  required
+                  className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
+                >
+                  <option value="" disabled>
+                    신고 사유를 선택해 주세요
+                  </option>
+                  {reportOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
                     </option>
-                    {reportOptions.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <label htmlFor="report-additional-reason" className="text-xs text-[#555]">
-                    추가 사유 (선택)
-                  </label>
-                  <textarea
-                    id="report-additional-reason"
-                    name="additionalReason"
-                    rows={3}
-                    maxLength={500}
-                    defaultValue={myReport?.additionalReason ?? ''}
-                    placeholder="옵션 외 추가로 설명할 내용이 있다면 입력해 주세요."
-                    className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
-                  />
-                  <FormSubmitButton
-                    idleLabel={myReport ? '신고 내용 수정' : '신고 접수'}
-                    pendingLabel="접수 중..."
-                    className="rounded-xl border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-                  />
-                </form>
-              </div>
-            </details>
+                  ))}
+                </select>
+                <label htmlFor="report-additional-reason" className="text-xs text-[#555]">
+                  추가 사유 (선택)
+                </label>
+                <textarea
+                  id="report-additional-reason"
+                  name="additionalReason"
+                  rows={3}
+                  maxLength={500}
+                  defaultValue={myReport?.additionalReason ?? ''}
+                  placeholder="옵션 외 추가로 설명할 내용이 있다면 입력해 주세요."
+                  className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
+                />
+                <FormSubmitButton
+                  idleLabel={myReport ? '신고 내용 수정' : '신고 접수'}
+                  pendingLabel="접수 중..."
+                  className="rounded-xl border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                />
+              </form>
+            </ReportMoreMenu>
           </section>
         ) : null}
 
@@ -1078,17 +1071,68 @@ async function CommentsSection({
                         </p>
                       </div>
                     </div>
-                    {canDelete ? (
-                      <form action={deleteCommentAction} className="shrink-0">
-                        <input type="hidden" name="postId" value={postId} />
-                        <input type="hidden" name="commentId" value={comment.id} />
-                        <FormSubmitButton
-                          idleLabel="삭제"
-                          pendingLabel="삭제 중..."
-                          className="whitespace-nowrap rounded-md px-2 py-1 text-xs text-red-500 hover:bg-red-50"
-                        />
-                      </form>
-                    ) : null}
+                    <div className="flex shrink-0 items-start gap-2">
+                      {canReport && reportOptions.length > 0 ? (
+                        <ReportMoreMenu panelClassName="w-64">
+                          {myCommentReport ? (
+                            <p className="text-xs text-[#888]">
+                              이미 신고한 댓글입니다. 다시 제출하면 신고 내용이 업데이트됩니다.
+                            </p>
+                          ) : null}
+                          <form action={reportCommentAction} className="space-y-2">
+                            <input type="hidden" name="postId" value={postId} />
+                            <input type="hidden" name="commentId" value={comment.id} />
+                            <label htmlFor={`comment-report-option-${comment.id}`} className="text-xs text-[#555]">
+                              신고 사유
+                            </label>
+                            <select
+                              id={`comment-report-option-${comment.id}`}
+                              name="optionId"
+                              defaultValue={myCommentReport?.optionId ?? ''}
+                              required
+                              className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
+                            >
+                              <option value="" disabled>
+                                신고 사유를 선택해 주세요
+                              </option>
+                              {reportOptions.map((option) => (
+                                <option key={option.id} value={option.id}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                            <label htmlFor={`comment-report-additional-${comment.id}`} className="text-xs text-[#555]">
+                              추가 사유 (선택)
+                            </label>
+                            <textarea
+                              id={`comment-report-additional-${comment.id}`}
+                              name="additionalReason"
+                              rows={3}
+                              maxLength={500}
+                              defaultValue={myCommentReport?.additionalReason ?? ''}
+                              placeholder="옵션 외 추가로 설명할 내용이 있다면 입력해 주세요."
+                              className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
+                            />
+                            <FormSubmitButton
+                              idleLabel={myCommentReport ? '신고 내용 수정' : '신고 접수'}
+                              pendingLabel="접수 중..."
+                              className="rounded-xl border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                            />
+                          </form>
+                        </ReportMoreMenu>
+                      ) : null}
+                      {canDelete ? (
+                        <form action={deleteCommentAction} className="shrink-0">
+                          <input type="hidden" name="postId" value={postId} />
+                          <input type="hidden" name="commentId" value={comment.id} />
+                          <FormSubmitButton
+                            idleLabel="삭제"
+                            pendingLabel="삭제 중..."
+                            className="whitespace-nowrap rounded-md px-2 py-1 text-xs text-red-500 hover:bg-red-50"
+                          />
+                        </form>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {currentUser ? (
@@ -1166,65 +1210,6 @@ async function CommentsSection({
                         />
                       </form>
                     ) : null}
-                  </div>
-                ) : null}
-                {canReport && reportOptions.length > 0 ? (
-                  <div className="mt-2">
-                    <details className="group mt-3 space-y-2 border-t border-[#f0f0f0] pt-3">
-                      <summary className="flex cursor-pointer list-none items-center justify-between rounded-xl border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50">
-                        <span>신고하기</span>
-                        <span aria-hidden="true" className="text-xs text-red-400 transition-transform group-open:rotate-180">
-                          ▼
-                        </span>
-                      </summary>
-                      <div className="space-y-2 pt-2">
-                        {myCommentReport ? (
-                          <p className="text-xs text-[#888]">
-                            이미 신고한 댓글입니다. 다시 제출하면 신고 내용이 업데이트됩니다.
-                          </p>
-                        ) : null}
-                        <form action={reportCommentAction} className="space-y-2">
-                          <input type="hidden" name="postId" value={postId} />
-                          <input type="hidden" name="commentId" value={comment.id} />
-                          <label htmlFor={`comment-report-option-${comment.id}`} className="text-xs text-[#555]">
-                            신고 사유
-                          </label>
-                          <select
-                            id={`comment-report-option-${comment.id}`}
-                            name="optionId"
-                            defaultValue={myCommentReport?.optionId ?? ''}
-                            required
-                            className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
-                          >
-                            <option value="" disabled>
-                              신고 사유를 선택해 주세요
-                            </option>
-                            {reportOptions.map((option) => (
-                              <option key={option.id} value={option.id}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                          <label htmlFor={`comment-report-additional-${comment.id}`} className="text-xs text-[#555]">
-                            추가 사유 (선택)
-                          </label>
-                          <textarea
-                            id={`comment-report-additional-${comment.id}`}
-                            name="additionalReason"
-                            rows={3}
-                            maxLength={500}
-                            defaultValue={myCommentReport?.additionalReason ?? ''}
-                            placeholder="옵션 외 추가로 설명할 내용이 있다면 입력해 주세요."
-                            className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
-                          />
-                          <FormSubmitButton
-                            idleLabel={myCommentReport ? '신고 내용 수정' : '신고 접수'}
-                            pendingLabel="접수 중..."
-                            className="rounded-xl border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-                          />
-                        </form>
-                      </div>
-                    </details>
                   </div>
                 ) : null}
               </li>
