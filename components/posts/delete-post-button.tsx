@@ -33,7 +33,7 @@ type DeletePostButtonProps = {
 
 export function DeletePostButton({ postId, className }: DeletePostButtonProps) {
   return (
-    <form action={deletePostAction}>
+    <form action={deletePostAction} className="w-full">
       <input type="hidden" name="postId" value={postId} />
       <DeleteButton className={className} />
     </form>

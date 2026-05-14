@@ -9,7 +9,7 @@ type OverflowMenuProps = {
 };
 
 export const overflowMenuItemClassName =
-  'block w-full rounded-lg px-3 py-2 text-left text-sm text-[#444] hover:bg-[#f7f7f7]';
+  'block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-[#444] hover:bg-[#f7f7f7]';
 
 export function OverflowMenu({ children, className = '', panelClassName = '' }: OverflowMenuProps) {
   const detailsRef = useRef<HTMLDetailsElement>(null);

@@ -531,7 +531,7 @@ export default async function PostDetailPage({
               </details>
             ) : null}
             {canModerateCurrentPost && post.status === 'HELD' ? (
-              <form action={restorePostAction}>
+                <form action={restorePostAction} className="w-full">
                 <input type="hidden" name="postId" value={post.id} />
                 <FormSubmitButton
                   idleLabel="재게시"
@@ -1168,7 +1168,7 @@ async function CommentsSection({
                         </details>
                       ) : null}
                       {isCoordinator && comment.status === 'HELD' ? (
-                        <form action={restoreCommentAction}>
+                        <form action={restoreCommentAction} className="w-full">
                           <input type="hidden" name="postId" value={postId} />
                           <input type="hidden" name="commentId" value={comment.id} />
                           <FormSubmitButton
@@ -1179,7 +1179,7 @@ async function CommentsSection({
                         </form>
                       ) : null}
                       {canDelete ? (
-                        <form action={deleteCommentAction}>
+                        <form action={deleteCommentAction} className="w-full">
                           <input type="hidden" name="postId" value={postId} />
                           <input type="hidden" name="commentId" value={comment.id} />
                           <FormSubmitButton

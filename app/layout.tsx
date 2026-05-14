@@ -101,7 +101,6 @@ export default async function RootLayout({
               <HeaderNavLink href="/posts/new">글쓰기</HeaderNavLink>
               <HeaderNavLink href="/my/posts">내글</HeaderNavLink>
               <HeaderNavLink href="/my/saved">저장한글</HeaderNavLink>
-              <HeaderNavLink href="/my/notifications">알림</HeaderNavLink>
               <HeaderNavLink href="/my/profile">내 프로필</HeaderNavLink>
               <HeaderNavConditional />
             </nav>
