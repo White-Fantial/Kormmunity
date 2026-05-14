@@ -222,7 +222,6 @@ async function attemptKakaoMessageDelivery(params: {
 export async function notifySearchAlertsForPost(post: NotifyPostInput) {
   const alerts = await prisma.searchAlert.findMany({
     where: {
-      isActive: true,
       user: { notifyOnKakaoForSearchAlert: true },
     },
     select: {

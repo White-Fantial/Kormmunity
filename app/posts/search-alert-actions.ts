@@ -62,37 +62,12 @@ export async function saveSearchAlertAction(formData: FormData) {
     create: {
       userId: user.id,
       query,
-      isActive: true,
     },
-    update: {
-      isActive: true,
-    },
+    update: {},
   });
 
   revalidatePath('/posts');
   redirect(buildRedirectUrl(returnTo, 'success', '1'));
-}
-
-export async function updateSearchAlertAction(formData: FormData) {
-  const user = await requireUser();
-  const alertId = normalizeText(formData.get('alertId'));
-  const returnTo = normalizeReturnTo(formData.get('returnTo'));
-  const isActive = formData.get('isActive') === 'on';
-
-  if (!alertId) {
-    redirect(buildRedirectUrl(returnTo, 'error', '검색 조건을 찾을 수 없어요.'));
-  }
-
-  await prisma.searchAlert.updateMany({
-    where: { id: alertId, userId: user.id },
-    data: {
-      isActive,
-    },
-  });
-
-  revalidatePath('/posts');
-  revalidatePath('/my/profile');
-  redirect(returnTo);
 }
 
 export async function deleteSearchAlertAction(formData: FormData) {
