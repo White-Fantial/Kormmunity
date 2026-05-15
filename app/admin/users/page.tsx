@@ -4,8 +4,6 @@ import {
   changeUserAccountTypeAction,
   changeUserRoleAction,
   changeUserStatusAction,
-  createManagedAccountAction,
-  updateManagedAccountAction,
 } from '@/app/admin/actions';
 import { adminManagementNavItems, ManagementSectionNav } from '@/components/admin/management-section-nav';
 import { getCurrentUser } from '@/lib/auth/session';
@@ -20,11 +18,7 @@ const MAX_REVIEW_REQUEST_LOOKUP = 200;
 const MAX_RECENT_USER_MODERATION_ACTIONS = 40;
 
 type AdminUsersPageProps = {
-  searchParams: Promise<{
-    error?: string;
-    managedType?: string;
-    includeInactive?: string;
-  }>;
+  searchParams: Promise<{ error?: string }>;
 };
 
 export default async function AdminUsersPage({ searchParams }: AdminUsersPageProps) {
@@ -35,83 +29,28 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
   }
 
   const params = await searchParams;
-  const selectedManagedType = params.managedType === 'OPERATOR' ? 'OPERATOR' : 'PERSONA';
-  const includeInactiveManaged = params.includeInactive === 'true';
-
-  const [users, cities] = await Promise.all([
-    prisma.user.findMany({
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        displayName: true,
-        role: true,
-        accountType: true,
-        isManagedAccount: true,
-        isActive: true,
-        status: true,
-        cityId: true,
-        city: { select: { name: true } },
-        shortBio: true,
-        personaNotes: true,
-        toneNotes: true,
-        activityNotes: true,
-        profileImageUrl: true,
-        createdAt: true,
-        _count: {
-          select: { posts: true, comments: true },
-        },
+  const users = await prisma.user.findMany({
+    where: { isManagedAccount: false },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      displayName: true,
+      role: true,
+      accountType: true,
+      isManagedAccount: true,
+      isActive: true,
+      status: true,
+      shortBio: true,
+      personaNotes: true,
+      toneNotes: true,
+      activityNotes: true,
+      profileImageUrl: true,
+      createdAt: true,
+      _count: {
+        select: { posts: true, comments: true },
       },
-    }),
-    prisma.city.findMany({
-      where: { isActive: true },
-      orderBy: { name: 'asc' },
-      select: { id: true, name: true },
-    }),
-  ]);
-
-  const managedAccountCandidates = users.filter(
-    (u) => u.isManagedAccount && (u.accountType === 'PERSONA' || u.accountType === 'OPERATOR'),
-  );
-  const filteredManagedAccounts = managedAccountCandidates.filter((u) => {
-    if (u.accountType !== selectedManagedType) {
-      return false;
-    }
-    if (!includeInactiveManaged && !u.isActive) {
-      return false;
-    }
-    return true;
+    },
   });
-
-  const managedAccountIds = filteredManagedAccounts.map((user) => user.id);
-  const [latestManagedPosts, latestManagedComments] =
-    managedAccountIds.length > 0
-      ? await Promise.all([
-          prisma.post.groupBy({
-            by: ['authorId'],
-            where: { authorId: { in: managedAccountIds } },
-            _max: { createdAt: true },
-          }),
-          prisma.comment.groupBy({
-            by: ['authorId'],
-            where: { authorId: { in: managedAccountIds } },
-            _max: { createdAt: true },
-          }),
-        ])
-      : [[], []];
-
-  const lastUsedByManagedUserId = new Map<string, Date>();
-  for (const item of latestManagedPosts) {
-    if (item._max.createdAt) {
-      lastUsedByManagedUserId.set(item.authorId, item._max.createdAt);
-    }
-  }
-  for (const item of latestManagedComments) {
-    if (!item._max.createdAt) continue;
-    const existing = lastUsedByManagedUserId.get(item.authorId);
-    if (!existing || item._max.createdAt > existing) {
-      lastUsedByManagedUserId.set(item.authorId, item._max.createdAt);
-    }
-  }
 
   const userIds = users.map((user) => user.id);
   const reviewRequestTake = Math.min(
@@ -221,92 +160,6 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
       {params.error ? (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{params.error}</p>
       ) : null}
-
-      <div className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm space-y-3">
-        <h2 className="font-semibold">운영 계정 생성 (ADMIN 전용)</h2>
-        <p className="text-xs text-amber-700">
-          운영 계정은 기본적으로 로그인 불가(isManagedAccount=true)로 생성됩니다. REAL_USER/SYSTEM 생성은 허용되지 않습니다.
-        </p>
-        <form action={createManagedAccountAction} className="space-y-2">
-          <div className="grid gap-2 sm:grid-cols-2">
-            <input
-              type="text"
-              name="displayName"
-              required
-              placeholder="nickname"
-              className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none"
-            />
-            <select
-              name="accountType"
-              required
-              defaultValue="PERSONA"
-              className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none"
-            >
-              <option value="PERSONA">PERSONA</option>
-              <option value="OPERATOR">OPERATOR</option>
-            </select>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <select
-              name="cityId"
-              defaultValue=""
-              className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none"
-            >
-              <option value="">도시 미지정</option>
-              {cities.map((city) => (
-                <option key={city.id} value={city.id}>
-                  {city.name}
-                </option>
-              ))}
-            </select>
-            <select
-              name="isActive"
-              defaultValue="true"
-              className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none"
-            >
-              <option value="true">활성</option>
-              <option value="false">비활성</option>
-            </select>
-          </div>
-          <input
-            type="url"
-            name="profileImageUrl"
-            placeholder="profileImage URL (선택)"
-            className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none"
-          />
-          <textarea
-            name="shortBio"
-            rows={2}
-            placeholder="shortBio / description (선택)"
-            className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none"
-          />
-          <div className="grid gap-2 sm:grid-cols-3">
-            <textarea
-              name="personaNotes"
-              rows={2}
-              placeholder="personaNotes (선택)"
-              className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-xs focus:border-[#fee500] focus:outline-none"
-            />
-            <textarea
-              name="toneNotes"
-              rows={2}
-              placeholder="toneNotes (선택)"
-              className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-xs focus:border-[#fee500] focus:outline-none"
-            />
-            <textarea
-              name="activityNotes"
-              rows={2}
-              placeholder="activityNotes (선택)"
-              className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-xs focus:border-[#fee500] focus:outline-none"
-            />
-          </div>
-          <FormSubmitButton
-            idleLabel="운영 계정 생성"
-            pendingLabel="생성 중..."
-            className="rounded-xl bg-[#fee500] px-4 py-2 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
-          />
-        </form>
-      </div>
 
       <div className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
         <h2 className="mb-3 font-semibold">사용자 목록 ({users.length}명)</h2>
@@ -489,140 +342,6 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                 </li>
               );
             })}
-          </ul>
-        )}
-      </div>
-
-      <div className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold">운영 계정 목록</h2>
-          <form className="flex flex-wrap items-center gap-2">
-            <select
-              name="managedType"
-              defaultValue={selectedManagedType}
-              className="rounded-lg border border-[#e8e8e8] px-2 py-1 text-sm"
-            >
-              <option value="PERSONA">PERSONA</option>
-              <option value="OPERATOR">OPERATOR</option>
-            </select>
-            <label className="inline-flex items-center gap-1 text-xs text-[#555]">
-              <input type="checkbox" name="includeInactive" value="true" defaultChecked={includeInactiveManaged} />
-              비활성 포함
-            </label>
-            <button
-              type="submit"
-              className="rounded-lg border border-[#e8e8e8] px-2 py-1 text-xs hover:bg-[#f9f9f9]"
-            >
-              필터 적용
-            </button>
-          </form>
-        </div>
-        {filteredManagedAccounts.length === 0 ? (
-          <p className="text-sm text-[#888]">조건에 맞는 운영 계정이 없습니다.</p>
-        ) : (
-          <ul className="space-y-3">
-            {filteredManagedAccounts.map((managed) => (
-              <li key={managed.id} className="rounded-xl border border-[#e8e8e8] p-3 space-y-2">
-                <div className="flex flex-wrap items-center gap-2 text-xs text-[#666]">
-                  <span className="font-semibold text-[#333]">{managed.displayName}</span>
-                  <span className="rounded-full bg-[#f5f5f5] px-2 py-0.5">{managed.accountType}</span>
-                  <span>{managed.role}</span>
-                  <span>{managed.city?.name ?? '도시 미지정'}</span>
-                  <span>{managed.isActive ? '활성' : '비활성'}</span>
-                  <span>생성: {new Date(managed.createdAt).toLocaleString('ko-KR')}</span>
-                  <span>
-                    최근 사용:{' '}
-                    {lastUsedByManagedUserId.get(managed.id)
-                      ? new Date(lastUsedByManagedUserId.get(managed.id) as Date).toLocaleString('ko-KR')
-                      : '기록 없음'}
-                  </span>
-                </div>
-                <form action={updateManagedAccountAction} className="space-y-2">
-                  <input type="hidden" name="targetUserId" value={managed.id} />
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <input
-                      type="text"
-                      name="displayName"
-                      defaultValue={managed.displayName}
-                      required
-                      className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm"
-                    />
-                    <select
-                      name="accountType"
-                      defaultValue={managed.accountType}
-                      className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm"
-                    >
-                      <option value="PERSONA">PERSONA</option>
-                      <option value="OPERATOR">OPERATOR</option>
-                    </select>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <select
-                      name="cityId"
-                      defaultValue={managed.cityId ?? ''}
-                      className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm"
-                    >
-                      <option value="">도시 미지정</option>
-                      {cities.map((city) => (
-                        <option key={city.id} value={city.id}>
-                          {city.name}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      name="isActive"
-                      defaultValue={String(managed.isActive)}
-                      className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm"
-                    >
-                      <option value="true">활성</option>
-                      <option value="false">비활성</option>
-                    </select>
-                  </div>
-                  <input
-                    type="url"
-                    name="profileImageUrl"
-                    defaultValue={managed.profileImageUrl ?? ''}
-                    placeholder="profileImage URL"
-                    className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm"
-                  />
-                  <textarea
-                    name="shortBio"
-                    rows={2}
-                    defaultValue={managed.shortBio ?? ''}
-                    placeholder="shortBio / description"
-                    className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm"
-                  />
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    <textarea
-                      name="personaNotes"
-                      rows={2}
-                      defaultValue={managed.personaNotes ?? ''}
-                      placeholder="personaNotes"
-                      className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-xs"
-                    />
-                    <textarea
-                      name="toneNotes"
-                      rows={2}
-                      defaultValue={managed.toneNotes ?? ''}
-                      placeholder="toneNotes"
-                      className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-xs"
-                    />
-                    <textarea
-                      name="activityNotes"
-                      rows={2}
-                      defaultValue={managed.activityNotes ?? ''}
-                      placeholder="activityNotes"
-                      className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-xs"
-                    />
-                  </div>
-                  <FormSubmitButton
-                    idleLabel={managed.isActive ? '운영 계정 수정/비활성화' : '운영 계정 수정/재활성화'}
-                    pendingLabel="처리 중..."
-                    className="rounded-xl border border-[#e8e8e8] px-3 py-1.5 text-sm hover:bg-[#f9f9f9]"
-                  />
-                </form>
-              </li>
-            ))}
           </ul>
         )}
       </div>

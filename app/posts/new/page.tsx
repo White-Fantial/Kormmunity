@@ -6,7 +6,7 @@ import { requireUser } from '@/lib/auth/session';
 import { getPostCreationFormOptions } from '@/lib/permissions';
 import { getProfileCityRequiredHref, hasValidProfileCity } from '@/lib/posts/profile-city';
 import { redirect } from 'next/navigation';
-import { prisma } from '@/lib/db/prisma';
+import { getAdminAuthorAccountOptions } from '@/lib/posts/author-account-options';
 
 
 
@@ -31,22 +31,7 @@ export default async function NewPostPage({ searchParams }: NewPostPageProps) {
   const params = await searchParams;
   const formOptions = await getPostCreationFormOptions(user);
   const isAdmin = user.role === 'ADMIN';
-  const authorAccountOptionsRaw = isAdmin
-    ? await prisma.user.findMany({
-        where: {
-          accountType: { in: ['PERSONA', 'OPERATOR'] },
-          isManagedAccount: true,
-          isActive: true,
-        },
-        select: { id: true, displayName: true, accountType: true },
-        orderBy: [{ accountType: 'asc' }, { displayName: 'asc' }],
-      })
-    : [];
-  const authorAccountOptions = authorAccountOptionsRaw.map((authorAccount) => ({
-    ...authorAccount,
-    accountType:
-      authorAccount.accountType === 'OPERATOR' ? ('OPERATOR' as const) : ('PERSONA' as const),
-  }));
+  const authorAccountOptions = isAdmin ? await getAdminAuthorAccountOptions() : [];
 
   return (
     <section className="space-y-4">

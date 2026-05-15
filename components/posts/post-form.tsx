@@ -10,6 +10,7 @@ import {
 } from '@/lib/upload/cloudinary-client';
 import { INVALID_KAKAO_OPEN_LINK_MESSAGE_KO } from '@/lib/kakao-open-link';
 import { KakaoOpenLinkInput } from '@/components/ui/kakao-open-link-input';
+import type { AuthorAccountOption } from '@/lib/posts/author-account-options';
 
 const SALE_CATEGORY_TYPE = 'SALE';
 const DISABLED_STATE_CLASSES = 'disabled:cursor-not-allowed disabled:opacity-60';
@@ -52,12 +53,6 @@ type AllowedTarget = {
 type SelectOption = {
   value: string;
   label: string;
-};
-
-type AuthorAccountOption = {
-  id: string;
-  displayName: string;
-  accountType: 'PERSONA' | 'OPERATOR';
 };
 
 type PostFormProps = {
@@ -235,6 +230,10 @@ export function PostForm({
   const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const isSubmitting = isPending || isUploading;
+  const authorAccountOptionsById = useMemo(
+    () => new Map((authorAccountOptions ?? []).map((authorAccount) => [authorAccount.id, authorAccount])),
+    [authorAccountOptions],
+  );
 
   const countryOptions = useMemo(
     () => buildCountryOptions(countries, allowedTargets),
@@ -507,7 +506,24 @@ export function PostForm({
             id="authorUserIdOverride"
             name="authorUserIdOverride"
             value={authorUserIdOverride}
-            onChange={(e) => setAuthorUserIdOverride(e.target.value)}
+            onChange={(e) => {
+              const nextAuthorUserIdOverride = e.target.value;
+              setAuthorUserIdOverride(nextAuthorUserIdOverride);
+
+              if (!nextAuthorUserIdOverride) {
+                setCountryValue(toCountryValue(defaultCountryId));
+                setCityValue(toCityValue(defaultCityId));
+                return;
+              }
+
+              const selectedAuthor = authorAccountOptionsById.get(nextAuthorUserIdOverride);
+              if (!selectedAuthor) {
+                return;
+              }
+
+              setCountryValue(toCountryValue(selectedAuthor.countryId));
+              setCityValue(toCityValue(selectedAuthor.cityId));
+            }}
             className={FIELD_CLASS}
           >
             <option value="">내 계정으로 작성</option>

@@ -32,6 +32,7 @@ const VALID_CATEGORY_VISIBILITY_MODES = Object.values(
 ) as CategoryVisibilityMode[];
 const VALID_ACCOUNT_TYPES = Object.values(AccountType) as AccountType[];
 const MANAGED_ACCOUNT_TYPES = new Set<AccountType>(['PERSONA', 'OPERATOR', 'SYSTEM']);
+const MANAGED_ACCOUNTS_PATH = '/admin/managed-accounts';
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
 function normalizeHexColor(value: string) {
@@ -121,6 +122,46 @@ async function revalidateUserSessions(userId: string) {
   for (const session of sessions) {
     invalidateSessionCache(session.token);
   }
+}
+
+async function resolveManagedAccountLocation(
+  rawCountryId: string,
+  rawCityId: string,
+): Promise<{ countryId: string | null; cityId: string | null }> {
+  const countryId = rawCountryId || null;
+  const cityId = rawCityId || null;
+
+  const [country, city] = await Promise.all([
+    countryId
+      ? prisma.country.findFirst({
+          where: { id: countryId, isActive: true },
+          select: { id: true },
+        })
+      : Promise.resolve(null),
+    cityId
+      ? prisma.city.findFirst({
+          where: { id: cityId, isActive: true },
+          select: { id: true, countryId: true },
+        })
+      : Promise.resolve(null),
+  ]);
+
+  if (countryId && !country) {
+    redirect(`${MANAGED_ACCOUNTS_PATH}?error=${encodeURIComponent('유효하지 않은 국가입니다.')}`);
+  }
+
+  if (cityId && !city) {
+    redirect(`${MANAGED_ACCOUNTS_PATH}?error=${encodeURIComponent('유효하지 않은 도시입니다.')}`);
+  }
+
+  if (city && countryId && city.countryId !== countryId) {
+    redirect(`${MANAGED_ACCOUNTS_PATH}?error=${encodeURIComponent('도시와 국가가 일치하지 않습니다.')}`);
+  }
+
+  return {
+    countryId: city?.countryId ?? countryId,
+    cityId,
+  };
 }
 
 export async function changeUserRoleAction(formData: FormData) {
@@ -267,6 +308,7 @@ export async function changeUserAccountTypeAction(formData: FormData) {
   });
 
   revalidatePath('/admin/users');
+  revalidatePath(MANAGED_ACCOUNTS_PATH);
   revalidatePath('/posts/new');
   await revalidateUserSessions(targetUserId);
   redirect('/admin/users');
@@ -282,7 +324,8 @@ export async function createManagedAccountAction(formData: FormData) {
     parsedAccountType === 'PERSONA' || parsedAccountType === 'OPERATOR'
       ? parsedAccountType
       : null;
-  const cityId = normalizeText(formData.get('cityId')) || null;
+  const rawCountryId = normalizeText(formData.get('countryId'));
+  const rawCityId = normalizeText(formData.get('cityId'));
   const profileImageUrl = normalizeText(formData.get('profileImageUrl')) || null;
   const shortBio = normalizeText(formData.get('shortBio')) || null;
   const isActive = parseBoolean(formData.get('isActive')) ?? true;
@@ -291,18 +334,10 @@ export async function createManagedAccountAction(formData: FormData) {
   const activityNotes = normalizeText(formData.get('activityNotes')) || null;
 
   if (!displayName || !accountType) {
-    redirect('/admin/users?error=닉네임과 계정 타입(PERSONA/OPERATOR)을 입력해 주세요.');
+    redirect(`${MANAGED_ACCOUNTS_PATH}?error=${encodeURIComponent('닉네임과 계정 타입(PERSONA/OPERATOR)을 입력해 주세요.')}`);
   }
 
-  if (cityId) {
-    const city = await prisma.city.findUnique({
-      where: { id: cityId },
-      select: { id: true, countryId: true },
-    });
-    if (!city) {
-      redirect('/admin/users?error=유효하지 않은 도시입니다.');
-    }
-  }
+  const { countryId, cityId } = await resolveManagedAccountLocation(rawCountryId, rawCityId);
 
   const created = await prisma.user.create({
     data: {
@@ -313,6 +348,7 @@ export async function createManagedAccountAction(formData: FormData) {
       accountType,
       isManagedAccount: true,
       isActive,
+      countryId,
       cityId,
       profileImageUrl,
       shortBio,
@@ -338,13 +374,15 @@ export async function createManagedAccountAction(formData: FormData) {
         displayName: created.displayName,
         accountType: created.accountType,
         isActive: created.isActive,
+        countryId,
+        cityId,
       },
     }),
   );
 
-  revalidatePath('/admin/users');
+  revalidatePath(MANAGED_ACCOUNTS_PATH);
   revalidatePath('/posts/new');
-  redirect('/admin/users');
+  redirect(MANAGED_ACCOUNTS_PATH);
 }
 
 export async function updateManagedAccountAction(formData: FormData) {
@@ -358,7 +396,8 @@ export async function updateManagedAccountAction(formData: FormData) {
     parsedAccountType === 'PERSONA' || parsedAccountType === 'OPERATOR'
       ? parsedAccountType
       : null;
-  const cityId = normalizeText(formData.get('cityId')) || null;
+  const rawCountryId = normalizeText(formData.get('countryId'));
+  const rawCityId = normalizeText(formData.get('cityId'));
   const profileImageUrl = normalizeText(formData.get('profileImageUrl')) || null;
   const shortBio = normalizeText(formData.get('shortBio')) || null;
   const isActive = parseBoolean(formData.get('isActive'));
@@ -367,18 +406,10 @@ export async function updateManagedAccountAction(formData: FormData) {
   const activityNotes = normalizeText(formData.get('activityNotes')) || null;
 
   if (!targetUserId || !displayName || !accountType || isActive === null) {
-    redirect('/admin/users?error=운영 계정 수정 요청 값이 올바르지 않습니다.');
+    redirect(`${MANAGED_ACCOUNTS_PATH}?error=${encodeURIComponent('운영 계정 수정 요청 값이 올바르지 않습니다.')}`);
   }
 
-  if (cityId) {
-    const city = await prisma.city.findUnique({
-      where: { id: cityId },
-      select: { id: true },
-    });
-    if (!city) {
-      redirect('/admin/users?error=유효하지 않은 도시입니다.');
-    }
-  }
+  const { countryId, cityId } = await resolveManagedAccountLocation(rawCountryId, rawCityId);
 
   const existing = await prisma.user.findUnique({
     where: { id: targetUserId },
@@ -388,6 +419,7 @@ export async function updateManagedAccountAction(formData: FormData) {
       accountType: true,
       isManagedAccount: true,
       isActive: true,
+      countryId: true,
       cityId: true,
       profileImageUrl: true,
       shortBio: true,
@@ -402,7 +434,7 @@ export async function updateManagedAccountAction(formData: FormData) {
     !existing.isManagedAccount ||
     (existing.accountType !== 'PERSONA' && existing.accountType !== 'OPERATOR')
   ) {
-    redirect('/admin/users?error=수정 가능한 운영 계정을 찾을 수 없습니다.');
+    redirect(`${MANAGED_ACCOUNTS_PATH}?error=${encodeURIComponent('수정 가능한 운영 계정을 찾을 수 없습니다.')}`);
   }
 
   const updated = await prisma.user.update({
@@ -412,6 +444,7 @@ export async function updateManagedAccountAction(formData: FormData) {
       accountType,
       isManagedAccount: true,
       isActive,
+      countryId,
       cityId,
       profileImageUrl,
       shortBio,
@@ -424,6 +457,7 @@ export async function updateManagedAccountAction(formData: FormData) {
       displayName: true,
       accountType: true,
       isActive: true,
+      countryId: true,
       cityId: true,
       profileImageUrl: true,
       shortBio: true,
@@ -451,9 +485,9 @@ export async function updateManagedAccountAction(formData: FormData) {
     }),
   );
 
-  revalidatePath('/admin/users');
+  revalidatePath(MANAGED_ACCOUNTS_PATH);
   revalidatePath('/posts/new');
-  redirect('/admin/users');
+  redirect(MANAGED_ACCOUNTS_PATH);
 }
 
 export async function adminDeletePostAction(formData: FormData) {

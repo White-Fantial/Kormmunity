@@ -34,7 +34,16 @@ const getUserProfile = cache(async (userId: string) => {
       neighbourWarmth: true,
       accountType: true,
       createdAt: true,
-      city: { select: { name: true } },
+      city: {
+        select: {
+          name: true,
+          country: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
       country: { select: { name: true } },
       _count: {
         select: {
@@ -138,6 +147,7 @@ export default async function UserProfilePage({ params, searchParams }: UserProf
 
   const hasNextPage = posts.length > PAGE_SIZE;
   const visiblePosts = hasNextPage ? posts.slice(0, PAGE_SIZE) : posts;
+  const countryName = user.country?.name ?? user.city?.country?.name ?? null;
 
   return (
     <section className="space-y-4">
@@ -161,9 +171,9 @@ export default async function UserProfilePage({ params, searchParams }: UserProf
                 <NeighbourWarmthLabel warmth={user.neighbourWarmth} />
               </p>
             ) : null}
-            {(user.country || user.city) ? (
+            {(countryName || user.city) ? (
               <p className="text-sm text-[#888]">
-                {[user.country?.name, user.city?.name].filter(Boolean).join(' · ')}
+                {[countryName, user.city?.name].filter(Boolean).join(' · ')}
               </p>
             ) : null}
           </div>

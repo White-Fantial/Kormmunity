@@ -6,6 +6,7 @@ import { requireUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { canEditPost, getPostCreationFormOptions } from '@/lib/permissions';
 import { getProfileCityRequiredHref, hasValidProfileCity } from '@/lib/posts/profile-city';
+import { getAdminAuthorAccountOptions } from '@/lib/posts/author-account-options';
 
 
 
@@ -65,22 +66,7 @@ export default async function EditPostPage({
   }
 
   const isAdmin = user.role === 'ADMIN';
-  const authorAccountOptionsRaw = isAdmin
-    ? await prisma.user.findMany({
-        where: {
-          accountType: { in: ['PERSONA', 'OPERATOR'] },
-          isManagedAccount: true,
-          isActive: true,
-        },
-        select: { id: true, displayName: true, accountType: true },
-        orderBy: [{ accountType: 'asc' }, { displayName: 'asc' }],
-      })
-    : [];
-  const authorAccountOptions = authorAccountOptionsRaw.map((authorAccount) => ({
-    ...authorAccount,
-    accountType:
-      authorAccount.accountType === 'OPERATOR' ? ('OPERATOR' as const) : ('PERSONA' as const),
-  }));
+  const authorAccountOptions = isAdmin ? await getAdminAuthorAccountOptions() : [];
   const defaultAuthorUserIdOverride =
     isAdmin && authorAccountOptions.some((option) => option.id === post.authorId)
       ? post.authorId
