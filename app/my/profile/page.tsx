@@ -8,12 +8,19 @@ import { NeighbourWarmthLabel } from '@/components/ui/neighbour-warmth-label';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { KakaoOpenLinkInput } from '@/components/ui/kakao-open-link-input';
 import { updateProfileAction } from './actions';
+import { LOCATION_COOLDOWN_DAYS } from '@/lib/location-cooldown';
 import {
   deleteSearchAlertAction,
 } from '@/app/posts/search-alert-actions';
 
 
 export const dynamic = 'force-dynamic';
+
+function getLocationCooldownWindow(cooldownDays: number): { since: Date; nextFromNow: Date } {
+  const ms = cooldownDays * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  return { since: new Date(now - ms), nextFromNow: new Date(now + ms) };
+}
 
 type MyProfilePageProps = {
   searchParams: Promise<{ success?: string; error?: string; notice?: string; returnTo?: string }>;
@@ -22,8 +29,11 @@ type MyProfilePageProps = {
 export default async function MyProfilePage({ searchParams }: MyProfilePageProps) {
   const user = await requireUser();
   const params = await searchParams;
+  const isAdmin = user.role === 'ADMIN';
 
-  const [dbUser, countries, cities, searchAlerts] = await Promise.all([
+  const { since: cooldownSince } = getLocationCooldownWindow(LOCATION_COOLDOWN_DAYS);
+
+  const [dbUser, countries, cities, searchAlerts, lastLocationChange] = await Promise.all([
     prisma.user.findUnique({
       where: { id: user.id },
         select: {
@@ -57,7 +67,19 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
         query: true,
       },
     }),
+    !isAdmin
+      ? prisma.locationChangeLog.findFirst({
+          where: { userId: user.id, createdAt: { gt: cooldownSince } },
+          orderBy: { createdAt: 'desc' },
+          select: { createdAt: true },
+        })
+      : Promise.resolve(null),
   ]);
+
+  const nextLocationChangeAt = lastLocationChange
+    ? new Date(lastLocationChange.createdAt.getTime() + LOCATION_COOLDOWN_DAYS * 24 * 60 * 60 * 1000)
+    : null;
+  const isLocationCooldown = !isAdmin && nextLocationChangeAt != null;
 
   return (
     <section className="space-y-4 rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
@@ -87,6 +109,18 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
         <p className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700">{params.notice}</p>
       ) : null}
 
+      {isLocationCooldown && !params.notice && !params.error ? (
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          국가/도시는 7일마다 한 번만 변경할 수 있어요.{' '}
+          다음 변경 가능일:{' '}
+          {nextLocationChangeAt!.toLocaleDateString('ko-KR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })}
+        </p>
+      ) : null}
+
       {!dbUser?.cityId ? (
         <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
           국가 변경 후에는 기본 지역을 다시 선택해야 글쓰기를 할 수 있어요.
@@ -107,7 +141,8 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
             id="countryId"
             name="countryId"
             defaultValue={dbUser?.countryId ?? ''}
-            className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
+            disabled={isLocationCooldown}
+            className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <option value="">국가를 선택해 주세요.</option>
             {countries.map((country) => (
@@ -128,7 +163,8 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
             id="cityId"
             name="cityId"
             defaultValue={dbUser?.cityId ?? ''}
-            className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
+            disabled={isLocationCooldown}
+            className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <option value="">지역을 선택해 주세요.</option>
             {cities.map((city) => (
@@ -138,7 +174,8 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
             ))}
           </select>
           <p className="text-xs text-[#888]">
-            글쓰기는 여기에서 설정한 지역으로만 등록돼요.
+            글쓰기는 여기에서 설정한 지역으로만 등록돼요.{' '}
+            {!isAdmin ? '국가/도시는 7일마다 한 번만 변경할 수 있어요.' : null}
           </p>
         </div>
         <div className="space-y-1">

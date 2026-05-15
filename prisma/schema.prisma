@@ -92,6 +92,12 @@ enum ReportReviewStatus {
   FALSE_REPORT
 }
 
+enum LocationChangeType {
+  CITY_CHANGED
+  COUNTRY_CHANGED_CITY_RESET
+  ADMIN_OVERRIDE
+}
+
 model User {
   id                   String             @id @default(cuid())
   kakaoId              String             @unique
@@ -138,6 +144,8 @@ model User {
   reviewedPostReports  PostReport[]         @relation("PostReportReviewer")
   reviewedCommentReports CommentReport[]    @relation("CommentReportReviewer")
   warmthLogs           NeighbourWarmthLog[]
+  locationChangeLogs   LocationChangeLog[] @relation("LocationChangeUser")
+  actedLocationChanges LocationChangeLog[] @relation("LocationChangeActor")
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 }
@@ -546,4 +554,21 @@ model NeighbourWarmthLog {
   createdAt      DateTime @default(now())
 
   @@index([userId, createdAt(sort: Desc)])
+}
+
+model LocationChangeLog {
+  id              String             @id @default(cuid())
+  userId          String
+  actorId         String
+  changeType      LocationChangeType
+  beforeCountryId String?
+  afterCountryId  String?
+  beforeCityId    String?
+  afterCityId     String?
+  user            User               @relation("LocationChangeUser", fields: [userId], references: [id], onDelete: Cascade)
+  actor           User               @relation("LocationChangeActor", fields: [actorId], references: [id], onDelete: Cascade)
+  createdAt       DateTime           @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([actorId, createdAt(sort: Desc)])
 }

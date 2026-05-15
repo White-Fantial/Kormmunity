@@ -11,6 +11,7 @@ export const moderatorManagementNavItems = [
   { href: '/moderator/kakao-messages', label: '카카오 알림 로그' },
   { href: '/moderator/warmth-logs', label: '온기 변동 로그' },
   { href: '/moderator/score-logs', label: '커뮤니티점수 로그' },
+  { href: '/moderator/location-logs', label: '위치 변경 로그' },
 ] as const satisfies readonly ManagementNavItem[];
 
 /** @deprecated Use moderatorManagementNavItems */

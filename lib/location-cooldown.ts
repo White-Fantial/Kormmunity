@@ -1,0 +1,1 @@
+export const LOCATION_COOLDOWN_DAYS = 7;
