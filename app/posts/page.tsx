@@ -4,6 +4,7 @@ import type { CategoryType } from '@prisma/client';
 import { PublicHomeHero } from '@/components/home/PublicHomeHero';
 import { PostCard } from '@/components/posts/post-card';
 import { EmptyStateMessage } from '@/components/ui/empty-state-message';
+import { CategoryFilterFieldset } from '@/components/posts/category-filter-fieldset';
 import { saveSearchAlertAction } from '@/app/posts/search-alert-actions';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
@@ -117,7 +118,9 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
   const selectedCityIdsBase =
     selectedCityIdsFromParams.length > 0
       ? selectedCityIdsFromParams
-      : cities.map((city) => city.id);
+      : hasActiveProfileCity
+        ? [activeProfileCityId]
+        : cities.map((city) => city.id);
   const shouldIncludeProfileCity = hasActiveProfileCity
     ? !selectedCityIdsBase.includes(activeProfileCityId)
     : false;
@@ -476,26 +479,10 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
             </summary>
 
             <div className="mt-3 hidden grid-cols-1 gap-4 group-open:grid sm:grid-cols-2">
-              <fieldset className="space-y-2 text-sm">
-                <legend className="font-medium">카테고리 선택</legend>
-                <div className="flex flex-wrap gap-2">
-                  {filterCategories.map((category) => (
-                    <label
-                      key={category.id}
-                      className="flex cursor-pointer items-center gap-2 rounded-full border border-[#e8e8e8] px-3 py-1.5 hover:border-[#fee500] hover:bg-[#fffde7]"
-                    >
-                      <input
-                        type="checkbox"
-                        name="category"
-                        value={category.id}
-                        defaultChecked={selectedFilterCategoryIds.includes(category.id)}
-                        className="accent-[#fee500]"
-                      />
-                      <span>{category.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
+              <CategoryFilterFieldset
+                categories={filterCategories}
+                selectedIds={selectedFilterCategoryIds}
+              />
 
               <fieldset className="space-y-2 text-sm">
                 <legend className="font-medium">지역 선택</legend>
