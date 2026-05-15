@@ -84,6 +84,31 @@ The clamp prevents abuse by very high or very low warmth actors.
 
 ---
 
+## Author Neighbour Warmth Update Rule
+
+`neighbourWarmth` itself is updated separately from `communityScore` and currently has
+**gain-only** rules (no automatic moderation deduction in code).
+
+Base gains:
+
+| Reason | Base gain |
+|---|---|
+| Post like received | `+0.3` |
+| Comment like received | `+0.5` |
+| Best comment selected | `+3.0` |
+
+Applied gain formula:
+
+```
+actualGain = baseGain * max(0.03, 1 - currentWarmth / 100)
+nextWarmth = clamp(currentWarmth + actualGain, 0, 100)
+```
+
+- As warmth gets higher, incremental gain becomes smaller.
+- A minimum multiplier (`0.03`) ensures very high-warmth users can still gain slowly.
+
+---
+
 ## Auto Pending (Auto Hold) Thresholds
 
 When `communityScore` falls **strictly below** a threshold, the content is automatically
@@ -97,7 +122,7 @@ set to `HELD` status:
 Comments are held at a lower threshold because harmful comments can cause more immediate
 damage in active discussion threads.
 
-**Important:** The automatic system can only move content to `HELD` (`PENDING_REVIEW`).
+**Important:** The automatic system can only move content to `HELD`.
 Final deletion must remain an admin or coordinator decision.
 
 ---
@@ -120,14 +145,11 @@ Final deletion must remain an admin or coordinator decision.
 
 | User type | PUBLISHED comment | HELD comment |
 |---|---|---|
-| Normal user | Visible | Placeholder text shown |
+| Normal user | Visible | Not listed in normal query (effectively hidden) |
 | Coordinator | Visible | Full content visible + status label |
 | Admin | Visible | Full content visible + status label |
 
-**Placeholder shown to normal users:**
-> 운영 검토 중인 댓글입니다.
-
-HELD comments remain in the thread (in order) to avoid confusing conversation gaps.
+> Note: UI contains a placeholder branch (`운영 검토 중인 댓글입니다.`), but normal users currently do not receive HELD comments from the server query.
 
 ---
 
@@ -154,8 +176,9 @@ All permission checks are enforced server-side.
 ## Anti-Abuse Notes
 
 - **Duplicate reports are ignored.** A single user can only reduce a post's score once per report.
-- **Duplicate likes are ignored.** A single user can only increase a post's/comment's score once per like.
-- **Self-actions do not generate score changes.** Liking your own post/comment does not increase your content's score.
+- **Duplicate comment likes are ignored.** A single user can only increase a comment's score once per active like.
+- **Post like scoring currently triggers on toggle action.** In current implementation, post like action applies post score delta even on unlike/self-like toggles.
+- **Self-like score guard is implemented for comments only.** Comment self-like does not apply score; post self-like is not currently guarded in score update path.
 - **Self-selected best comment does not generate score.** If a post author selects their own comment as best, no score change is applied.
 - **Actor warmth is clamped.** The weight is bounded to [0.5, 2.0] to prevent extreme actors from having outsized influence.
 - **communityScore is never exposed in the UI.** Only coordinators/admins can see scores in the management pages.
