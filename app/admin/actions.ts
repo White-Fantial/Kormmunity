@@ -553,7 +553,7 @@ export async function adminDeletePostAction(formData: FormData) {
   );
 
   revalidatePath('/admin/posts');
-  revalidatePath('/coordinator');
+  revalidatePath('/moderator');
   revalidatePath('/posts');
   revalidatePath(`/posts/${postId}`);
   redirect('/admin/posts');
@@ -613,7 +613,7 @@ export async function adminRestorePostAction(formData: FormData) {
   });
 
   revalidatePath('/admin/posts');
-  revalidatePath('/coordinator');
+  revalidatePath('/moderator');
   revalidatePath('/posts');
   revalidatePath(`/posts/${postId}`);
   redirect('/admin/posts');

@@ -21,7 +21,7 @@ import {
   restorePostAction,
   holdCommentAction,
   restoreCommentAction,
-} from '@/app/coordinator/actions';
+} from '@/app/moderator/actions';
 import { DeletePostButton } from '@/components/posts/delete-post-button';
 import {
   BookmarkIcon,

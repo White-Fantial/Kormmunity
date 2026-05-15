@@ -14,7 +14,7 @@ export async function HeaderProfileMenu() {
     { href: '/my/posts', label: '내 글' },
     { href: '/my/saved', label: '저장한 글' },
     { href: '/my/profile', label: '내 프로필' },
-    ...(canModerate(currentUser) ? [{ href: '/moderation', label: '모더레이션' }] : []),
+    ...(canModerate(currentUser) ? [{ href: '/moderator', label: '모더레이션' }] : []),
     ...(canMakeFinalUserDecision(currentUser) ? [{ href: '/admin', label: '관리자' }] : []),
   ];
 

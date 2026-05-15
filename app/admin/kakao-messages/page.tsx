@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
 
 export default function AdminKakaoMessagesPage() {
-  redirect('/coordinator/kakao-messages');
+  redirect('/moderator/kakao-messages');
 }

@@ -5,13 +5,16 @@ type ManagementNavItem = {
   label: string;
 };
 
-export const coordinatorManagementNavItems = [
-  { href: '/coordinator', label: '대시보드' },
-  { href: '/coordinator/reports', label: '신고 내역' },
-  { href: '/coordinator/kakao-messages', label: '카카오 알림 로그' },
-  { href: '/coordinator/warmth-logs', label: '온기 변동 로그' },
-  { href: '/coordinator/score-logs', label: '커뮤니티점수 로그' },
+export const moderatorManagementNavItems = [
+  { href: '/moderator', label: '대시보드' },
+  { href: '/moderator/reports', label: '신고 내역' },
+  { href: '/moderator/kakao-messages', label: '카카오 알림 로그' },
+  { href: '/moderator/warmth-logs', label: '온기 변동 로그' },
+  { href: '/moderator/score-logs', label: '커뮤니티점수 로그' },
 ] as const satisfies readonly ManagementNavItem[];
+
+/** @deprecated Use moderatorManagementNavItems */
+export const coordinatorManagementNavItems = moderatorManagementNavItems;
 
 export const adminManagementNavItems = [
   { href: '/admin/users', label: '사용자 관리' },

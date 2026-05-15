@@ -604,7 +604,7 @@ export async function deletePostAction(formData: FormData) {
 
   revalidatePath('/posts');
   revalidatePath('/admin/posts');
-  revalidatePath('/coordinator');
+  revalidatePath('/moderator');
   revalidatePath('/my/posts');
   revalidatePath(`/posts/${postId}`);
   redirect('/my/posts');
@@ -781,7 +781,7 @@ export async function reportPostAction(formData: FormData) {
 
   revalidatePath('/posts');
   revalidatePath(`/posts/${postId}`);
-  revalidatePath('/coordinator');
-  revalidatePath('/coordinator/reports');
+  revalidatePath('/moderator');
+  revalidatePath('/moderator/reports');
   redirect(`/posts/${postId}?success=${encodeURIComponent('신고가 접수되었어요.')}`);
 }

@@ -8,7 +8,7 @@ export async function HeaderNavConditional() {
   return (
     <>
       {currentUser && canModerate(currentUser) ? (
-        <HeaderNavLink href="/moderation">모더레이션</HeaderNavLink>
+        <HeaderNavLink href="/moderator">모더레이션</HeaderNavLink>
       ) : null}
       {currentUser && canMakeFinalUserDecision(currentUser) ? (
         <HeaderNavLink href="/admin">관리자</HeaderNavLink>

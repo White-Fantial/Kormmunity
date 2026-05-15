@@ -559,7 +559,7 @@ export async function reportCommentAction(formData: FormData) {
   }
 
   revalidatePath(`/posts/${postId}`);
-  revalidatePath('/coordinator');
-  revalidatePath('/coordinator/reports');
+  revalidatePath('/moderator');
+  revalidatePath('/moderator/reports');
   redirect(`/posts/${postId}?success=${encodeURIComponent('댓글 신고가 접수되었어요.')}`);
 }
