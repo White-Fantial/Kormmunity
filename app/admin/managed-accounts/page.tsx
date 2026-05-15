@@ -83,7 +83,9 @@ export default async function AdminManagedAccountsPage({
     }),
   ]);
 
-  const cityOptions = cities.map((c) => ({ id: c.id, name: c.name, countryId: c.countryId }));
+  const cityOptions = cities.flatMap((c) =>
+    c.countryId ? [{ id: c.id, name: c.name, countryId: c.countryId }] : [],
+  );
 
   const managedAccountIds = filteredManagedAccounts.map((user) => user.id);
   const [latestManagedPosts, latestManagedComments] =
