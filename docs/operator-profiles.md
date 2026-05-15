@@ -42,11 +42,11 @@ Operator profiles allow ADMIN users to publish posts attributed to a named commu
 | Slug               | Display Name       |
 |--------------------|--------------------|
 | `auckland-life`    | 오클랜드 생활지기       |
-| `auckland-market`  | 오클랜드 장터지기       |
-| `auckland-talk`    | 오클랜드 이야기꾼       |
+| `auckland-market`  | 오클랜드 중고소식       |
+| `auckland-talk`    | 오클랜드 잡담지기       |
 | `wellington-life`  | 웰링턴 생활지기         |
-| `wellington-jobs`  | 웰링턴 일자리지기       |
-| `wellington-talk`  | 웰링턴 이야기꾼         |
+| `wellington-jobs`  | 웰링턴 구직도우미       |
+| `wellington-talk`  | 웰링턴 잡담지기         |
 
 ## API
 
@@ -76,3 +76,28 @@ await prisma.operatorProfile.upsert({
   },
 });
 ```
+
+## Permission Policy
+
+- Only users with the `ADMIN` role can use operator profiles.
+- `COORDINATOR` and regular `USER` roles cannot write under an operator profile.
+- The server ignores any `operatorProfileId` sent by non-admin clients, so there is no client-side bypass risk.
+
+## Legacy Post Fallback
+
+Existing posts written before this feature was introduced have:
+- `displayAuthorType = USER` (the default)
+- `displayAuthorId = null`
+
+When `displayAuthorId` is null, `resolveDisplayAuthor` falls back to `Post.author` (the User relation). These posts display identically to how they did before.
+
+## Comments
+
+Comment authorship switching is **out of scope** for this feature. Comments always display the actual signed-in user who posted them. The code structure does not block extending this to comments in the future — a similar `displayAuthorType`/`displayAuthorId` pattern could be added to `Comment`.
+
+## Future Expansion
+
+- **Operator profile management UI**: A dedicated admin panel for creating, editing, and deactivating operator profiles.
+- **Comment authorship**: Extend the same `displayAuthorType`/`displayAuthorId` pattern to the `Comment` model.
+- **City/country scoping**: Optionally restrict which operator profiles are available per city or country.
+

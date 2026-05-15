@@ -692,11 +692,11 @@ async function main() {
 
   const operatorProfiles = [
     { displayName: '오클랜드 생활지기', slug: 'auckland-life' },
-    { displayName: '오클랜드 장터지기', slug: 'auckland-market' },
-    { displayName: '오클랜드 이야기꾼', slug: 'auckland-talk' },
+    { displayName: '오클랜드 중고소식', slug: 'auckland-market' },
+    { displayName: '오클랜드 잡담지기', slug: 'auckland-talk' },
     { displayName: '웰링턴 생활지기', slug: 'wellington-life' },
-    { displayName: '웰링턴 일자리지기', slug: 'wellington-jobs' },
-    { displayName: '웰링턴 이야기꾼', slug: 'wellington-talk' },
+    { displayName: '웰링턴 구직도우미', slug: 'wellington-jobs' },
+    { displayName: '웰링턴 잡담지기', slug: 'wellington-talk' },
   ];
 
   await Promise.all(
