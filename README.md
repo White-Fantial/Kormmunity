@@ -16,7 +16,7 @@
   - `/api/auth/kakao/callback` → 코드 교환, 사용자 정보 조회, 세션 생성
   - 환경 변수 미설정 시 개발용 임시 로그인 폴백
   - 카카오 프로필 이미지 자동 동기화
-- 권한 helper (USER, COORDINATOR, ADMIN)
+- 권한 helper (USER, MODERATOR, COORDINATOR, ADMIN)
 - 게시글 MVP
   - 글 작성 (제목 optional, 본문/카테고리 required, 지역은 프로필 기본 지역 사용)
   - 팔아요 카테고리 가격 required
@@ -29,7 +29,7 @@
   - 목록 썸네일/상세 갤러리 표시
 - 댓글 기능
   - 게시글 상세에서 댓글 작성/조회
-  - 본인 댓글 삭제 (코디네이터/관리자 삭제 가능)
+  - 본인 댓글 삭제 (모더레이터/관리자 삭제 가능)
   - 카테고리별 quick comment template 버튼
   - Comment-before-contact 게이트 및 댓글 작성 후 즉시 Kakao 연락 해제
 - Neighbour Warmth 상호작용
@@ -43,7 +43,8 @@
   - 카테고리 기본값 기반 `Require comment before Kakao contact` 설정
   - 카테고리별 `contactSectionDefaultExpanded` 설정으로 글쓰기 연락 방법 섹션 기본 펼침 제어
   - 판매/나눔 등 투명성이 중요한 글에서 공개 댓글 후 1회 연락 해제
-- 코디네이터 운영 기능
+- 모더레이터 운영 기능
+  - 신고 검토/확정
   - 보류/재게시
   - 사용자 관리자 검토 요청
 - 관리자 기능
@@ -74,10 +75,10 @@
   - Post/Comment에 내부 `communityScore` 추가
   - 좋아요·신고·베스트댓글·운영 조치에 따른 점수 자동 반영 (행위자 `neighbourWarmth` 가중치 적용)
   - 임계값(-8 게시글 / -5 댓글) 이하 시 자동 `HELD` 처리
-  - 보류 게시글: 일반 사용자에게 검토 중 메시지 표시, 운영/관리자만 전문 열람 가능
-  - 보류 댓글: 현재 일반 사용자 조회에서는 제외되며, 운영/관리자만 전문 열람 가능
+  - 보류 게시글: 일반 사용자에게 검토 중 메시지 표시, 모더레이터/관리자만 전문 열람 가능
+  - 보류 댓글: 현재 일반 사용자 조회에서는 제외되며, 모더레이터/관리자만 전문 열람 가능
   - `CommunityScoreEvent` 감사 로그 테이블 추가
-  - 코디네이터/관리자 화면에 점수 및 신고 수 표시
+  - 모더레이터/관리자 화면에 점수 및 신고 수 표시
   - 상세 문서: `docs/community-score-moderation.md`
 - **사용자 온기 감점 정책 (moderation-confirmed only)**
   - 신고 제출 시점에는 `neighbourWarmth`를 감점하지 않음
@@ -87,7 +88,16 @@
 - 카테고리별로 `requireCommentBeforeContactDefault` 값을 설정할 수 있습니다.
 - 카테고리별로 `contactSectionDefaultExpanded` 값을 설정해 글쓰기 화면의 연락 방법 섹션 기본 상태를 제어할 수 있습니다.
 - 게시글 작성자는 글 단위로 기본값을 override 할 수 있습니다.
-- 글 작성자 본인과 코디네이터/관리자는 게이트를 우회합니다.
+- 글 작성자 본인과 모더레이터/관리자는 게이트를 우회합니다.
+
+## Role Policy
+- `USER`: 일반 사용자(본인 글/댓글 작성 및 수정)
+- `MODERATOR`: 신고/보류/복구/숨김·삭제 등 콘텐츠 moderation 담당
+- `COORDINATOR`: 지역 운영/공지/커뮤니티 활성화 담당(기본 moderation 권한 없음)
+- `ADMIN`: 전체 권한(MODERATOR + COORDINATOR 포함, 역할 부여/시스템 설정)
+
+## RBAC Change Log
+- 기존 `COORDINATOR`가 담당하던 신고 처리/보류 복구/콘텐츠 제재 중심 moderation 권한을 `MODERATOR`로 이전했습니다.
 - 일반 사용자는 삭제/보류되지 않은 댓글 1개만 남겨도 Kakao 연락 버튼이 즉시 열립니다.
 
 ## 글쓰기 UX 흐름

@@ -74,7 +74,7 @@ When an admin adds an active profile, it appears immediately in the post form's 
 ## Permission Policy
 
 - Only users with the `ADMIN` role can use operator profiles.
-- `COORDINATOR` and regular `USER` roles cannot write under an operator profile.
+- `MODERATOR`, `COORDINATOR`, and regular `USER` roles cannot write under an operator profile.
 - The server ignores any `operatorProfileId` sent by non-admin clients, so there is no client-side bypass risk.
 
 ## Legacy Post Fallback

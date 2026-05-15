@@ -8,7 +8,7 @@ import { requireUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { retryKakaoMessageDelivery } from '@/lib/kakao/message';
 import {
-  canHoldPost,
+  canModerate,
   canRestorePost,
   canDeleteComment,
   canModerateUser,
@@ -63,7 +63,7 @@ async function logModerationAction(
 export async function holdPostAction(formData: FormData) {
   const user = await requireUser();
 
-  if (!canHoldPost(user)) {
+  if (!canModerate(user)) {
     redirect('/coordinator?error=권한이 없습니다.');
   }
 
@@ -337,7 +337,7 @@ export async function restoreCommentAction(formData: FormData) {
 export async function reviewPostReportAction(formData: FormData) {
   const user = await requireUser();
 
-  if (!canHoldPost(user)) {
+  if (!canModerate(user)) {
     redirectWithQuery('/coordinator/reports', { error: '권한이 없습니다.' });
   }
 
@@ -432,7 +432,7 @@ export async function reviewPostReportAction(formData: FormData) {
 export async function reviewCommentReportAction(formData: FormData) {
   const user = await requireUser();
 
-  if (!canHoldPost(user)) {
+  if (!canModerate(user)) {
     redirectWithQuery('/coordinator/reports', { error: '권한이 없습니다.' });
   }
 
@@ -561,7 +561,7 @@ export async function requestUserReviewAction(formData: FormData) {
 export async function retryKakaoMessageDeliveryAction(formData: FormData) {
   const user = await requireUser();
 
-  if (!canHoldPost(user)) {
+  if (!canModerate(user)) {
     redirect('/coordinator/kakao-messages?error=권한이 없습니다.');
   }
 

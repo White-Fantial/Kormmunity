@@ -9,7 +9,7 @@ import {
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
-import { canHoldPost } from '@/lib/permissions';
+import { canModerate } from '@/lib/permissions';
 
 
 export const dynamic = 'force-dynamic';
@@ -27,7 +27,7 @@ export default async function CoordinatorKakaoMessagesPage({
 }: CoordinatorKakaoMessagesPageProps) {
   const currentUser = await getCurrentUser();
 
-  if (!currentUser || !canHoldPost(currentUser)) {
+  if (!currentUser || !canModerate(currentUser)) {
     redirect('/posts');
   }
 

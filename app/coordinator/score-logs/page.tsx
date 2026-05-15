@@ -7,7 +7,7 @@ import {
 } from '@/components/admin/management-section-nav';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
-import { canHoldPost } from '@/lib/permissions';
+import { canModerate } from '@/lib/permissions';
 import { truncatePostBody } from '@/lib/posts/constants';
 
 export const dynamic = 'force-dynamic';
@@ -33,7 +33,7 @@ type ScoreLogsPageProps = {
 export default async function ScoreLogsPage({ searchParams }: ScoreLogsPageProps) {
   const currentUser = await getCurrentUser();
 
-  if (!currentUser || !canHoldPost(currentUser)) {
+  if (!currentUser || !canModerate(currentUser)) {
     redirect('/posts');
   }
 

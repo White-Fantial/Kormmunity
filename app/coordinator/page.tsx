@@ -14,7 +14,7 @@ import {
 } from '@/components/admin/management-section-nav';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
-import { canHoldPost } from '@/lib/permissions';
+import { canModerate } from '@/lib/permissions';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { truncatePostBody } from '@/lib/posts/constants';
 
@@ -28,7 +28,7 @@ type CoordinatorPageProps = {
 export default async function CoordinatorPage({ searchParams }: CoordinatorPageProps) {
   const currentUser = await getCurrentUser();
 
-  if (!currentUser || !canHoldPost(currentUser)) {
+  if (!currentUser || !canModerate(currentUser)) {
     redirect('/posts');
   }
 
@@ -58,7 +58,7 @@ export default async function CoordinatorPage({ searchParams }: CoordinatorPageP
       },
     }),
     prisma.user.findMany({
-      where: { role: { in: ['USER', 'COORDINATOR'] } },
+      where: { role: { in: ['USER', 'MODERATOR', 'COORDINATOR'] } },
       orderBy: { createdAt: 'desc' },
       take: 20,
       select: {
@@ -219,7 +219,12 @@ export default async function CoordinatorPage({ searchParams }: CoordinatorPageP
                 <span className="flex-1 text-sm">
                   {u.displayName}
                   <span className="ml-2 text-xs text-[#aaa]">
-                    {u.role === 'COORDINATOR' ? '운영' : '일반'} ·{' '}
+                    {u.role === 'MODERATOR'
+                      ? '모더레이터'
+                      : u.role === 'COORDINATOR'
+                        ? '운영'
+                        : '일반'}{' '}
+                    ·{' '}
                     {u.status === 'ACTIVE'
                       ? '활성'
                       : u.status === 'LIMITED'

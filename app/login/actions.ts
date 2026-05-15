@@ -33,7 +33,7 @@ export async function loginWithKakaoPlaceholder(formData: FormData) {
   }
 
   const normalizedRole =
-    role === 'COORDINATOR' || role === 'ADMIN' ? role : UserRole.USER;
+    role === 'MODERATOR' || role === 'COORDINATOR' || role === 'ADMIN' ? role : UserRole.USER;
 
   const user = await prisma.user.upsert({
     where: { kakaoId },

@@ -10,7 +10,7 @@ import { UserAvatar } from '@/components/ui/user-avatar';
 import { WarmthLogViewer } from '@/components/moderation/warmth-log-viewer';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
-import { canHoldPost } from '@/lib/permissions';
+import { canModerate } from '@/lib/permissions';
 
 
 
@@ -181,7 +181,7 @@ export default async function UserProfilePage({ params, searchParams }: UserProf
             <dd>{receivedBestCommentsCount}개</dd>
           </div>
         </dl>
-        {canHoldPost(currentUser) ? (
+        {canModerate(currentUser) ? (
           <WarmthLogViewer userId={userId} />
         ) : null}
       </div>

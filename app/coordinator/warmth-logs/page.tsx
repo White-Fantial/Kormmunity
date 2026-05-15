@@ -7,7 +7,7 @@ import {
 } from '@/components/admin/management-section-nav';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
-import { canHoldPost } from '@/lib/permissions';
+import { canModerate } from '@/lib/permissions';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +31,7 @@ type WarmthLogsPageProps = {
 export default async function WarmthLogsPage({ searchParams }: WarmthLogsPageProps) {
   const currentUser = await getCurrentUser();
 
-  if (!currentUser || !canHoldPost(currentUser)) {
+  if (!currentUser || !canModerate(currentUser)) {
     redirect('/posts');
   }
 

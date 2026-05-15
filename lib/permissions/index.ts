@@ -67,11 +67,28 @@ export type PostCreationFormOptions = {
   defaultCityId: string | null;
 };
 
-const ROLE_RANK: Record<UserRole, number> = { USER: 0, COORDINATOR: 1, ADMIN: 2 };
+const ROLE_RANK: Record<UserRole, number> = {
+  USER: 0,
+  MODERATOR: 1,
+  COORDINATOR: 1,
+  ADMIN: 2,
+};
 const DEFAULT_USER_POST_VISIBILITY = CategoryVisibilityMode.NORMAL;
 
 export { ROLE_RANK };
 export const USER_ROLES = Object.values(UserRole) as UserRole[];
+
+export function isAdmin(role: UserRole | null | undefined) {
+  return role === 'ADMIN';
+}
+
+export function isModerator(role: UserRole | null | undefined) {
+  return role === 'MODERATOR' || isAdmin(role);
+}
+
+export function isCoordinator(role: UserRole | null | undefined) {
+  return role === 'COORDINATOR' || isAdmin(role);
+}
 
 function isActiveWriter(user: PermissionUser | null | undefined) {
   return user?.status === 'ACTIVE';
@@ -405,7 +422,7 @@ export function canDeletePost(
     return false;
   }
 
-  if (canHoldPost(user)) {
+  if (canModerate(user)) {
     return true;
   }
 
@@ -420,29 +437,37 @@ export function canDeleteComment(
     return false;
   }
 
-  if (user.role === 'COORDINATOR' || user.role === 'ADMIN') {
+  if (canModerate(user)) {
     return true;
   }
 
   return user.id === comment.authorId;
 }
 
+export function canModerate(user: PermissionUser | null | undefined) {
+  return isModerator(user?.role);
+}
+
+export function canCoordinate(user: PermissionUser | null | undefined) {
+  return isCoordinator(user?.role);
+}
+
 export function canHoldPost(user: PermissionUser | null | undefined) {
-  return user?.role === 'COORDINATOR' || user?.role === 'ADMIN';
+  return canModerate(user);
 }
 
 export function canRestorePost(user: PermissionUser | null | undefined) {
-  return canHoldPost(user);
+  return canModerate(user);
 }
 
 export function canModerateUser(user: PermissionUser | null | undefined) {
-  return canHoldPost(user);
+  return canModerate(user);
 }
 
 export function canMakeFinalUserDecision(
   user: PermissionUser | null | undefined,
 ) {
-  return user?.role === 'ADMIN';
+  return isAdmin(user?.role);
 }
 
 export function canUseOperatorProfile(user: PermissionUser | null | undefined) {

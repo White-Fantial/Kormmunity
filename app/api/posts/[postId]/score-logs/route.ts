@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
-import { canHoldPost } from '@/lib/permissions';
+import { canModerate } from '@/lib/permissions';
 
 const PAGE_SIZE = 50;
 
@@ -12,7 +12,7 @@ export async function GET(
 ) {
   const currentUser = await getCurrentUser();
 
-  if (!currentUser || !canHoldPost(currentUser)) {
+  if (!currentUser || !canModerate(currentUser)) {
     return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
   }
 

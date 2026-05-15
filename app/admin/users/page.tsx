@@ -83,6 +83,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
 
   const roleLabels: Record<string, string> = {
     USER: '일반',
+    MODERATOR: '모더레이터',
     COORDINATOR: '운영',
     ADMIN: '관리자',
   };
@@ -152,6 +153,8 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                     className={`rounded-full px-2 py-0.5 text-xs ${
                       u.role === 'ADMIN'
                         ? 'bg-purple-100 text-purple-700'
+                        : u.role === 'MODERATOR'
+                          ? 'bg-emerald-50 text-emerald-700'
                         : u.role === 'COORDINATOR'
                           ? 'bg-blue-50 text-blue-700'
                           : 'bg-[#f5f5f5] text-[#555]'
@@ -191,6 +194,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                           className="w-full rounded-lg border border-[#e8e8e8] px-2 py-1 text-sm focus:border-[#fee500] focus:outline-none"
                         >
                           <option value="USER">일반 (USER)</option>
+                          <option value="MODERATOR">모더레이터 (MODERATOR)</option>
                           <option value="COORDINATOR">운영 (COORDINATOR)</option>
                           <option value="ADMIN">관리자 (ADMIN)</option>
                         </select>

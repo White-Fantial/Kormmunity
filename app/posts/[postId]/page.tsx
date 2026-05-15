@@ -52,7 +52,7 @@ import {
   canDeleteComment,
   canDeletePost,
   canEditPost,
-  canHoldPost,
+  canModerate,
   canReportPost,
   canReportComment,
 } from '@/lib/permissions';
@@ -286,7 +286,7 @@ export default async function PostDetailPage({
     notFound();
   }
 
-  const isCoordinator = currentUser ? canHoldPost(currentUser) : false;
+  const canModerateContent = currentUser ? canModerate(currentUser) : false;
   const isAdmin = currentUser?.role === 'ADMIN';
 
   // Resolve display author (operator profile or actual user)
@@ -305,8 +305,8 @@ export default async function PostDetailPage({
     }
   }
 
-  // Non-coordinators see a pending-review message for HELD posts
-  if (post.status === 'HELD' && !isCoordinator) {
+  // Non-moderators see a pending-review message for HELD posts
+  if (post.status === 'HELD' && !canModerateContent) {
     return (
       <article className="space-y-4 rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
         <div className="rounded-lg border border-yellow-200 bg-[#fffde7] px-4 py-6 text-center">
@@ -419,7 +419,7 @@ export default async function PostDetailPage({
   }
 
   const isOwner = currentUser?.id === post.authorId;
-  const canBypassCommentGate = currentUser ? canHoldPost(currentUser) : false;
+  const canBypassCommentGate = currentUser ? canModerate(currentUser) : false;
   const hasValidCommentForContact =
     currentUser && !isOwner && post.requireCommentBeforeContact && !canBypassCommentGate
       ? Boolean(
@@ -442,7 +442,7 @@ export default async function PostDetailPage({
   const hasReportOptions = canSubmitReport && reportOptions.length > 0;
   const canEditCurrentPost = canEditPost(currentUser, post);
   const canDeleteCurrentPost = canDeletePost(currentUser, post);
-  const canModerateCurrentPost = currentUser ? canHoldPost(currentUser) : false;
+  const canModerateCurrentPost = currentUser ? canModerate(currentUser) : false;
   const canShowPostOverflowMenu =
     (hasReportOptions || canEditCurrentPost || canDeleteCurrentPost || canModerateCurrentPost);
   const compactPostOverflowPanelClassName = 'w-40';
@@ -749,7 +749,7 @@ export default async function PostDetailPage({
             commentCount={post._count.comments}
             currentUser={currentUser}
             reportOptions={reportOptions}
-            isCoordinator={isCoordinator}
+            canModerateComments={canModerateContent}
             query={query}
           />
         </Suspense>
@@ -1019,7 +1019,7 @@ type CommentsSectionProps = {
   commentCount: number;
   currentUser: Awaited<ReturnType<typeof getCurrentUser>>;
   reportOptions: { id: string; label: string }[];
-  isCoordinator: boolean;
+  canModerateComments: boolean;
   query: Awaited<PostDetailPageProps['searchParams']>;
 };
 
@@ -1030,7 +1030,7 @@ async function CommentsSection({
   commentCount,
   currentUser,
   reportOptions,
-  isCoordinator,
+  canModerateComments,
   query,
 }: CommentsSectionProps) {
   const commentsCursor = toSingle(query.commentsCursor);
@@ -1040,7 +1040,7 @@ async function CommentsSection({
     commentsCursor,
     commentsDirection,
     currentUser?.id ?? null,
-    isCoordinator,
+    canModerateComments,
   );
   const firstComment = visibleComments[0];
   const lastComment = visibleComments[visibleComments.length - 1];
@@ -1121,7 +1121,7 @@ async function CommentsSection({
             const canReport = canReportComment(currentUser, comment);
             const myCommentReport = myCommentReportMap.get(comment.id) ?? null;
             const canShowCommentOverflowMenu =
-              (canReport && reportOptions.length > 0) || canDelete || isCoordinator;
+              (canReport && reportOptions.length > 0) || canDelete || canModerateComments;
 
             return (
               <li key={comment.id} className="relative rounded-2xl border border-[#e8e8e8] bg-white p-4 sm:pr-12 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
@@ -1183,7 +1183,7 @@ async function CommentsSection({
                           </div>
                         </details>
                       ) : null}
-                      {isCoordinator && comment.status === 'PUBLISHED' ? (
+                      {canModerateComments && comment.status === 'PUBLISHED' ? (
                         <details className="group/hold rounded-lg">
                           <summary className={`${overflowMenuItemClassName} flex cursor-pointer list-none items-center justify-between`}>
                             <span>보류 처리</span>
@@ -1206,7 +1206,7 @@ async function CommentsSection({
                           </form>
                         </details>
                       ) : null}
-                      {isCoordinator && comment.status === 'HELD' ? (
+                      {canModerateComments && comment.status === 'HELD' ? (
                         <form action={restoreCommentAction} className="w-full">
                           <input type="hidden" name="postId" value={postId} />
                           <input type="hidden" name="commentId" value={comment.id} />
@@ -1231,11 +1231,11 @@ async function CommentsSection({
                     </OverflowMenu>
                   </div>
                 ) : null}
-                {comment.status === 'HELD' && !isCoordinator ? (
+                {comment.status === 'HELD' && !canModerateComments ? (
                   <p className="text-sm italic text-[#aaa]">운영 검토 중인 댓글입니다.</p>
                 ) : (
                   <>
-                    {comment.status === 'HELD' && isCoordinator ? (
+                    {comment.status === 'HELD' && canModerateComments ? (
                       <span className="mb-1 inline-block rounded-full bg-[#fffde7] px-2 py-0.5 text-xs font-medium text-[#7a6000]">
                         운영 검토 중
                       </span>

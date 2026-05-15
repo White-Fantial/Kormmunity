@@ -21,6 +21,7 @@ type AdminPostPermissionsPageProps = {
 
 const ROLE_LABELS: Record<string, string> = {
   USER: '일반 사용자',
+  MODERATOR: '모더레이터',
   COORDINATOR: '운영자',
   ADMIN: '관리자',
 };

@@ -1,5 +1,5 @@
 import { getCurrentUser } from '@/lib/auth/session';
-import { canHoldPost, canMakeFinalUserDecision } from '@/lib/permissions';
+import { canMakeFinalUserDecision, canModerate } from '@/lib/permissions';
 import { HeaderNavLink } from '@/components/ui/header-nav-link';
 
 export async function HeaderNavConditional() {
@@ -7,8 +7,8 @@ export async function HeaderNavConditional() {
 
   return (
     <>
-      {currentUser && canHoldPost(currentUser) ? (
-        <HeaderNavLink href="/coordinator">운영 관리</HeaderNavLink>
+      {currentUser && canModerate(currentUser) ? (
+        <HeaderNavLink href="/coordinator">모더레이션</HeaderNavLink>
       ) : null}
       {currentUser && canMakeFinalUserDecision(currentUser) ? (
         <HeaderNavLink href="/admin">관리자</HeaderNavLink>

@@ -18,6 +18,11 @@ const kakaoConfigured =
 const demoUsers = [
   { kakaoId: 'demo-user-001', displayName: '데모 사용자', role: 'USER' },
   {
+    kakaoId: 'demo-moderator-001',
+    displayName: '데모 모더레이터',
+    role: 'MODERATOR',
+  },
+  {
     kakaoId: 'demo-coordinator-001',
     displayName: '데모 운영진',
     role: 'COORDINATOR',

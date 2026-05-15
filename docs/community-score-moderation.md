@@ -54,7 +54,7 @@ These are the raw score changes **before** applying the actor's warmth weight.
 | Post like received | `+1.0` |
 | Comment like received | `+1.2` |
 | Best comment selected | `+5.0` |
-| Coordinator restores content | `+3.0` |
+| Moderator restores content | `+3.0` |
 | Admin restores content | `+5.0` |
 
 ### Negative events
@@ -63,7 +63,7 @@ These are the raw score changes **before** applying the actor's warmth weight.
 |---|---|
 | Post report submitted | `−2.0` |
 | Comment report submitted | `−2.5` |
-| Coordinator holds content | `−5.0` |
+| Moderator holds content | `−5.0` |
 | Admin deletes content | `−10.0` |
 
 ---
@@ -123,7 +123,7 @@ Comments are held at a lower threshold because harmful comments can cause more i
 damage in active discussion threads.
 
 **Important:** The automatic system can only move content to `HELD`.
-Final deletion must remain an admin or coordinator decision.
+Final deletion must remain an admin decision.
 
 ---
 
@@ -135,7 +135,7 @@ Final deletion must remain an admin or coordinator decision.
 |---|---|---|---|
 | Anonymous / normal user | Visible | Sees pending message only | 404 |
 | Post author | Visible | Sees pending message only | 404 |
-| Coordinator | Visible | Visible with held banner | 404 |
+| Moderator | Visible | Visible with held banner | 404 |
 | Admin | Visible | Visible with held banner | 404 |
 
 **Pending message shown to normal users:**
@@ -146,24 +146,28 @@ Final deletion must remain an admin or coordinator decision.
 | User type | PUBLISHED comment | HELD comment |
 |---|---|---|
 | Normal user | Visible | Not listed in normal query (effectively hidden) |
-| Coordinator | Visible | Full content visible + status label |
+| Moderator | Visible | Full content visible + status label |
 | Admin | Visible | Full content visible + status label |
 
 > Note: UI contains a placeholder branch (`운영 검토 중인 댓글입니다.`), but normal users currently do not receive HELD comments from the server query.
 
 ---
 
-## Coordinator / Admin Permissions
+## Moderator / Coordinator / Admin Permissions
 
-### Coordinators can:
+### Moderators can:
 - View all HELD posts and comments
 - Restore HELD content back to `PUBLISHED` (+3.0 score delta)
 - Hold PUBLISHED content (−5.0 score delta)
 - View `communityScore` and report counts in the moderation queue
 - Dismiss reports (by restoring content)
 
+### Coordinators can:
+- Region/community operation tasks (non-moderation)
+- They do not get report processing or moderation queue permissions by default
+
 ### Admins can:
-- All coordinator permissions
+- All moderator and coordinator permissions
 - Permanently delete posts (−10.0 score delta)
 - Restore any content (+5.0 score delta)
 - Override status manually
@@ -181,7 +185,7 @@ All permission checks are enforced server-side.
 - **Self-like score guard is implemented for comments only.** Comment self-like does not apply score; post self-like is not currently guarded in score update path.
 - **Self-selected best comment does not generate score.** If a post author selects their own comment as best, no score change is applied.
 - **Actor warmth is clamped.** The weight is bounded to [0.5, 2.0] to prevent extreme actors from having outsized influence.
-- **communityScore is never exposed in the UI.** Only coordinators/admins can see scores in the management pages.
+- **communityScore is never exposed in the UI.** Only moderators/admins can see scores in the management pages.
 
 ---
 
