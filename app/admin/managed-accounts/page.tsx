@@ -5,6 +5,7 @@ import {
   updateManagedAccountAction,
 } from '@/app/admin/actions';
 import { adminManagementNavItems, ManagementSectionNav } from '@/components/admin/management-section-nav';
+import { ManagedAccountLocationSelects } from '@/components/admin/managed-account-location-selects';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
@@ -82,6 +83,8 @@ export default async function AdminManagedAccountsPage({
     }),
   ]);
 
+  const cityOptions = cities.map((c) => ({ id: c.id, name: c.name, countryId: c.countryId }));
+
   const managedAccountIds = filteredManagedAccounts.map((user) => user.id);
   const [latestManagedPosts, latestManagedComments] =
     managedAccountIds.length > 0
@@ -149,30 +152,7 @@ export default async function AdminManagedAccountsPage({
             </select>
           </div>
           <div className="grid gap-2 sm:grid-cols-3">
-            <select
-              name="countryId"
-              defaultValue=""
-              className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none"
-            >
-              <option value="">국가 미지정</option>
-              {countries.map((country) => (
-                <option key={country.id} value={country.id}>
-                  {country.name}
-                </option>
-              ))}
-            </select>
-            <select
-              name="cityId"
-              defaultValue=""
-              className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none"
-            >
-              <option value="">도시 미지정</option>
-              {cities.map((city) => (
-                <option key={city.id} value={city.id}>
-                  {city.country?.name ? `${city.country.name} · ${city.name}` : city.name}
-                </option>
-              ))}
-            </select>
+            <ManagedAccountLocationSelects countries={countries} cities={cityOptions} />
             <select
               name="isActive"
               defaultValue="true"
@@ -287,30 +267,12 @@ export default async function AdminManagedAccountsPage({
                         </select>
                       </div>
                       <div className="grid gap-2 sm:grid-cols-3">
-                        <select
-                          name="countryId"
-                          defaultValue={managed.countryId ?? managed.city?.countryId ?? ''}
-                          className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm"
-                        >
-                          <option value="">국가 미지정</option>
-                          {countries.map((country) => (
-                            <option key={country.id} value={country.id}>
-                              {country.name}
-                            </option>
-                          ))}
-                        </select>
-                        <select
-                          name="cityId"
-                          defaultValue={managed.cityId ?? ''}
-                          className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm"
-                        >
-                          <option value="">도시 미지정</option>
-                          {cities.map((city) => (
-                            <option key={city.id} value={city.id}>
-                              {city.country?.name ? `${city.country.name} · ${city.name}` : city.name}
-                            </option>
-                          ))}
-                        </select>
+                        <ManagedAccountLocationSelects
+                          countries={countries}
+                          cities={cityOptions}
+                          defaultCountryId={managed.countryId ?? managed.city?.countryId}
+                          defaultCityId={managed.cityId}
+                        />
                         <select
                           name="isActive"
                           defaultValue={String(managed.isActive)}
@@ -362,7 +324,7 @@ export default async function AdminManagedAccountsPage({
                         <span>역할: {managed.role}</span>
                       </div>
                       <FormSubmitButton
-                        idleLabel={managed.isActive ? '운영 계정 수정/비활성화' : '운영 계정 수정/재활성화'}
+                        idleLabel="저장"
                         pendingLabel="처리 중..."
                         className="rounded-xl bg-[#fee500] px-4 py-2 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
                       />
