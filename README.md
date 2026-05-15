@@ -101,6 +101,7 @@
 - `PERSONA`: 운영자가 관리하는 커뮤니티 활성화용 일반형 계정
 - `OPERATOR`: 운영팀/공지/안내용 운영 계정
 - `SYSTEM`: 자동 시스템 메시지용 계정
+- 상세 문서: `docs/managed-accounts.md`
 
 ## 작성자 선택 정책
 - 일반 사용자(`USER`/`MODERATOR`/`COORDINATOR`)는 항상 본인 계정으로만 글/댓글 작성 가능
