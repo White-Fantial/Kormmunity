@@ -956,6 +956,62 @@ export async function toggleCityActiveAction(formData: FormData) {
   redirect('/admin/cities');
 }
 
+export async function createOperatorProfileAction(formData: FormData) {
+  const user = await requireUser();
+  requireAdmin(user);
+
+  const displayName = normalizeText(formData.get('displayName'));
+  const slug = normalizeText(formData.get('slug'));
+  const avatarUrl = normalizeText(formData.get('avatarUrl')) || null;
+  const bio = normalizeText(formData.get('bio')) || null;
+
+  if (!displayName || !slug) {
+    redirect('/admin/operator-profiles?error=프로필 이름과 슬러그를 입력해 주세요.');
+  }
+
+  const existing = await prisma.operatorProfile.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+  if (existing) {
+    redirect('/admin/operator-profiles?error=이미 존재하는 슬러그입니다.');
+  }
+
+  await prisma.operatorProfile.create({
+    data: {
+      displayName,
+      slug,
+      avatarUrl,
+      bio,
+    },
+  });
+
+  revalidatePath('/admin/operator-profiles');
+  revalidatePath('/posts/new');
+  redirect('/admin/operator-profiles');
+}
+
+export async function toggleOperatorProfileActiveAction(formData: FormData) {
+  const user = await requireUser();
+  requireAdmin(user);
+
+  const profileId = normalizeText(formData.get('profileId'));
+  const isActive = formData.get('isActive') === 'true';
+
+  if (!profileId) {
+    redirect('/admin/operator-profiles?error=프로필 ID가 없습니다.');
+  }
+
+  await prisma.operatorProfile.update({
+    where: { id: profileId },
+    data: { isActive: !isActive },
+  });
+
+  revalidatePath('/admin/operator-profiles');
+  revalidatePath('/posts/new');
+  redirect('/admin/operator-profiles');
+}
+
 export async function createReportOptionAction(formData: FormData) {
   const user = await requireUser();
   requireAdmin(user);

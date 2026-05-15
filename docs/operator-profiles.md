@@ -63,19 +63,13 @@ Returns all active operator profiles. Requires `ADMIN` role.
 
 ## Adding a New Operator Profile
 
-Insert a row directly into the `OperatorProfile` table (or add it to `prisma/seed.mjs`):
+Admins can add profiles directly in **관리자 → 관리자 프로필** (`/admin/operator-profiles`).
 
-```js
-await prisma.operatorProfile.upsert({
-  where: { slug: 'my-new-profile' },
-  update: {},
-  create: {
-    slug: 'my-new-profile',
-    displayName: '새 프로필',
-    isActive: true,
-  },
-});
-```
+- Required: `displayName`, `slug`
+- Optional: `avatarUrl`, `bio`
+- Profiles are created as `isActive = true` by default and can be toggled on/off in the same screen.
+
+When an admin adds an active profile, it appears immediately in the post form's "작성자" selector.
 
 ## Permission Policy
 
@@ -97,7 +91,5 @@ Comment authorship switching is **out of scope** for this feature. Comments alwa
 
 ## Future Expansion
 
-- **Operator profile management UI**: A dedicated admin panel for creating, editing, and deactivating operator profiles.
 - **Comment authorship**: Extend the same `displayAuthorType`/`displayAuthorId` pattern to the `Comment` model.
 - **City/country scoping**: Optionally restrict which operator profiles are available per city or country.
-
