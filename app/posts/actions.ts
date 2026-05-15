@@ -21,6 +21,7 @@ import {
   canEditPost,
   isPostScopeValid,
   canReportPost,
+  canUseOperatorProfile,
 } from '@/lib/permissions';
 import {
   MAX_UPLOAD_IMAGE_COUNT,
@@ -206,7 +207,7 @@ export async function createPostAction(formData: FormData) {
   }
 
   const rawOperatorProfileId = normalizeText(formData.get('operatorProfileId'));
-  const operatorProfileId = user.role === 'ADMIN' && rawOperatorProfileId ? rawOperatorProfileId : null;
+  const operatorProfileId = canUseOperatorProfile(user) && rawOperatorProfileId ? rawOperatorProfileId : null;
 
   let resolvedOperatorProfile: { id: string } | null = null;
   if (operatorProfileId) {
@@ -373,7 +374,7 @@ export async function updatePostAction(formData: FormData) {
   const postId = normalizeText(formData.get('postId'));
 
   const rawOperatorProfileId = normalizeText(formData.get('operatorProfileId'));
-  const operatorProfileId = user.role === 'ADMIN' && rawOperatorProfileId ? rawOperatorProfileId : null;
+  const operatorProfileId = canUseOperatorProfile(user) && rawOperatorProfileId ? rawOperatorProfileId : null;
 
   let resolvedOperatorProfile: { id: string } | null = null;
   if (operatorProfileId) {

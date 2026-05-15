@@ -77,6 +77,29 @@ async function resolveOperatorProfileMap(
   return map;
 }
 
+function resolvePostAuthor(
+  post: {
+    displayAuthorType: string;
+    displayAuthorId: string | null;
+    author: { displayName: string; profileImageUrl: string | null; neighbourWarmth: number };
+  },
+  operatorProfileMap: Map<string, OperatorProfileLookup>,
+): { displayName: string; profileImageUrl: string | null; neighbourWarmth: number; isOperator: boolean } {
+  const opProfile =
+    post.displayAuthorType === 'OPERATOR_PROFILE' && post.displayAuthorId
+      ? operatorProfileMap.get(post.displayAuthorId) ?? null
+      : null;
+  if (opProfile) {
+    return {
+      displayName: opProfile.displayName,
+      profileImageUrl: opProfile.avatarUrl ?? null,
+      neighbourWarmth: post.author.neighbourWarmth,
+      isOperator: true,
+    };
+  }
+  return { ...post.author, isOperator: false };
+}
+
 export default async function PostsPage({ searchParams }: PostsPageProps) {
   const params = await searchParams;
   const currentUser = await getCurrentUser();
@@ -303,8 +326,6 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     const operatorProfileMap = await resolveOperatorProfileMap(pagePosts);
 
     normalizedPosts = pagePosts.map((post) => {
-      const isOperatorPost = post.displayAuthorType === 'OPERATOR_PROFILE' && post.displayAuthorId && operatorProfileMap.has(post.displayAuthorId);
-      const opProfile = isOperatorPost ? operatorProfileMap.get(post.displayAuthorId as string) : null;
       return {
         id: post.id,
         title: post.title,
@@ -322,9 +343,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
         reportCount: post._count.reports,
         category: post.category,
         city: post.city,
-        author: opProfile
-          ? { displayName: opProfile.displayName, profileImageUrl: opProfile.avatarUrl ?? null, neighbourWarmth: post.author.neighbourWarmth, isOperator: true }
-          : { ...post.author, isOperator: false },
+        author: resolvePostAuthor(post, operatorProfileMap),
       };
     });
   } else {
@@ -400,8 +419,6 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     const operatorProfileMap = await resolveOperatorProfileMap(pagePosts);
 
     normalizedPosts = pagePosts.map((post) => {
-      const isOperatorPost = post.displayAuthorType === 'OPERATOR_PROFILE' && post.displayAuthorId && operatorProfileMap.has(post.displayAuthorId);
-      const opProfile = isOperatorPost ? operatorProfileMap.get(post.displayAuthorId as string) : null;
       return {
         id: post.id,
         title: post.title,
@@ -418,9 +435,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
         isSavedByCurrentUser: post.savedBy.length > 0,
         category: post.category,
         city: post.city,
-        author: opProfile
-          ? { displayName: opProfile.displayName, profileImageUrl: opProfile.avatarUrl ?? null, neighbourWarmth: post.author.neighbourWarmth, isOperator: true }
-          : { ...post.author, isOperator: false },
+        author: resolvePostAuthor(post, operatorProfileMap),
       };
     });
   }
