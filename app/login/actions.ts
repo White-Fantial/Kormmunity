@@ -20,7 +20,7 @@ function getSessionMaxAgeSeconds() {
 }
 
 /**
- * TODO(Phase 1): Replace this placeholder with real Kakao OAuth callback handling.
+ * Dev-only fallback login used when Kakao OAuth environment variables are not configured.
  * Keep this boundary stable so the rest of the app can switch auth providers safely.
  */
 export async function loginWithKakaoPlaceholder(formData: FormData) {

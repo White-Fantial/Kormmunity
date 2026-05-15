@@ -681,16 +681,16 @@ export async function togglePostLikeAction(formData: FormData) {
     });
   });
 
-  void applyCommunityScoreChange({
-    targetType: 'POST',
-    targetId: postId,
-    actorId: user.id,
-    reason: 'POST_LIKE_RECEIVED',
-  }).catch((err) => {
-    console.error('[togglePostLikeAction] community score update failed', err);
-  });
-
   if (isNewPostLike && post.authorId !== user.id) {
+    void applyCommunityScoreChange({
+      targetType: 'POST',
+      targetId: postId,
+      actorId: user.id,
+      reason: 'POST_LIKE_RECEIVED',
+    }).catch((err) => {
+      console.error('[togglePostLikeAction] community score update failed', err);
+    });
+
     void createNotification({
       recipientId: post.authorId,
       type: 'POST_LIKE',

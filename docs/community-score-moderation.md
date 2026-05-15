@@ -181,8 +181,8 @@ All permission checks are enforced server-side.
 
 - **Duplicate reports are ignored.** A single user can only reduce a post's score once per report.
 - **Duplicate comment likes are ignored.** A single user can only increase a comment's score once per active like.
-- **Post like scoring currently triggers on toggle action.** In current implementation, post like action applies post score delta even on unlike/self-like toggles.
-- **Self-like score guard is implemented for comments only.** Comment self-like does not apply score; post self-like is not currently guarded in score update path.
+- **Like score update is gated by new valid likes.** Post/comment score deltas are applied only when a new like is created for someone else’s content.
+- **Self-like score guard is enforced for post/comment paths.** Self-like does not apply `communityScore` changes.
 - **Self-selected best comment does not generate score.** If a post author selects their own comment as best, no score change is applied.
 - **Actor warmth is clamped.** The weight is bounded to [0.5, 2.0] to prevent extreme actors from having outsized influence.
 - **communityScore is never exposed in the UI.** Only moderators/admins can see scores in the management pages.

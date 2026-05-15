@@ -135,8 +135,10 @@
 - 삭제/보류 댓글은 연락 해제 조건에서 제외되어 운영 투명성을 유지합니다.
 
 ## Not Yet Implemented
+- 업로드 Provider 추상화 (Cloudinary 외 provider 교체 가능 구조)
 - 분석 이벤트 외부 대시보드 연동
 - 검색 고도화 및 운영 자동화
+- 상세 백로그: `docs/current-improvement-backlog.md`
 
 ## Post Card Component Structure
 ```txt
@@ -199,5 +201,5 @@ components/posts/
 - AWS Amplify 배포 시 `NEXT_PUBLIC_SITE_URL`(권장) 또는 `NEXTAUTH_URL`을 반드시 설정해야 SEO 메타데이터와 카카오 알림 링크가 올바른 절대 URL을 사용합니다.
 
 ## Next Focus
-- 분석 이벤트 외부 대시보드 연동
-- 검색 고도화 및 운영 자동화
+- Near-term / Mid-term / Long-term 로드맵 기준으로 진행
+- 상세 로드맵: `docs/future-feature-roadmap.md`
