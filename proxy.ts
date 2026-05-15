@@ -21,7 +21,7 @@ function readFilterParams(searchParams: URLSearchParams) {
   return filterParams;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   if (request.nextUrl.pathname !== '/posts') {
     return NextResponse.next();
   }
