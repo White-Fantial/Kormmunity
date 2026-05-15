@@ -53,6 +53,31 @@ function toSingle(value: string | string[] | undefined) {
   return (Array.isArray(value) ? value[0] : value).trim();
 }
 
+type OperatorProfileLookup = { displayName: string; avatarUrl: string | null };
+
+async function resolveOperatorProfileMap(
+  posts: Array<{ displayAuthorType: string; displayAuthorId: string | null }>,
+): Promise<Map<string, OperatorProfileLookup>> {
+  const ids = Array.from(
+    new Set(
+      posts
+        .filter((p) => p.displayAuthorType === 'OPERATOR_PROFILE' && p.displayAuthorId)
+        .map((p) => p.displayAuthorId as string),
+    ),
+  );
+  const map = new Map<string, OperatorProfileLookup>();
+  if (ids.length > 0) {
+    const profiles = await prisma.operatorProfile.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, displayName: true, avatarUrl: true },
+    });
+    for (const profile of profiles) {
+      map.set(profile.id, profile);
+    }
+  }
+  return map;
+}
+
 export default async function PostsPage({ searchParams }: PostsPageProps) {
   const params = await searchParams;
   const currentUser = await getCurrentUser();
@@ -276,23 +301,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
         ? Boolean(paginationCursor)
         : hasExtra;
 
-    const operatorProfileIds = Array.from(
-      new Set(
-        pagePosts
-          .filter((p) => p.displayAuthorType === 'OPERATOR_PROFILE' && p.displayAuthorId)
-          .map((p) => p.displayAuthorId as string),
-      ),
-    );
-    const operatorProfileMap = new Map<string, { displayName: string; avatarUrl: string | null }>();
-    if (operatorProfileIds.length > 0) {
-      const profiles = await prisma.operatorProfile.findMany({
-        where: { id: { in: operatorProfileIds } },
-        select: { id: true, displayName: true, avatarUrl: true },
-      });
-      for (const profile of profiles) {
-        operatorProfileMap.set(profile.id, profile);
-      }
-    }
+    const operatorProfileMap = await resolveOperatorProfileMap(pagePosts);
 
     normalizedPosts = pagePosts.map((post) => {
       const isOperatorPost = post.displayAuthorType === 'OPERATOR_PROFILE' && post.displayAuthorId && operatorProfileMap.has(post.displayAuthorId);
@@ -389,23 +398,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
         ? Boolean(paginationCursor)
         : hasExtra;
 
-    const operatorProfileIds2 = Array.from(
-      new Set(
-        pagePosts
-          .filter((p) => p.displayAuthorType === 'OPERATOR_PROFILE' && p.displayAuthorId)
-          .map((p) => p.displayAuthorId as string),
-      ),
-    );
-    const operatorProfileMap2 = new Map<string, { displayName: string; avatarUrl: string | null }>();
-    if (operatorProfileIds2.length > 0) {
-      const profiles = await prisma.operatorProfile.findMany({
-        where: { id: { in: operatorProfileIds2 } },
-        select: { id: true, displayName: true, avatarUrl: true },
-      });
-      for (const profile of profiles) {
-        operatorProfileMap2.set(profile.id, profile);
-      }
-    }
+    const operatorProfileMap2 = await resolveOperatorProfileMap(pagePosts);
 
     normalizedPosts = pagePosts.map((post) => {
       const isOperatorPost = post.displayAuthorType === 'OPERATOR_PROFILE' && post.displayAuthorId && operatorProfileMap2.has(post.displayAuthorId);

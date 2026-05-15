@@ -308,12 +308,7 @@ export async function createPostAction(formData: FormData) {
           requireCommentBeforeContactInput ??
           categoryResult.category.requireCommentBeforeContactDefault,
         displayAuthorType: resolvedOperatorProfile ? 'OPERATOR_PROFILE' : 'USER',
-        displayAuthorId: resolvedOperatorProfile ? resolvedOperatorProfile.id : user.id,
-      },
-    });
-
-    if (categoryResult.postTagOptionIds.length > 0) {
-      await tx.postTag.createMany({
+        displayAuthorId: resolvedOperatorProfile ? resolvedOperatorProfile.id : null,
         data: categoryResult.postTagOptionIds.map((postTagOptionId) => ({
           postId: post.id,
           postTagOptionId,
@@ -491,7 +486,7 @@ export async function updatePostAction(formData: FormData) {
           requireCommentBeforeContactInput ??
           categoryResult.category.requireCommentBeforeContactDefault,
         displayAuthorType: resolvedOperatorProfile ? 'OPERATOR_PROFILE' : 'USER',
-        displayAuthorId: resolvedOperatorProfile ? resolvedOperatorProfile.id : user.id,
+        displayAuthorId: resolvedOperatorProfile ? resolvedOperatorProfile.id : null,
       },
     });
 
