@@ -17,11 +17,3 @@ export function PostTagBadge({ label, categoryColor, className }: PostTagBadgePr
     </Badge>
   );
 }
-
-export function withPostTagPrefix(title: string, tagLabel?: string | null) {
-  if (!tagLabel) {
-    return title;
-  }
-
-  return `[${tagLabel}] ${title}`;
-}

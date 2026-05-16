@@ -38,7 +38,7 @@ import {
   PostEngagementProvider,
 } from '@/components/posts/post-engagement';
 import { PostImageGallery } from '@/components/posts/post-image-gallery';
-import { PostTagBadge, withPostTagPrefix } from '@/components/posts/post-tag-badge';
+import { PostTagBadge } from '@/components/posts/post-tag-badge';
 import { PostShareButton } from '@/components/posts/post-share-button';
 import { PostMarkdown } from '@/components/posts/post-markdown';
 import { ScoreLogViewer } from '@/components/moderation/score-log-viewer';
@@ -259,10 +259,7 @@ export async function generateMetadata({
     };
   }
 
-  const title = withPostTagPrefix(
-    post.title ?? post.body.slice(0, TITLE_PREVIEW_LENGTH),
-    post.tags[0]?.postTagOption.label,
-  );
+  const title = post.title ?? post.body.slice(0, TITLE_PREVIEW_LENGTH);
   const socialTitle = `${title} | ${COMMUNITY_NAME}`;
   const description = `${post.category.name} · ${post.city?.name ?? '전 지역'} · ${post.body.slice(0, DESCRIPTION_PREVIEW_LENGTH)}`;
   const primaryImageUrl = post.images?.[0]?.url;
@@ -598,7 +595,7 @@ export default async function PostDetailPage({
       </div>
 
       {post.title ? (
-        <h1 className="text-xl font-bold">{withPostTagPrefix(post.title, post.tags[0]?.postTagOption.label)}</h1>
+        <h1 className="text-xl font-bold">{post.title}</h1>
       ) : null}
       <PostMarkdown body={post.body} />
 
@@ -965,18 +962,8 @@ async function AdjacentPostsSection({
     return bodyText ? truncatePostBody(bodyText) : '내용 없음';
   };
 
-  const previousPostTitle = previousPost
-    ? withPostTagPrefix(
-      getAdjacentPostPreviewText(previousPost),
-      previousPost.tags[0]?.postTagOption.label,
-    )
-    : null;
-  const nextPostTitle = nextPost
-    ? withPostTagPrefix(
-      getAdjacentPostPreviewText(nextPost),
-      nextPost.tags[0]?.postTagOption.label,
-    )
-    : null;
+  const previousPostTitle = previousPost ? getAdjacentPostPreviewText(previousPost) : null;
+  const nextPostTitle = nextPost ? getAdjacentPostPreviewText(nextPost) : null;
 
   return (
     <section className="grid grid-cols-1 gap-2 border-t border-[#e8e8e8] pt-4 sm:grid-cols-2">
