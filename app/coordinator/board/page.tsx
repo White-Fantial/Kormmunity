@@ -7,7 +7,7 @@ import { EmptyStateMessage } from '@/components/ui/empty-state-message';
 import { getCurrentUser } from '@/lib/auth/session';
 import { shouldShowOperatorBadge } from '@/lib/account-type';
 import { prisma } from '@/lib/db/prisma';
-import { canCoordinate } from '@/lib/permissions';
+import { canAccessOperatorBoard } from '@/lib/permissions';
 import { decodeCursor, encodeCursor } from '@/lib/posts/cursor';
 import {
   buildPinnedPostCursorWhere,
@@ -40,7 +40,7 @@ function toSingle(value: string | string[] | undefined): string {
 export default async function CoordinatorBoardPage({ searchParams }: BoardPageProps) {
   const currentUser = await getCurrentUser();
 
-  if (!currentUser || !canCoordinate(currentUser)) {
+  if (!currentUser || !canAccessOperatorBoard(currentUser)) {
     redirect('/posts');
   }
 
