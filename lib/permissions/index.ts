@@ -94,6 +94,10 @@ function isActiveWriter(user: PermissionUser | null | undefined) {
   return user?.status === 'ACTIVE';
 }
 
+function hasDefaultNormalCategoryWriteAccess(role: UserRole) {
+  return role === 'USER' || role === 'MODERATOR' || role === 'COORDINATOR';
+}
+
 export function isPostScopeValid(
   countryId: string | null,
   cityId: string | null,
@@ -139,7 +143,7 @@ export async function canCreatePost(
   }
 
   if (
-    user.role === 'USER' &&
+    hasDefaultNormalCategoryWriteAccess(user.role) &&
     targetCountryId !== null &&
     targetCityId !== null &&
     targetCountryId === user.countryId &&
@@ -305,7 +309,7 @@ export async function getPostCreationFormOptions(
       }
     }
   } else {
-    if (user.role === 'USER' && user.countryId && user.cityId) {
+    if (hasDefaultNormalCategoryWriteAccess(user.role) && user.countryId && user.cityId) {
       for (const category of categories) {
         if (category.visibilityMode === DEFAULT_USER_POST_VISIBILITY) {
           addTarget(user.countryId, user.cityId, category.id);
