@@ -19,7 +19,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: '운영진 게시판',
-  description: '코디네이터 전용 공지 게시판',
+  description: '전 세계 운영진이 함께 보는 공지 게시판',
 };
 
 const PAGE_SIZE = 20;
@@ -49,32 +49,14 @@ export default async function CoordinatorBoardPage({ searchParams }: BoardPagePr
   const paginationCursor = cursorToken ? decodeCursor(cursorToken) : null;
   const paginationDirection = toSingle(params.direction) === 'prev' ? 'prev' : 'next';
 
-  // HIDDEN 카테고리 = 코디네이터 전용 카테고리 (일반 피드에 노출되지 않음)
-  const [hiddenCategories, userCity] = await Promise.all([
-    prisma.category.findMany({
-      where: { isActive: true, visibilityMode: 'HIDDEN' },
-      orderBy: { sortOrder: 'asc' },
-      select: { id: true, name: true },
-    }),
-    currentUser.cityId
-      ? prisma.city.findUnique({
-          where: { id: currentUser.cityId },
-          select: { name: true },
-        })
-      : null,
-  ]);
-
-  const userCityId = currentUser.cityId ?? null;
-  const cityName = userCity?.name ?? null;
+  // HIDDEN 카테고리 = 운영진 전용 카테고리 (일반 피드에 노출되지 않음)
+  const hiddenCategories = await prisma.category.findMany({
+    where: { isActive: true, visibilityMode: 'HIDDEN' },
+    orderBy: { sortOrder: 'asc' },
+    select: { id: true, name: true },
+  });
 
   const andConditions: object[] = [];
-
-  // 도시 자동 고정: 본인 도시 게시글 + 전체 공개(cityId=null) 게시글
-  if (userCityId) {
-    andConditions.push({
-      OR: [{ cityId: userCityId }, { cityId: null }],
-    });
-  }
 
   if (paginationCursor) {
     const paginationWhere = buildPinnedPostCursorWhere(paginationCursor, paginationDirection);
@@ -238,9 +220,7 @@ export default async function CoordinatorBoardPage({ searchParams }: BoardPagePr
       <div className="space-y-1">
         <h1 className="text-xl font-bold">운영진 게시판</h1>
         <p className="text-sm text-[#888]">
-          {cityName
-            ? `${cityName} 공지 및 전체 공지`
-            : '전체 공지 (내 프로필에 도시를 설정하면 해당 도시 공지도 표시됩니다)'}
+          전 세계 운영진 글을 함께 보고 논의하는 공간이에요.
         </p>
       </div>
 
