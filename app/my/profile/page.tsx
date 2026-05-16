@@ -9,6 +9,7 @@ import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { KakaoOpenLinkInput } from '@/components/ui/kakao-open-link-input';
 import { updateProfileAction } from './actions';
 import { LOCATION_COOLDOWN_DAYS } from '@/lib/location-cooldown';
+import { ProfileLocationSelects } from '@/components/my/profile-location-selects';
 import {
   deleteSearchAlertAction,
 } from '@/app/posts/search-alert-actions';
@@ -52,12 +53,9 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
       select: { id: true, name: true },
     }),
     prisma.city.findMany({
-      where: {
-        isActive: true,
-        ...(user.countryId ? { countryId: user.countryId } : {}),
-      },
+      where: { isActive: true },
       orderBy: { sortOrder: 'asc' },
-      select: { id: true, name: true },
+      select: { id: true, name: true, countryId: true },
     }),
     prisma.searchAlert.findMany({
       where: { userId: user.id },
@@ -133,51 +131,14 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
 
       <form action={updateProfileAction} className="space-y-3 border-t border-[#e8e8e8] pt-4">
         <input type="hidden" name="returnTo" value={params.returnTo ?? ''} />
-        <div className="space-y-1">
-          <label htmlFor="countryId" className="text-sm font-medium">
-            서비스 국가
-          </label>
-          <select
-            id="countryId"
-            name="countryId"
-            defaultValue={dbUser?.countryId ?? ''}
-            disabled={isLocationCooldown}
-            className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <option value="">국가를 선택해 주세요.</option>
-            {countries.map((country) => (
-              <option key={country.id} value={country.id}>
-                {country.name}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-[#888]">
-            국가를 바꾸면 기본 지역이 초기화되고 다시 선택해야 합니다.
-          </p>
-        </div>
-        <div className="space-y-1">
-          <label htmlFor="cityId" className="text-sm font-medium">
-            기본 지역
-          </label>
-          <select
-            id="cityId"
-            name="cityId"
-            defaultValue={dbUser?.cityId ?? ''}
-            disabled={isLocationCooldown}
-            className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <option value="">지역을 선택해 주세요.</option>
-            {cities.map((city) => (
-              <option key={city.id} value={city.id}>
-                {city.name}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-[#888]">
-            글쓰기는 여기에서 설정한 지역으로만 등록돼요.{' '}
-            {!isAdmin ? '국가/도시는 7일마다 한 번만 변경할 수 있어요.' : null}
-          </p>
-        </div>
+        <ProfileLocationSelects
+          countries={countries}
+          cities={cities}
+          defaultCountryId={dbUser?.countryId ?? null}
+          defaultCityId={dbUser?.cityId ?? null}
+          disabled={isLocationCooldown}
+          showCooldownNote={!isAdmin}
+        />
         <div className="space-y-1">
           <label htmlFor="openChatUrl" className="text-sm font-medium">
             카카오 오픈채팅 링크
