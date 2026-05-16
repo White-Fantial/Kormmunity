@@ -73,7 +73,6 @@ const ROLE_RANK: Record<UserRole, number> = {
   COORDINATOR: 2,
   ADMIN: 3,
 };
-const DEFAULT_USER_POST_VISIBILITY = CategoryVisibilityMode.NORMAL;
 
 export { ROLE_RANK };
 export const USER_ROLES = Object.values(UserRole) as UserRole[];
@@ -94,8 +93,20 @@ function isActiveWriter(user: PermissionUser | null | undefined) {
   return user?.status === 'ACTIVE';
 }
 
-function hasDefaultNormalCategoryWriteAccess(role: UserRole) {
+function hasDefaultCategoryWriteAccess(role: UserRole) {
   return role === 'USER' || role === 'MODERATOR' || role === 'COORDINATOR';
+}
+
+function getDefaultWriteVisibilityModes(role: UserRole): CategoryVisibilityMode[] {
+  if (role === 'MODERATOR' || role === 'COORDINATOR') {
+    return [CategoryVisibilityMode.NORMAL, CategoryVisibilityMode.HIDDEN];
+  }
+
+  if (role === 'USER') {
+    return [CategoryVisibilityMode.NORMAL];
+  }
+
+  return [];
 }
 
 export function isPostScopeValid(
@@ -142,13 +153,14 @@ export async function canCreatePost(
     return true;
   }
 
+  const defaultWriteVisibilityModes = getDefaultWriteVisibilityModes(user.role);
   if (
-    hasDefaultNormalCategoryWriteAccess(user.role) &&
+    hasDefaultCategoryWriteAccess(user.role) &&
     targetCountryId !== null &&
     targetCityId !== null &&
     targetCountryId === user.countryId &&
     targetCityId === user.cityId &&
-    visibilityMode === DEFAULT_USER_POST_VISIBILITY
+    defaultWriteVisibilityModes.includes(visibilityMode)
   ) {
     return true;
   }
@@ -309,9 +321,10 @@ export async function getPostCreationFormOptions(
       }
     }
   } else {
-    if (hasDefaultNormalCategoryWriteAccess(user.role) && user.countryId && user.cityId) {
+    if (hasDefaultCategoryWriteAccess(user.role) && user.countryId && user.cityId) {
+      const defaultWriteVisibilityModes = new Set(getDefaultWriteVisibilityModes(user.role));
       for (const category of categories) {
-        if (category.visibilityMode === DEFAULT_USER_POST_VISIBILITY) {
+        if (defaultWriteVisibilityModes.has(category.visibilityMode)) {
           addTarget(user.countryId, user.cityId, category.id);
         }
       }
