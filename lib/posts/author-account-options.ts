@@ -2,7 +2,7 @@ import type { AccountType, UserRole, UserStatus } from '@prisma/client';
 
 import { prisma } from '@/lib/db/prisma';
 
-export type AuthorAccountKind = 'COORDINATOR' | 'PERSONA' | 'OPERATOR';
+export type AuthorAccountKind = 'OPERATOR';
 
 export type AuthorAccountOption = {
   id: string;
@@ -37,15 +37,6 @@ function resolveAuthorCountryId(candidate: AuthorSelectionCandidate) {
 
 function toAuthorAccountKind(candidate: AuthorSelectionCandidate): AuthorAccountKind | null {
   if (
-    candidate.accountType === 'PERSONA' &&
-    candidate.isManagedAccount &&
-    candidate.isActive &&
-    candidate.status === 'ACTIVE'
-  ) {
-    return 'PERSONA';
-  }
-
-  if (
     candidate.accountType === 'OPERATOR' &&
     candidate.isManagedAccount &&
     candidate.isActive &&
@@ -54,15 +45,10 @@ function toAuthorAccountKind(candidate: AuthorSelectionCandidate): AuthorAccount
     return 'OPERATOR';
   }
 
-  if (candidate.role === 'COORDINATOR' && candidate.isActive && candidate.status === 'ACTIVE') {
-    return 'COORDINATOR';
-  }
-
   return null;
 }
 
 function canAccountCoverScope(
-  accountType: AuthorAccountKind,
   candidateCountryId: string | null,
   candidateCityId: string | null,
   scope: AuthorScope,
@@ -73,10 +59,6 @@ function canAccountCoverScope(
 
   if (!scope.cityId) {
     return true;
-  }
-
-  if (accountType === 'PERSONA') {
-    return candidateCityId === scope.cityId;
   }
 
   return candidateCityId === null || candidateCityId === scope.cityId;
@@ -113,7 +95,7 @@ export function canActorUseAuthorForScope(
   }
 
   const candidateCountryId = resolveAuthorCountryId(candidate);
-  return canAccountCoverScope(authorAccountKind, candidateCountryId, candidate.cityId, scope);
+  return canAccountCoverScope(candidateCountryId, candidate.cityId, scope);
 }
 
 export async function getAuthorAccountOptionsForActor(
@@ -131,19 +113,10 @@ export async function getAuthorAccountOptionsForActor(
 
   const authorAccountOptionsRaw = await prisma.user.findMany({
     where: {
-      OR: [
-        {
-          accountType: { in: ['PERSONA', 'OPERATOR'] },
-          isManagedAccount: true,
-          isActive: true,
-          status: 'ACTIVE',
-        },
-        {
-          role: 'COORDINATOR',
-          isActive: true,
-          status: 'ACTIVE',
-        },
-      ],
+      accountType: 'OPERATOR',
+      isManagedAccount: true,
+      isActive: true,
+      status: 'ACTIVE',
     },
     select: {
       id: true,
@@ -175,7 +148,7 @@ export async function getAuthorAccountOptionsForActor(
       if (
         actorRole === 'COORDINATOR' &&
         !normalizedScopes.some((scope) =>
-          canAccountCoverScope(accountType, countryId, candidate.cityId, scope),
+          canAccountCoverScope(countryId, candidate.cityId, scope),
         )
       ) {
         return null;
