@@ -8,6 +8,7 @@ import {
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { canModerate } from '@/lib/permissions';
+import { DateTimeText } from '@/components/ui/date-time-text';
 import { truncatePostBody } from '@/lib/posts/constants';
 
 export const dynamic = 'force-dynamic';
@@ -139,7 +140,7 @@ export default async function ScoreLogsPage({ searchParams }: ScoreLogsPageProps
                   return (
                     <tr key={event.id} className="border-b border-[#f5f5f5] hover:bg-[#fafafa]">
                       <td className="py-2 pr-3 text-xs text-[#888] whitespace-nowrap">
-                        {new Date(event.createdAt).toLocaleString('ko-KR')}
+                        <DateTimeText value={event.createdAt} />
                       </td>
                       <td className="py-2 pr-3 max-w-[160px]">
                         {targetHref ? (

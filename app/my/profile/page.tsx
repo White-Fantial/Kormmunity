@@ -5,6 +5,7 @@ import { NEIGHBOUR_WARMTH_DEFAULT } from '@/lib/neighbour-warmth';
 import { logoutAction } from '@/app/login/actions';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { NeighbourWarmthLabel } from '@/components/ui/neighbour-warmth-label';
+import { DateTimeText } from '@/components/ui/date-time-text';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { KakaoOpenLinkInput } from '@/components/ui/kakao-open-link-input';
 import { updateProfileAction } from './actions';
@@ -111,11 +112,7 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
         <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
           국가/도시는 7일마다 한 번만 변경할 수 있어요.{' '}
           다음 변경 가능일:{' '}
-          {nextLocationChangeAt!.toLocaleDateString('ko-KR', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}
+          <DateTimeText value={nextLocationChangeAt!} mode="date" />
         </p>
       ) : null}
 

@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 
 import { PostCard } from '@/components/posts/post-card';
 import { EmptyStateMessage } from '@/components/ui/empty-state-message';
+import { DateTimeText } from '@/components/ui/date-time-text';
 import { NeighbourWarmthLabel } from '@/components/ui/neighbour-warmth-label';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { WarmthLogViewer } from '@/components/moderation/warmth-log-viewer';
@@ -181,7 +182,7 @@ export default async function UserProfilePage({ params, searchParams }: UserProf
         <dl className="mt-4 space-y-1 text-sm text-[#555]">
           <div className="flex gap-2">
             <dt className="font-medium text-[#333]">가입일</dt>
-            <dd>{new Date(user.createdAt).toLocaleDateString('ko-KR')}</dd>
+            <dd><DateTimeText value={user.createdAt} mode="date" /></dd>
           </div>
           <div className="flex gap-2">
             <dt className="font-medium text-[#333]">게시물 수</dt>

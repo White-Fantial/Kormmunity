@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 
+import { DateTimeText } from '@/components/ui/date-time-text';
+
 type WarmthLog = {
   id: string;
   reason: string;
@@ -99,7 +101,7 @@ export function WarmthLogViewer({ userId }: WarmthLogViewerProps) {
                   {logs.map((log) => (
                     <tr key={log.id} className="border-b border-[#f5f5f5]">
                       <td className="py-1 pr-3 text-[#888] whitespace-nowrap">
-                        {new Date(log.createdAt).toLocaleString('ko-KR')}
+                        <DateTimeText value={log.createdAt} />
                       </td>
                       <td className="py-1 pr-3">
                         {REASON_LABELS[log.reason] ?? log.reason}

@@ -9,6 +9,7 @@ import { adminManagementNavItems, ManagementSectionNav } from '@/components/admi
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { canMakeFinalUserDecision } from '@/lib/permissions';
+import { DateTimeText } from '@/components/ui/date-time-text';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 
 export const dynamic = 'force-dynamic';
@@ -330,7 +331,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                           <li key={request.id} className="text-xs text-[#555]">
                             <span className="font-medium">{request.actor.displayName}</span>
                             {' · '}
-                            <span>{new Date(request.createdAt).toLocaleString('ko-KR')}</span>
+                            <DateTimeText value={request.createdAt} />
                             {request.reason ? (
                               <span className="ml-1 text-[#7a2e2e]">({request.reason})</span>
                             ) : null}
@@ -361,7 +362,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                 <span className="font-mono text-[#aaa]">{action.targetId.slice(0, 8)}…</span>
                 {action.reason ? <span className="ml-2 text-[#888]">({action.reason})</span> : null}
                 <span className="ml-2 text-[#aaa]">
-                  {new Date(action.createdAt).toLocaleString('ko-KR')}
+                  <DateTimeText value={action.createdAt} />
                 </span>
               </li>
             ))}

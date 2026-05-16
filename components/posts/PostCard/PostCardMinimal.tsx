@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import { DateTimeText } from '@/components/ui/date-time-text';
 import type { PostCardMinimalProps } from './types';
 
 export function PostCardMinimal({ post }: Omit<PostCardMinimalProps, 'variant'>) {
@@ -12,7 +13,9 @@ export function PostCardMinimal({ post }: Omit<PostCardMinimalProps, 'variant'>)
       <div className="space-y-1">
         {post.title?.trim() ? <p className="text-sm font-medium text-[#1a1a1a]">{post.title.trim()}</p> : null}
         <p className="line-clamp-2 text-sm text-[#555]">{post.bodyPreview}</p>
-        <p className="text-xs text-[#888]">{new Date(post.createdAt).toLocaleString('ko-KR')}</p>
+        <p className="text-xs text-[#888]">
+          <DateTimeText value={post.createdAt} />
+        </p>
       </div>
     </article>
   );

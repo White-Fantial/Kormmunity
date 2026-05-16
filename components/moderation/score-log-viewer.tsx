@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 
+import { DateTimeText } from '@/components/ui/date-time-text';
+
 type ScoreEvent = {
   id: string;
   reason: string;
@@ -99,7 +101,7 @@ export function ScoreLogViewer({ postId }: ScoreLogViewerProps) {
                   {events.map((event) => (
                     <tr key={event.id} className="border-b border-[#f5f5f5]">
                       <td className="py-1 pr-3 text-[#888] whitespace-nowrap">
-                        {new Date(event.createdAt).toLocaleString('ko-KR')}
+                        <DateTimeText value={event.createdAt} />
                       </td>
                       <td className="py-1 pr-3">
                         {REASON_LABELS[event.reason] ?? event.reason}

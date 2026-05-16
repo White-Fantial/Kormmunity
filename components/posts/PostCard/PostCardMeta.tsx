@@ -1,3 +1,5 @@
+import { DateTimeText } from '@/components/ui/date-time-text';
+
 type PostCardMetaProps = {
   createdAt: Date;
   commentCount?: number;
@@ -22,7 +24,7 @@ export function PostCardMeta({
   const metaItems = [
     showCommentCount && typeof commentCount === 'number' ? `댓글 ${commentCount}` : null,
     showLikeCount && typeof likeCount === 'number' ? `좋아요 ${likeCount}` : null,
-    new Date(createdAt).toLocaleString('ko-KR'),
+    <DateTimeText key="created-at" value={createdAt} />,
   ].filter(Boolean);
 
   return (

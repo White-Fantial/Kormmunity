@@ -6,6 +6,7 @@ import {
 } from '@/app/admin/actions';
 import { adminManagementNavItems, ManagementSectionNav } from '@/components/admin/management-section-nav';
 import { ManagedAccountLocationSelects } from '@/components/admin/managed-account-location-selects';
+import { DateTimeText } from '@/components/ui/date-time-text';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
@@ -250,7 +251,7 @@ export default async function AdminManagedAccountsPage({
                       <span>{countryName ?? '국가 미지정'}</span>
                       <span>{managed.city?.name ?? '도시 미지정'}</span>
                       <span className="ml-auto text-[#999]">
-                        최근 사용: {lastUsedAt ? new Date(lastUsedAt).toLocaleString('ko-KR') : '기록 없음'}
+                        최근 사용: {lastUsedAt ? <DateTimeText value={lastUsedAt} /> : '기록 없음'}
                       </span>
                     </summary>
                     <form action={updateManagedAccountAction} className="mt-3 space-y-2 border-t border-[#f1f1f1] pt-3">
@@ -326,7 +327,7 @@ export default async function AdminManagedAccountsPage({
                         />
                       </div>
                       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#888]">
-                        <span>생성: {new Date(managed.createdAt).toLocaleString('ko-KR')}</span>
+                        <span>생성: <DateTimeText value={managed.createdAt} /></span>
                         <span>역할: {managed.role}</span>
                       </div>
                       <FormSubmitButton

@@ -7,6 +7,7 @@ import {
 } from '@/app/admin/actions';
 import { adminManagementNavItems, ManagementSectionNav } from '@/components/admin/management-section-nav';
 import { PostPermissionForm } from '@/components/admin/post-permission-form';
+import { DateTimeText } from '@/components/ui/date-time-text';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
@@ -130,7 +131,7 @@ export default async function AdminPostPermissionsPage({
                   </span>
                 </div>
                 <p className="text-xs text-[#888]">
-                  생성일: {new Date(permission.createdAt).toLocaleString('ko-KR')}
+                  생성일: <DateTimeText value={permission.createdAt} />
                 </p>
                 <form action={deletePostPermissionAction}>
                   <input type="hidden" name="permissionId" value={permission.id} />

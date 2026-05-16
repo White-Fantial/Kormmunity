@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import { requireUser } from '@/lib/auth/session';
 import { getNotificationHref, getNotifications } from '@/lib/notifications';
+import { DateTimeText } from '@/components/ui/date-time-text';
 import { EmptyStateMessage } from '@/components/ui/empty-state-message';
 import {
   archiveAllNotificationsAction,
@@ -26,18 +27,6 @@ const NOTIFICATION_LABELS: Record<string, string> = {
   POST_HELD: '작성한 게시글이 검토 보류 처리됐어요.',
   COMMENT_HELD: '작성한 댓글이 검토 보류 처리됐어요.',
 };
-
-function formatRelativeTime(date: Date): string {
-  const diff = Date.now() - date.getTime();
-  const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return '방금 전';
-  if (minutes < 60) return `${minutes}분 전`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}시간 전`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}일 전`;
-  return date.toLocaleDateString('ko-KR');
-}
 
 export default async function NotificationsPage() {
   const user = await requireUser();
@@ -93,7 +82,7 @@ export default async function NotificationsPage() {
                         </span>
                       </div>
                       <p className="mt-1 text-xs text-[#888]">
-                        {formatRelativeTime(notification.createdAt)}
+                        <DateTimeText value={notification.createdAt} mode="relative" />
                         {href ? ' · 눌러서 이동' : ''}
                       </p>
                     </button>

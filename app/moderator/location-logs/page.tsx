@@ -5,6 +5,7 @@ import {
   moderatorManagementNavItems,
   ManagementSectionHeader,
 } from '@/components/admin/management-section-nav';
+import { DateTimeText } from '@/components/ui/date-time-text';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { canModerate } from '@/lib/permissions';
@@ -134,7 +135,7 @@ export default async function LocationLogsPage({ searchParams }: LocationLogsPag
                   return (
                     <tr key={log.id} className="border-b border-[#f5f5f5] hover:bg-[#fafafa]">
                       <td className="py-2 pr-3 text-xs text-[#888] whitespace-nowrap">
-                        {new Date(log.createdAt).toLocaleString('ko-KR')}
+                        <DateTimeText value={log.createdAt} />
                       </td>
                       <td className="py-2 pr-3">
                         <Link

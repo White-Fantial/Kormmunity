@@ -14,6 +14,7 @@ import {
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { canModerate } from '@/lib/permissions';
+import { DateTimeText } from '@/components/ui/date-time-text';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { truncatePostBody } from '@/lib/posts/constants';
 
@@ -156,7 +157,7 @@ export default async function CoordinatorPage({ searchParams }: CoordinatorPageP
                 <p className="mt-1 text-xs text-[#888]">
                   <span>작성자: {post.author.displayName}</span>
                   {' · '}
-                  <span>{new Date(post.createdAt).toLocaleString('ko-KR')}</span>
+                  <DateTimeText value={post.createdAt} />
                   {' · '}
                   <span aria-label={`신고 ${post._count.reports}건`}>신고 {post._count.reports}건</span>
                 </p>

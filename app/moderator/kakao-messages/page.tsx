@@ -6,6 +6,7 @@ import {
   moderatorManagementNavItems,
   ManagementSectionHeader,
 } from '@/components/admin/management-section-nav';
+import { DateTimeText } from '@/components/ui/date-time-text';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
@@ -17,10 +18,6 @@ export const dynamic = 'force-dynamic';
 type CoordinatorKakaoMessagesPageProps = {
   searchParams: Promise<{ status?: string; error?: string; success?: string }>;
 };
-
-function formatDateTime(value: Date) {
-  return value.toLocaleString('ko-KR');
-}
 
 export default async function CoordinatorKakaoMessagesPage({
   searchParams,
@@ -142,11 +139,17 @@ export default async function CoordinatorKakaoMessagesPage({
                 </div>
 
                 <p className="text-xs text-[#888]">
-                  생성: {formatDateTime(delivery.createdAt)}
-                  {delivery.lastAttemptAt
-                    ? ` · 최근 시도: ${formatDateTime(delivery.lastAttemptAt)}`
-                    : ''}
-                  {delivery.sentAt ? ` · 성공 시각: ${formatDateTime(delivery.sentAt)}` : ''}
+                  생성: <DateTimeText value={delivery.createdAt} />
+                  {delivery.lastAttemptAt ? (
+                    <>
+                      {' '}· 최근 시도: <DateTimeText value={delivery.lastAttemptAt} />
+                    </>
+                  ) : null}
+                  {delivery.sentAt ? (
+                    <>
+                      {' '}· 성공 시각: <DateTimeText value={delivery.sentAt} />
+                    </>
+                  ) : null}
                 </p>
                 {delivery.relatedPostId ? (
                   <p className="text-xs text-[#666]">게시글 ID: {delivery.relatedPostId}</p>

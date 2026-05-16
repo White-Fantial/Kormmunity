@@ -6,6 +6,7 @@ import { adminManagementNavItems, ManagementSectionNav } from '@/components/admi
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { canMakeFinalUserDecision } from '@/lib/permissions';
+import { DateTimeText } from '@/components/ui/date-time-text';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { truncatePostBody } from '@/lib/posts/constants';
 import { PINNED_POST_ORDER_DESC } from '@/lib/posts/pinned-order';
@@ -158,7 +159,7 @@ export default async function AdminPostsPage({ searchParams }: AdminPostsPagePro
                 <p className="text-xs text-[#888]">
                   <span>작성자: {post.author.displayName}</span>
                   {' · '}
-                  <span>{new Date(post.createdAt).toLocaleString('ko-KR')}</span>
+                  <span><DateTimeText value={post.createdAt} /></span>
                   {' · '}
                   <span aria-label={`신고 ${post._count.reports}건`}>신고 {post._count.reports}건</span>
                   {' · '}
@@ -241,7 +242,7 @@ export default async function AdminPostsPage({ searchParams }: AdminPostsPagePro
                 <span className="font-mono text-[#aaa]">{action.targetId.slice(0, 8)}…</span>
                 {action.reason ? <span className="ml-2 text-[#888]">({action.reason})</span> : null}
                 <span className="ml-2 text-[#aaa]">
-                  {new Date(action.createdAt).toLocaleString('ko-KR')}
+                  <DateTimeText value={action.createdAt} />
                 </span>
               </li>
             ))}

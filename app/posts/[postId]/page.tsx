@@ -43,6 +43,7 @@ import { PostShareButton } from '@/components/posts/post-share-button';
 import { PostMarkdown } from '@/components/posts/post-markdown';
 import { ScoreLogViewer } from '@/components/moderation/score-log-viewer';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
+import { DateTimeText } from '@/components/ui/date-time-text';
 import { NeighbourWarmthLabel } from '@/components/ui/neighbour-warmth-label';
 import { OverflowMenu, overflowMenuItemClassName } from '@/components/ui/overflow-menu';
 import { UserAvatar } from '@/components/ui/user-avatar';
@@ -630,7 +631,7 @@ export default async function PostDetailPage({
           {shouldShowWarmth(post.author) && (
             <>{' '}· <NeighbourWarmthLabel warmth={post.author.neighbourWarmth} /></>
           )}
-          {' '}· {new Date(post.createdAt).toLocaleString('ko-KR')}
+          {' '}· <DateTimeText value={post.createdAt} />
         </span>
       </div>
       {isAdmin && post.createdByUser && post.createdByUser.id !== post.author.id && (
@@ -1289,7 +1290,7 @@ async function CommentsSection({
                               <NeighbourWarmthLabel warmth={comment.author.neighbourWarmth} /> ·{' '}
                             </>
                           ) : null}
-                          {new Date(comment.createdAt).toLocaleString('ko-KR')}
+                          <DateTimeText value={comment.createdAt} />
                         </p>
                       </div>
                     </div>

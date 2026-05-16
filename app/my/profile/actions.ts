@@ -16,6 +16,7 @@ import {
   normalizeInternalPath,
 } from '@/lib/posts/profile-city';
 import { LOCATION_COOLDOWN_DAYS } from '@/lib/location-cooldown';
+import { formatKoreanDate as formatDateKorean } from '@/lib/date-time';
 
 function normalizeText(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value.trim() : '';
@@ -30,7 +31,7 @@ function normalizeReturnTo(value: FormDataEntryValue | null) {
 }
 
 function formatKoreanDate(date: Date) {
-  return date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+  return formatDateKorean(date);
 }
 
 export async function updateProfileAction(formData: FormData) {

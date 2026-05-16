@@ -9,6 +9,7 @@ import {
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { canModerate } from '@/lib/permissions';
+import { DateTimeText } from '@/components/ui/date-time-text';
 import { truncatePostBody } from '@/lib/posts/constants';
 import {
   holdCommentAction,
@@ -283,14 +284,14 @@ export default async function CoordinatorReportsPage({
                 </p>
                 <p className="text-xs text-[#888]">
                   신고자: {report.reporter.displayName} · 작성자: {report.post.author.displayName} ·{' '}
-                  {new Date(report.createdAt).toLocaleString('ko-KR')}
+                  <DateTimeText value={report.createdAt} />
                 </p>
                 {report.reviewStatus !== ReportReviewStatus.PENDING && report.reviewedAt ? (
                   <p className="text-xs text-[#666]">
                     확정: {getReviewStatusLabel(report.reviewStatus)}
                     {report.reviewedBy ? ` · ${report.reviewedBy.displayName}` : ''}
                     {' · '}
-                    {new Date(report.reviewedAt).toLocaleString('ko-KR')}
+                    <DateTimeText value={report.reviewedAt} />
                   </p>
                 ) : null}
                 {report.additionalReason ? (
@@ -355,14 +356,14 @@ export default async function CoordinatorReportsPage({
                 </p>
                 <p className="text-xs text-[#888]">
                   신고자: {report.reporter.displayName} · 작성자: {report.comment.author.displayName} ·{' '}
-                  {new Date(report.createdAt).toLocaleString('ko-KR')}
+                  <DateTimeText value={report.createdAt} />
                 </p>
                 {report.reviewStatus !== ReportReviewStatus.PENDING && report.reviewedAt ? (
                   <p className="text-xs text-[#666]">
                     확정: {getReviewStatusLabel(report.reviewStatus)}
                     {report.reviewedBy ? ` · ${report.reviewedBy.displayName}` : ''}
                     {' · '}
-                    {new Date(report.reviewedAt).toLocaleString('ko-KR')}
+                    <DateTimeText value={report.reviewedAt} />
                   </p>
                 ) : null}
                 {report.additionalReason ? (
