@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { adminDeletePostAction, adminRestorePostAction, pinPostAction, unpinPostAction } from '@/app/admin/actions';
@@ -151,9 +152,9 @@ export default async function AdminPostsPage({ searchParams }: AdminPostsPagePro
                   ) : null}
                 </div>
 
-                <p className="text-sm font-medium">
+                <Link href={`/posts/${post.id}`} className="block text-sm font-medium hover:underline">
                   {post.title ?? truncatePostBody(post.body)}
-                </p>
+                </Link>
                 <p className="text-xs text-[#888]">
                   <span>작성자: {post.author.displayName}</span>
                   {' · '}

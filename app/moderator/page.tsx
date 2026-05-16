@@ -150,9 +150,9 @@ export default async function CoordinatorPage({ searchParams }: CoordinatorPageP
                   </span>
                 </div>
 
-                <p className="text-sm font-medium">
+                <Link href={`/posts/${post.id}`} className="block text-sm font-medium hover:underline">
                   {post.title ?? truncatePostBody(post.body)}
-                </p>
+                </Link>
                 <p className="mt-1 text-xs text-[#888]">
                   <span>작성자: {post.author.displayName}</span>
                   {' · '}
