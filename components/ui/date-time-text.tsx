@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import {
   formatKoreanDate,
@@ -19,37 +19,36 @@ type DateTimeTextProps = {
 };
 
 export function DateTimeText({ value, mode = 'datetime', timeZone, className }: DateTimeTextProps) {
-  const browserTimeZone = useMemo(
-    () => (typeof window === 'undefined' ? null : resolveBrowserTimeZone()),
-    [],
-  );
+  const [localTimeZone, setLocalTimeZone] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLocalTimeZone(timeZone ?? resolveBrowserTimeZone());
+  }, [timeZone]);
 
   const date = useMemo(() => parseDateInput(value), [value]);
 
-  const effectiveTimeZone = timeZone ?? browserTimeZone ?? 'UTC';
-
   const text = useMemo(() => {
-    if (!date) {
+    if (!date || !localTimeZone) {
       return '';
     }
 
     if (mode === 'date') {
-      return formatKoreanDate(date, { timeZone: effectiveTimeZone });
+      return formatKoreanDate(date, { timeZone: localTimeZone });
     }
 
     if (mode === 'relative') {
-      return formatKoreanRelativeTime(date, { timeZone: effectiveTimeZone });
+      return formatKoreanRelativeTime(date, { timeZone: localTimeZone });
     }
 
-    return formatKoreanDateTime(date, { timeZone: effectiveTimeZone });
-  }, [date, effectiveTimeZone, mode]);
+    return formatKoreanDateTime(date, { timeZone: localTimeZone });
+  }, [date, localTimeZone, mode]);
 
   if (!date) {
     return null;
   }
 
   return (
-    <time className={className} dateTime={date.toISOString()} suppressHydrationWarning>
+    <time className={className} dateTime={date.toISOString()}>
       {text}
     </time>
   );
