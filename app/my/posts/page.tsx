@@ -91,6 +91,7 @@ export default async function MyPostsPage({ searchParams }: MyPostsPageProps) {
     tags: post.tags.map((tag) => tag.postTagOption),
     commentCount: post._count.comments,
     likeCount: post._count.postLikes,
+    viewCount: post.viewCount,
     editHref: `/posts/${post.id}/edit`,
   }));
 

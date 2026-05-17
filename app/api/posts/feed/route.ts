@@ -129,6 +129,7 @@ export async function GET(request: NextRequest) {
     title: true,
     body: true,
     createdAt: true,
+    viewCount: true,
     isPinned: true,
     pinnedAt: true,
     price: true,
@@ -204,6 +205,7 @@ export async function GET(request: NextRequest) {
       thumbnailUrl: post.images[0]?.url ?? null,
       commentCount: post._count.comments,
       likeCount: post._count.postLikes,
+      viewCount: post.viewCount,
       reportCount: canViewReportStats
         ? (post._count as { reports?: number }).reports ?? 0
         : undefined,

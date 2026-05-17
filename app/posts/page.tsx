@@ -206,6 +206,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     thumbnailUrl: string | null;
     commentCount: number;
     likeCount: number;
+    viewCount: number;
     isLikedByCurrentUser: boolean;
     isSavedByCurrentUser: boolean;
     reportCount?: number;
@@ -226,6 +227,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
           title: true,
           body: true,
           createdAt: true,
+          viewCount: true,
           isPinned: true,
           pinnedAt: true,
           tags: {
@@ -291,6 +293,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
         thumbnailUrl: post.images[0]?.url ?? null,
         commentCount: post._count.comments,
         likeCount: post._count.postLikes,
+        viewCount: post.viewCount,
         isLikedByCurrentUser: post.postLikes.length > 0,
         isSavedByCurrentUser: post.savedBy.length > 0,
         reportCount: post._count.reports,
@@ -310,6 +313,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
           title: true,
           body: true,
           createdAt: true,
+          viewCount: true,
           isPinned: true,
           pinnedAt: true,
           tags: {
@@ -374,6 +378,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
         thumbnailUrl: post.images[0]?.url ?? null,
         commentCount: post._count.comments,
         likeCount: post._count.postLikes,
+        viewCount: post.viewCount,
         isLikedByCurrentUser: post.postLikes.length > 0,
         isSavedByCurrentUser: post.savedBy.length > 0,
         category: post.category,

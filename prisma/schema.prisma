@@ -138,6 +138,7 @@ model User {
   postReports          PostReport[]
   commentReports       CommentReport[]
   savedPosts           SavedPost[]
+  postViews            PostView[]
   postLikes            PostLike[]
   commentLikes         CommentLike[]
   postPermissions      PostPermission[]
@@ -254,6 +255,7 @@ model Post {
   price           Decimal?     @db.Decimal(10, 2)
   status          PostStatus   @default(PUBLISHED)
   communityScore  Float        @default(0)
+  viewCount       Int          @default(0)
   requireCommentBeforeContact Boolean @default(false)
   isPinned        Boolean      @default(false)
   pinnedAt        DateTime?
@@ -273,6 +275,7 @@ model Post {
   bestComment     Comment?     @relation("PostBestComment", fields: [bestCommentId], references: [id], onDelete: SetNull)
   reports         PostReport[]
   savedBy         SavedPost[]
+  views           PostView[]
   scoreEvents     CommunityScoreEvent[]
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
@@ -317,6 +320,23 @@ model SavedPost {
   @@index([userId, createdAt])
   @@index([userId, createdAt, id])
   @@index([postId, createdAt])
+}
+
+model PostView {
+  id          String   @id @default(cuid())
+  postId      String
+  userId      String?
+  fingerprint String?
+  windowKey   String
+  viewedAt    DateTime @default(now())
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([postId, userId, windowKey])
+  @@unique([postId, fingerprint, windowKey])
+  @@index([postId, viewedAt(sort: Desc)])
+  @@index([postId, userId, viewedAt(sort: Desc)])
+  @@index([postId, fingerprint, viewedAt(sort: Desc)])
 }
 
 model ReportOption {

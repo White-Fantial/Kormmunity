@@ -48,6 +48,7 @@ export default async function MySavedPostsPage({ searchParams }: MySavedPostsPag
             title: true,
             body: true,
             createdAt: true,
+            viewCount: true,
             price: true,
             tags: {
               select: {
@@ -107,6 +108,7 @@ export default async function MySavedPostsPage({ searchParams }: MySavedPostsPag
     },
     commentCount: post._count.comments,
     likeCount: post._count.postLikes,
+    viewCount: post.viewCount,
   }));
 
   return (

@@ -58,6 +58,7 @@ export default async function CoordinatorBoardPage() {
         title: true,
         body: true,
         createdAt: true,
+        viewCount: true,
         isPinned: true,
         pinnedAt: true,
         tags: {
@@ -125,6 +126,7 @@ export default async function CoordinatorBoardPage() {
       thumbnailUrl: post.images[0]?.url ?? null,
       commentCount: post._count.comments,
       likeCount: post._count.postLikes,
+      viewCount: post.viewCount,
       isLikedByCurrentUser: post.postLikes.length > 0,
       isSavedByCurrentUser: post.savedBy.length > 0,
       tags: post.tags.map((tag) => tag.postTagOption),

@@ -4,6 +4,7 @@ type PostCardMetaProps = {
   createdAt: Date;
   commentCount?: number;
   likeCount?: number;
+  viewCount?: number;
   authorName?: string;
   isOperator?: boolean;
   compact?: boolean;
@@ -15,6 +16,7 @@ export function PostCardMeta({
   createdAt,
   commentCount,
   likeCount,
+  viewCount,
   authorName,
   isOperator = false,
   compact = false,
@@ -24,6 +26,7 @@ export function PostCardMeta({
   const metaItems = [
     showCommentCount && typeof commentCount === 'number' ? `댓글 ${commentCount}` : null,
     showLikeCount && typeof likeCount === 'number' ? `좋아요 ${likeCount}` : null,
+    typeof viewCount === 'number' ? `조회 ${viewCount}` : null,
     <DateTimeText key="created-at" value={createdAt} />,
   ].filter(Boolean);
 

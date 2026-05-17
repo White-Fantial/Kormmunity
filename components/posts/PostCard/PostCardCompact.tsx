@@ -75,6 +75,7 @@ export function PostCardCompact({
           isOperator={post.author?.isOperator}
           commentCount={post.commentCount}
           likeCount={post.likeCount}
+          viewCount={post.viewCount}
           showCommentCount={config.showMetaStats}
           showLikeCount={config.showMetaStats}
         />

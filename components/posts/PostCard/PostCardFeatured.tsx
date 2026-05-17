@@ -59,6 +59,7 @@ export function PostCardFeatured({
             createdAt={post.createdAt}
             commentCount={post.commentCount}
             likeCount={post.likeCount}
+            viewCount={post.viewCount}
             showCommentCount={showMetaStats}
             showLikeCount={showMetaStats}
           />

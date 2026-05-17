@@ -16,6 +16,7 @@ export type InfinitePostItem = {
   thumbnailUrl?: string | null;
   commentCount?: number;
   likeCount?: number;
+  viewCount?: number;
   reportCount?: number;
   isLikedByCurrentUser?: boolean;
   isSavedByCurrentUser?: boolean;

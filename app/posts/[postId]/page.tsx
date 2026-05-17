@@ -41,6 +41,7 @@ import { PostImageGallery } from '@/components/posts/post-image-gallery';
 import { PostTagBadge } from '@/components/posts/post-tag-badge';
 import { PostShareButton } from '@/components/posts/post-share-button';
 import { PostMarkdown } from '@/components/posts/post-markdown';
+import { PostViewTracker } from '@/components/posts/post-view-tracker';
 import { ScoreLogViewer } from '@/components/moderation/score-log-viewer';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { DateTimeText } from '@/components/ui/date-time-text';
@@ -119,7 +120,7 @@ const getPostWithDetails = cache(async (postId: string) => {
   return measureServerTiming('post-detail:base', () =>
     prisma.post.findUnique({
       where: { id: postId },
-      include: {
+        include: {
           author: {
             select: {
               id: true,
@@ -462,6 +463,7 @@ export default async function PostDetailPage({
 
   return (
     <article className="relative space-y-4 rounded-xl border border-[#e8e8e8] bg-white p-4 sm:pr-12 shadow-sm">
+      <PostViewTracker postId={post.id} />
       {query.error ? (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{query.error}</p>
       ) : null}
@@ -634,6 +636,7 @@ export default async function PostDetailPage({
           {shouldShowWarmth(post.author) && (
             <>{' '}· <NeighbourWarmthLabel warmth={post.author.neighbourWarmth} /></>
           )}
+          {' '}· 조회 {post.viewCount}
           {' '}· <DateTimeText value={post.createdAt} />
         </span>
       </div>
