@@ -108,45 +108,45 @@ export function TagDragList({ categoryType, categoryTypeLabel, initialTags }: Ta
               </div>
 
               {/* Edit form */}
-              <form action={updatePostTagOptionAction} className="space-y-2">
-                <input type="hidden" name="optionId" value={tag.id} />
-                <input type="hidden" name="sortOrder" value={tag.sortOrder} />
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <input
-                    type="text"
-                    name="label"
-                    required
-                    defaultValue={tag.label}
-                    placeholder="태그명"
-                    className="rounded-lg border border-[#e8e8e8] px-2 py-1 text-xs focus:border-[#fee500] focus:outline-none"
-                  />
-                  <input
-                    type="text"
-                    name="slug"
-                    required
-                    pattern="[a-z0-9-]+"
-                    defaultValue={tag.slug}
-                    placeholder="slug"
-                    className="rounded-lg border border-[#e8e8e8] px-2 py-1 text-xs focus:border-[#fee500] focus:outline-none"
-                  />
-                </div>
-                <div className="flex gap-2">
+              <div className="space-y-2">
+                <form action={updatePostTagOptionAction} className="space-y-2">
+                  <input type="hidden" name="optionId" value={tag.id} />
+                  <input type="hidden" name="sortOrder" value={tag.sortOrder} />
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <input
+                      type="text"
+                      name="label"
+                      required
+                      defaultValue={tag.label}
+                      placeholder="태그명"
+                      className="rounded-lg border border-[#e8e8e8] px-2 py-1 text-xs focus:border-[#fee500] focus:outline-none"
+                    />
+                    <input
+                      type="text"
+                      name="slug"
+                      required
+                      pattern="[a-z0-9-]+"
+                      defaultValue={tag.slug}
+                      placeholder="slug"
+                      className="rounded-lg border border-[#e8e8e8] px-2 py-1 text-xs focus:border-[#fee500] focus:outline-none"
+                    />
+                  </div>
                   <FormSubmitButton
                     idleLabel="저장"
                     pendingLabel="저장 중..."
                     className="rounded-lg bg-[#fee500] px-3 py-1 text-xs font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
                   />
-                  <form action={togglePostTagOptionActiveAction}>
-                    <input type="hidden" name="optionId" value={tag.id} />
-                    <input type="hidden" name="isActive" value={String(tag.isActive)} />
-                    <FormSubmitButton
-                      idleLabel={tag.isActive ? '비활성화' : '활성화'}
-                      pendingLabel="처리 중..."
-                      className="rounded-lg border border-[#e8e8e8] px-3 py-1 text-xs hover:bg-[#f5f5f5]"
-                    />
-                  </form>
-                </div>
-              </form>
+                </form>
+                <form action={togglePostTagOptionActiveAction}>
+                  <input type="hidden" name="optionId" value={tag.id} />
+                  <input type="hidden" name="isActive" value={String(tag.isActive)} />
+                  <FormSubmitButton
+                    idleLabel={tag.isActive ? '비활성화' : '활성화'}
+                    pendingLabel="처리 중..."
+                    className="rounded-lg border border-[#e8e8e8] px-3 py-1 text-xs hover:bg-[#f5f5f5]"
+                  />
+                </form>
+              </div>
             </li>
           ))}
         </ul>
