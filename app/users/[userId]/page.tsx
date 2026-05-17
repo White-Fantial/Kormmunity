@@ -230,6 +230,7 @@ export default async function UserProfilePage({ params, searchParams }: UserProf
                     bodyPreview: post.body.slice(0, POST_PREVIEW_LENGTH),
                     href: `/posts/${post.id}`,
                     createdAt: post.createdAt,
+                    price: post.price ? post.price.toString() : null,
                     thumbnailUrl: post.images[0]?.url ?? null,
                     category: post.category,
                     city: post.city,

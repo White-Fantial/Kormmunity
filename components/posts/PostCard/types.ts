@@ -12,8 +12,9 @@ export type PostCardEntity = {
   bodyPreview: string;
   href?: string;
   createdAt: Date;
+  price?: string | null;
   thumbnailUrl?: string | null;
-  category?: { name: string; color?: string | null };
+  category?: { name: string; type?: string; color?: string | null };
   city?: { name: string } | null;
   tags?: PostCardTag[];
   isPinned?: boolean;

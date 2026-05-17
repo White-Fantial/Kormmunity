@@ -42,8 +42,9 @@ export async function GET(request: NextRequest) {
           title: true,
           body: true,
           createdAt: true,
+          price: true,
           author: { select: { displayName: true } },
-          category: { select: { name: true, color: true } },
+          category: { select: { name: true, type: true, color: true } },
           city: { select: { name: true } },
           tags: {
             select: {
@@ -81,6 +82,7 @@ export async function GET(request: NextRequest) {
       bodyPreview: post.body.slice(0, BODY_PREVIEW_LENGTH),
       href: `/posts/${post.id}`,
       createdAt: post.createdAt.toISOString(),
+      price: post.price ? post.price.toString() : null,
       thumbnailUrl: post.images[0]?.url ?? null,
       category: post.category,
       city: post.city,

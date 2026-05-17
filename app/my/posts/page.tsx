@@ -84,6 +84,7 @@ export default async function MyPostsPage({ searchParams }: MyPostsPageProps) {
     bodyPreview: post.body.slice(0, BODY_PREVIEW_LENGTH),
     href: `/posts/${post.id}`,
     createdAt: post.createdAt.toISOString(),
+    price: post.price ? post.price.toString() : null,
     thumbnailUrl: post.images[0]?.url ?? null,
     category: post.category,
     city: post.city,
@@ -115,4 +116,3 @@ export default async function MyPostsPage({ searchParams }: MyPostsPageProps) {
     </section>
   );
 }
-

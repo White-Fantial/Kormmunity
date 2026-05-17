@@ -16,6 +16,7 @@ function LocationPinIcon() {
 
 export function PostCardBadges({ post, compact = false }: PostCardBadgesProps) {
   const cityLabel = post.city?.name ?? '전 지역';
+  const shouldShowSalePrice = post.category?.type === 'SALE' && Boolean(post.price);
 
   return (
     <div className={`flex flex-wrap gap-2 ${compact ? 'min-h-6' : ''}`.trim()}>
@@ -24,6 +25,7 @@ export function PostCardBadges({ post, compact = false }: PostCardBadgesProps) {
         {cityLabel}
       </Badge>
       {post.category ? <Badge variant="category">{post.category.name}</Badge> : null}
+      {shouldShowSalePrice ? <Badge variant="status">NZD {post.price}</Badge> : null}
       {(post.tags ?? []).slice(0, compact ? 1 : 4).map((tag) => (
         <Badge key={tag.id} variant="tag" accentColor={post.category?.color}>
           {tag.label}

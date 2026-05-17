@@ -48,6 +48,7 @@ export default async function MySavedPostsPage({ searchParams }: MySavedPostsPag
             title: true,
             body: true,
             createdAt: true,
+            price: true,
             tags: {
               select: {
                 postTagOption: {
@@ -60,21 +61,21 @@ export default async function MySavedPostsPage({ searchParams }: MySavedPostsPag
                 displayName: true,
               },
             },
-              category: { select: { name: true, color: true } },
+            category: { select: { name: true, type: true, color: true } },
             city: { select: { name: true } },
             images: {
               select: { url: true },
               orderBy: { sortOrder: 'asc' },
               take: 1,
             },
-             _count: {
-               select: {
-                 comments: {
-                   where: { status: 'PUBLISHED' },
-                 },
-                 postLikes: true,
-               },
-             },
+            _count: {
+              select: {
+                comments: {
+                  where: { status: 'PUBLISHED' },
+                },
+                postLikes: true,
+              },
+            },
           },
         },
       },
@@ -95,6 +96,7 @@ export default async function MySavedPostsPage({ searchParams }: MySavedPostsPag
     bodyPreview: post.body.slice(0, BODY_PREVIEW_LENGTH),
     href: `/posts/${post.id}`,
     createdAt: post.createdAt.toISOString(),
+    price: post.price ? post.price.toString() : null,
     thumbnailUrl: post.images[0]?.url ?? null,
     category: post.category,
     city: post.city,
@@ -129,4 +131,3 @@ export default async function MySavedPostsPage({ searchParams }: MySavedPostsPag
     </section>
   );
 }
-
