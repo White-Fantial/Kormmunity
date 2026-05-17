@@ -13,6 +13,7 @@ type GeneratePostDraftInput = {
   tags: string[];
   currentTitle: string;
   currentBody: string;
+  additionalInstructions: string;
 };
 
 type PostDraftResponse = {
@@ -49,10 +50,12 @@ function buildUserPrompt(input: GeneratePostDraftInput) {
     `태그: ${tagsText}`,
     `작성 중인 제목(참고): ${input.currentTitle || '없음'}`,
     `작성 중인 본문(참고): ${input.currentBody || '없음'}`,
+    `추가 지시사항: ${input.additionalInstructions || '없음'}`,
     '요구사항:',
     '- 한국어 제목 1개 + 본문 1개',
     '- 너무 길지 않게, 실제 게시 가능한 자연스러운 톤',
     '- 카테고리 성격에 맞춰 작성',
+    '- 추가 지시사항이 있으면 반드시 반영한다',
   ].join('\n');
 }
 

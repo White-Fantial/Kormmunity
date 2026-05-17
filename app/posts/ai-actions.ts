@@ -14,6 +14,7 @@ type GeneratePostDraftInput = {
   postTagOptionIds: string[];
   currentTitle: string;
   currentBody: string;
+  additionalInstructions: string;
 };
 
 export type GeneratePostDraftResult =
@@ -69,6 +70,7 @@ export async function generatePostDraftAction(
   const postTagOptionIds = normalizeIdArray(rawInput.postTagOptionIds);
   const currentTitle = normalizeText(rawInput.currentTitle);
   const currentBody = normalizeText(rawInput.currentBody);
+  const additionalInstructions = normalizeText(rawInput.additionalInstructions);
 
   if (!authorUserIdOverride) {
     return { ok: false, message: '자동 생성을 위해 운영 계정을 선택해 주세요.' };
@@ -142,6 +144,7 @@ export async function generatePostDraftAction(
       tags: selectedTags.map((tag) => tag.label),
       currentTitle,
       currentBody,
+      additionalInstructions,
     });
 
     await logAiGenerationAction(user.id, 'POST_DRAFT_GENERATED', reasonContext);

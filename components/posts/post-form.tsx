@@ -237,6 +237,7 @@ export function PostForm({
   const [bodyValue, setBodyValue] = useState(defaultValues?.body ?? '');
   const [draftStatusMessage, setDraftStatusMessage] = useState<string | null>(null);
   const [draftErrorMessage, setDraftErrorMessage] = useState<string | null>(null);
+  const [draftAdditionalInstructions, setDraftAdditionalInstructions] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -385,6 +386,7 @@ export function PostForm({
         postTagOptionIds: validatedSelectedPostTagOptionIds,
         currentTitle: titleValue,
         currentBody: bodyValue,
+        additionalInstructions: draftAdditionalInstructions,
       });
       applyGeneratedPostDraft(result);
     });
@@ -861,6 +863,19 @@ export function PostForm({
 
       {canGenerateDraft ? (
         <div className="space-y-2 rounded-xl border border-[#f0f0f0] bg-[#fafafa] p-3">
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-[#555]">
+              추가 지시사항 <span className="font-normal text-[#888]">(선택)</span>
+            </label>
+            <textarea
+              value={draftAdditionalInstructions}
+              onChange={(e) => setDraftAdditionalInstructions(e.target.value)}
+              disabled={isSubmitting || isDraftPending}
+              placeholder="예) 짧게 2~3문장으로, 친근한 말투로, 이벤트 안내 느낌으로..."
+              rows={3}
+              className={`${FIELD_CLASS} resize-none ${DISABLED_STATE_CLASSES}`}
+            />
+          </div>
           <div className="flex gap-2">
             <button
               type="button"
