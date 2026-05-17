@@ -293,6 +293,8 @@ model Post {
   @@index([authorId, status, createdAt])
   @@index([createdByUserId, createdAt])
   @@index([bestCommentId])
+  @@index([status, communityScore(sort: Desc), createdAt(sort: Desc)])
+  @@index([status, viewCount(sort: Desc), createdAt(sort: Desc)])
 }
 
 model PostTag {
@@ -337,6 +339,7 @@ model PostView {
   @@index([postId, viewedAt(sort: Desc)])
   @@index([postId, userId, viewedAt(sort: Desc)])
   @@index([postId, fingerprint, viewedAt(sort: Desc)])
+  @@index([viewedAt, postId])
 }
 
 model ReportOption {
@@ -428,6 +431,7 @@ model Comment {
   @@index([postId, status, createdAt])
   @@index([postId, status, id])
   @@index([createdByUserId, createdAt])
+  @@index([createdAt, postId, status])
 }
 
 model PostLike {
@@ -441,6 +445,7 @@ model PostLike {
   @@unique([postId, userId])
   @@index([postId, createdAt])
   @@index([userId, createdAt])
+  @@index([createdAt, postId])
 }
 
 model CommentLike {
