@@ -13,9 +13,9 @@ import {
 
 import { requireUser, invalidateSessionCache } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
-import { canMakeFinalUserDecision, USER_ROLES } from '@/lib/permissions';
+import { canMakeFinalUserDecision, STAFF_ROLES } from '@/lib/permissions';
 import type { SessionUser } from '@/lib/auth/types';
-import type { UserRole, UserStatus } from '@prisma/client';
+import type { StaffRole, UserStatus } from '@prisma/client';
 import {
   applyCommunityScoreChange,
 } from '@/lib/community-score';
@@ -164,19 +164,161 @@ async function resolveManagedAccountLocation(
   };
 }
 
+export async function addStaffAssignmentAction(formData: FormData) {
+  const user = await requireUser();
+  requireAdmin(user);
+
+  const targetUserId = normalizeText(formData.get('targetUserId'));
+  const role = normalizeText(formData.get('role')) as StaffRole;
+  const countryId = normalizeText(formData.get('countryId')) || null;
+  const cityId = normalizeText(formData.get('cityId')) || null;
+
+  if (!targetUserId || !role) {
+    redirect('/admin/users?error=잘못된 요청입니다.');
+  }
+
+  if (!(STAFF_ROLES as readonly string[]).includes(role)) {
+    redirect('/admin/users?error=유효하지 않은 스태프 역할입니다.');
+  }
+
+  const targetUser = await prisma.user.findUnique({
+    where: { id: targetUserId },
+    select: { id: true },
+  });
+
+  if (!targetUser) {
+    redirect('/admin/users?error=사용자를 찾을 수 없습니다.');
+  }
+
+  // Check for existing active assignment with same scope
+  const existingAssignment = await prisma.staffAssignment.findFirst({
+    where: {
+      userId: targetUserId,
+      role,
+      countryId: countryId ?? null,
+      cityId: cityId ?? null,
+      isActive: true,
+    },
+    select: { id: true },
+  });
+
+  if (existingAssignment) {
+    redirect(`/admin/users?error=${encodeURIComponent('이미 동일한 스태프 권한이 존재합니다.')}`);
+  }
+
+  const assignment = await prisma.staffAssignment.create({
+    data: {
+      userId: targetUserId,
+      role,
+      countryId,
+      cityId,
+      isActive: true,
+    },
+    select: { id: true },
+  });
+
+  await logModerationAction(
+    user.id,
+    'USER',
+    targetUserId,
+    `STAFF_ASSIGNMENT_ADDED_${role}`,
+    JSON.stringify({ assignmentId: assignment.id, role, countryId, cityId }),
+  );
+
+  revalidatePath('/admin/users');
+  await revalidateUserSessions(targetUserId);
+  redirect('/admin/users');
+}
+
+export async function deactivateStaffAssignmentAction(formData: FormData) {
+  const user = await requireUser();
+  requireAdmin(user);
+
+  const assignmentId = normalizeText(formData.get('assignmentId'));
+
+  if (!assignmentId) {
+    redirect('/admin/users?error=잘못된 요청입니다.');
+  }
+
+  const assignment = await prisma.staffAssignment.findUnique({
+    where: { id: assignmentId },
+    select: { id: true, userId: true, role: true, isActive: true },
+  });
+
+  if (!assignment) {
+    redirect('/admin/users?error=스태프 권한을 찾을 수 없습니다.');
+  }
+
+  if (!assignment.isActive) {
+    redirect(`/admin/users?error=${encodeURIComponent('이미 비활성화된 스태프 권한입니다.')}`);
+  }
+
+  await prisma.staffAssignment.update({
+    where: { id: assignmentId },
+    data: { isActive: false },
+  });
+
+  await logModerationAction(
+    user.id,
+    'USER',
+    assignment.userId,
+    `STAFF_ASSIGNMENT_DEACTIVATED_${assignment.role}`,
+    JSON.stringify({ assignmentId }),
+  );
+
+  revalidatePath('/admin/users');
+  await revalidateUserSessions(assignment.userId);
+  redirect('/admin/users');
+}
+
+export async function deleteStaffAssignmentAction(formData: FormData) {
+  const user = await requireUser();
+  requireAdmin(user);
+
+  const assignmentId = normalizeText(formData.get('assignmentId'));
+
+  if (!assignmentId) {
+    redirect('/admin/users?error=잘못된 요청입니다.');
+  }
+
+  const assignment = await prisma.staffAssignment.findUnique({
+    where: { id: assignmentId },
+    select: { id: true, userId: true, role: true },
+  });
+
+  if (!assignment) {
+    redirect('/admin/users?error=스태프 권한을 찾을 수 없습니다.');
+  }
+
+  await prisma.staffAssignment.delete({ where: { id: assignmentId } });
+
+  await logModerationAction(
+    user.id,
+    'USER',
+    assignment.userId,
+    `STAFF_ASSIGNMENT_DELETED_${assignment.role}`,
+    JSON.stringify({ assignmentId }),
+  );
+
+  revalidatePath('/admin/users');
+  await revalidateUserSessions(assignment.userId);
+  redirect('/admin/users');
+}
+
 export async function changeUserRoleAction(formData: FormData) {
   const user = await requireUser();
   requireAdmin(user);
 
   const targetUserId = normalizeText(formData.get('targetUserId'));
-  const newRole = normalizeText(formData.get('role')) as UserRole;
+  const newRole = normalizeText(formData.get('role'));
   const reason = normalizeText(formData.get('reason'));
 
   if (!targetUserId || !newRole) {
     redirect('/admin/users?error=잘못된 요청입니다.');
   }
 
-  if (!USER_ROLES.includes(newRole)) {
+  const ALL_ROLES = ['USER', 'MODERATOR', 'COORDINATOR', 'ADMIN'];
+  if (!ALL_ROLES.includes(newRole)) {
     redirect('/admin/users?error=유효하지 않은 역할입니다.');
   }
 
@@ -192,7 +334,7 @@ export async function changeUserRoleAction(formData: FormData) {
   await prisma.$transaction(async (tx) => {
     await tx.user.update({
       where: { id: targetUserId },
-      data: { role: newRole },
+      data: { role: newRole as 'USER' | 'MODERATOR' | 'COORDINATOR' | 'ADMIN' },
     });
 
     await tx.moderationAction.create({

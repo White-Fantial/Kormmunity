@@ -8,7 +8,7 @@ import { assertNoSpamText, enforceRateLimit } from '@/lib/abuse/guard';
 import { requireUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { notifyCommentForPost } from '@/lib/kakao/message';
-import { canCreateComment, canDeleteComment, canReportComment } from '@/lib/permissions';
+import { canCreateComment, canDeleteComment, canReportComment, isAdmin } from '@/lib/permissions';
 import {
   adjustNeighbourWarmth,
 } from '@/lib/neighbour-warmth';
@@ -120,7 +120,7 @@ async function createComment(
   };
 
   if (authorUserIdOverride) {
-    if (user.role !== 'ADMIN') {
+    if (!isAdmin(user)) {
       return { ok: false as const, message: '작성 계정을 선택할 권한이 없습니다.' };
     }
 
@@ -129,7 +129,10 @@ async function createComment(
       select: {
         id: true,
         displayName: true,
-        role: true,
+        staffAssignments: {
+          where: { isActive: true },
+          select: { id: true, role: true, countryId: true, cityId: true },
+        },
         accountType: true,
         isManagedAccount: true,
         isActive: true,
@@ -146,7 +149,7 @@ async function createComment(
 
     if (
       !targetAuthor ||
-      !canActorUseAuthorForScope(user.role, targetAuthor, {
+      !canActorUseAuthorForScope(user, targetAuthor, {
         countryId: post.countryId,
         cityId: post.cityId,
       })

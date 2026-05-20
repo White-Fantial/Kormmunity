@@ -58,15 +58,25 @@ export default async function CoordinatorPage({ searchParams }: CoordinatorPageP
       },
     }),
     prisma.user.findMany({
-      where: { role: { in: ['USER', 'MODERATOR', 'COORDINATOR'] } },
+      where: {
+        isManagedAccount: false,
+        NOT: {
+          staffAssignments: {
+            some: { isActive: true, role: 'ADMIN' },
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
       take: 20,
       select: {
         id: true,
         displayName: true,
-        role: true,
         status: true,
         createdAt: true,
+        staffAssignments: {
+          where: { isActive: true },
+          select: { role: true },
+        },
       },
     }),
     prisma.postReport.count({
@@ -220,9 +230,9 @@ export default async function CoordinatorPage({ searchParams }: CoordinatorPageP
                 <span className="flex-1 text-sm">
                   {u.displayName}
                   <span className="ml-2 text-xs text-[#aaa]">
-                    {u.role === 'MODERATOR'
+                    {u.staffAssignments.some((a) => a.role === 'MODERATOR')
                       ? '모더레이터'
-                      : u.role === 'COORDINATOR'
+                      : u.staffAssignments.some((a) => a.role === 'COORDINATOR')
                         ? '운영'
                         : '일반'}{' '}
                     ·{' '}

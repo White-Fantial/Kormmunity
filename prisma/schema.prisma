@@ -94,6 +94,12 @@ enum ReportReviewStatus {
   FALSE_REPORT
 }
 
+enum StaffRole {
+  MODERATOR
+  COORDINATOR
+  ADMIN
+}
+
 enum LocationChangeType {
   CITY_CHANGED
   COUNTRY_CHANGED_CITY_RESET
@@ -180,6 +186,7 @@ model User {
   warmthLogs           NeighbourWarmthLog[]
   locationChangeLogs   LocationChangeLog[] @relation("LocationChangeUser")
   actedLocationChanges LocationChangeLog[] @relation("LocationChangeActor")
+  staffAssignments     StaffAssignment[]
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 }
@@ -206,6 +213,7 @@ model Country {
   posts       Post[]
   permissions PostPermission[]
   adCampaigns AdCampaign[]    @relation("AdCampaignTargetCountry")
+  staffAssignments StaffAssignment[]
 }
 
 model City {
@@ -220,6 +228,7 @@ model City {
   posts     Post[]
   permissions PostPermission[]
   adCampaigns AdCampaign[]    @relation("AdCampaignTargetCity")
+  staffAssignments StaffAssignment[]
 }
 
 model Category {
@@ -735,4 +744,22 @@ model AdDailyStat {
   @@unique([campaignId, date])
   @@index([campaignId, date(sort: Desc)])
   @@index([date(sort: Desc)])
+}
+
+model StaffAssignment {
+  id        String    @id @default(cuid())
+  userId    String
+  role      StaffRole
+  countryId String?
+  cityId    String?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  country   Country?  @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  city      City?     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isActive])
+  @@index([role, isActive])
+  @@index([countryId, cityId])
 }

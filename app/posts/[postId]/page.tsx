@@ -59,6 +59,7 @@ import {
   canReportComment,
   canUseAutoContentGeneration,
   canUseContactFeature,
+  isAdmin,
 } from '@/lib/permissions';
 import {
   getActiveCategories,
@@ -302,7 +303,7 @@ export default async function PostDetailPage({
   }
 
   const canModerateContent = currentUser ? canModerate(currentUser) : false;
-  const isAdmin = currentUser?.role === 'ADMIN';
+  const isAdminUser = isAdmin(currentUser);
 
   const displayAuthorName = post.author.displayName;
   const displayAuthorImageUrl: string | null = post.author.profileImageUrl;
@@ -640,7 +641,7 @@ export default async function PostDetailPage({
           {' '}· <DateTimeText value={post.createdAt} />
         </span>
       </div>
-      {isAdmin && post.createdByUser && post.createdByUser.id !== post.author.id && (
+      {isAdminUser && post.createdByUser && post.createdByUser.id !== post.author.id && (
         <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
           <span className="font-semibold">[관리자 확인]</span> 실제 작성자:{' '}
           <Link href={`/users/${post.createdByUser.id}`} className="font-medium underline">
@@ -1060,8 +1061,8 @@ async function CommentsSection({
     myCommentReports.map((r) => [r.commentId, r]),
   );
   const authorAccountOptions =
-    currentUser && canSelectAuthorAccount(currentUser.role)
-      ? await getAuthorAccountOptionsForActor(currentUser.role, [
+    currentUser && canSelectAuthorAccount(currentUser)
+      ? await getAuthorAccountOptionsForActor(currentUser, [
           {
             countryId: postCountryId,
             cityId: postCityId,
@@ -1119,7 +1120,7 @@ async function CommentsSection({
         <PostCommentComposer
           postId={postId}
           currentUserLoggedIn
-          canSelectAuthorAccount={Boolean(currentUser && canSelectAuthorAccount(currentUser.role))}
+          canSelectAuthorAccount={Boolean(currentUser && canSelectAuthorAccount(currentUser))}
           canGenerateDraft={Boolean(currentUser && canUseAutoContentGeneration(currentUser))}
           authorAccountOptions={authorAccountOptions}
         />
