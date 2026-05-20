@@ -71,6 +71,8 @@ const ROLE_RANK: Record<UserRole, number> = {
   USER: 0,
   MODERATOR: 1,
   COORDINATOR: 2,
+  AD_MANAGER: 2,
+  PARTNER_MANAGER: 2,
   ADMIN: 3,
 };
 
@@ -98,6 +100,10 @@ export function isModerator(role: UserRole | null | undefined) {
 
 export function isCoordinator(role: UserRole | null | undefined) {
   return role === 'COORDINATOR' || isAdmin(role);
+}
+
+export function isAdManager(role: UserRole | null | undefined) {
+  return role === 'AD_MANAGER' || isAdmin(role);
 }
 
 function isActiveWriter(user: PermissionUser | null | undefined) {
@@ -490,6 +496,10 @@ export function canCoordinate(user: PermissionUser | null | undefined) {
 
 export function canAccessCoordinatorSection(user: PermissionUser | null | undefined) {
   return isCoordinator(user?.role);
+}
+
+export function canAccessAdsManager(user: PermissionUser | null | undefined) {
+  return isAdManager(user?.role);
 }
 
 export function canAccessOperatorBoard(user: PermissionUser | null | undefined) {

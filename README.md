@@ -94,6 +94,8 @@
 - `USER`: 일반 사용자(본인 글/댓글 작성 및 수정)
 - `MODERATOR`: 신고/보류/복구/숨김·삭제 등 콘텐츠 moderation 담당
 - `COORDINATOR`: 지역 운영/공지/커뮤니티 활성화 담당(기본 moderation 권한 없음)
+- `AD_MANAGER`: 광고 캠페인/상품/노출 규칙 관리 담당
+- `PARTNER_MANAGER`: 파트너 운영 담당(메뉴/기능은 추후 확장)
 - `ADMIN`: 전체 권한(MODERATOR + COORDINATOR 포함, 역할 부여/시스템 설정)
 
 ## AccountType Policy
