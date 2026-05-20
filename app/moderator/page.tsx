@@ -12,6 +12,10 @@ import {
   ManagementSectionHeader,
 } from '@/components/admin/management-section-nav';
 import { getCurrentUser } from '@/lib/auth/session';
+import {
+  isMissingStaffAssignmentTableError,
+  toLegacyStaffAssignments,
+} from '@/lib/auth/staff-assignments';
 import { prisma } from '@/lib/db/prisma';
 import { canModerate } from '@/lib/permissions';
 import { DateTimeText } from '@/components/ui/date-time-text';
@@ -34,6 +38,58 @@ export default async function CoordinatorPage({ searchParams }: CoordinatorPageP
 
   const params = await searchParams;
   const statusFilter = params.status ?? 'HELD';
+  const recentUsersPromise = prisma.user
+    .findMany({
+      where: {
+        isManagedAccount: false,
+        NOT: {
+          staffAssignments: {
+            some: { isActive: true, role: 'ADMIN' },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: {
+        id: true,
+        displayName: true,
+        status: true,
+        role: true,
+        createdAt: true,
+        staffAssignments: {
+          where: { isActive: true },
+          select: { role: true },
+        },
+      },
+    })
+    .catch(async (error) => {
+      if (!isMissingStaffAssignmentTableError(error)) {
+        throw error;
+      }
+
+      const usersWithoutAssignments = await prisma.user.findMany({
+        where: {
+          isManagedAccount: false,
+          role: { not: 'ADMIN' },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+        select: {
+          id: true,
+          displayName: true,
+          status: true,
+          role: true,
+          createdAt: true,
+        },
+      });
+
+      return usersWithoutAssignments.map((user) => ({
+        ...user,
+        staffAssignments: toLegacyStaffAssignments(user.role, null, null).map((assignment) => ({
+          role: assignment.role,
+        })),
+      }));
+    });
 
   const [posts, recentUsers, unresolvedPostReportCount, unresolvedCommentReportCount] = await Promise.all([
     prisma.post.findMany({
@@ -57,28 +113,7 @@ export default async function CoordinatorPage({ searchParams }: CoordinatorPageP
         _count: { select: { reports: true } },
       },
     }),
-    prisma.user.findMany({
-      where: {
-        isManagedAccount: false,
-        NOT: {
-          staffAssignments: {
-            some: { isActive: true, role: 'ADMIN' },
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-      select: {
-        id: true,
-        displayName: true,
-        status: true,
-        createdAt: true,
-        staffAssignments: {
-          where: { isActive: true },
-          select: { role: true },
-        },
-      },
-    }),
+    recentUsersPromise,
     prisma.postReport.count({
       where: { reviewStatus: ReportReviewStatus.PENDING },
     }),

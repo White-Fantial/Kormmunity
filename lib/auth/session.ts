@@ -2,10 +2,13 @@ import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { unstable_cache, revalidateTag } from 'next/cache';
-import { Prisma, type UserRole } from '@prisma/client';
 
 import { prisma } from '@/lib/db/prisma';
 import type { SessionUser } from '@/lib/auth/types';
+import {
+  isMissingStaffAssignmentTableError,
+  toLegacyStaffAssignments,
+} from '@/lib/auth/staff-assignments';
 
 const SESSION_COOKIE = 'session_token';
 const SESSION_CACHE_TTL_SECONDS = 30;
@@ -25,38 +28,6 @@ export function getSessionCacheTag(token: string) {
  */
 export function invalidateSessionCache(token: string) {
   revalidateTag(getSessionCacheTag(token), { expire: 0 });
-}
-
-function toLegacyStaffAssignments(
-  role: UserRole,
-  countryId: string | null,
-  cityId: string | null,
-): SessionUser['staffAssignments'] {
-  if (role === 'ADMIN' || role === 'MODERATOR' || role === 'COORDINATOR') {
-    return [
-      {
-        id: `legacy:${role}`,
-        role,
-        countryId,
-        cityId,
-      },
-    ];
-  }
-
-  return [];
-}
-
-function isMissingStaffAssignmentTableError(error: unknown) {
-  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
-    return false;
-  }
-
-  if (error.code !== 'P2021') {
-    return false;
-  }
-
-  const table = (error.meta?.table as string | undefined) ?? '';
-  return table.endsWith('StaffAssignment');
 }
 
 async function fetchSessionUserByToken(token: string): Promise<SessionUser | null> {

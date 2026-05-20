@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { randomUUID } from 'node:crypto';
 
 import { getSessionCookieName, invalidateSessionCache } from '@/lib/auth/session';
+import { isMissingStaffAssignmentTableError } from '@/lib/auth/staff-assignments';
 import { prisma } from '@/lib/db/prisma';
 
 const DEFAULT_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
@@ -79,41 +80,47 @@ export async function loginWithKakaoPlaceholder(formData: FormData) {
   });
 
   // Sync StaffAssignment for dev login: ensure a global assignment matches the desired role
-  if (staffRole) {
-    const existing = await prisma.staffAssignment.findFirst({
-      where: {
-        userId: user.id,
-        role: staffRole,
-        countryId: null,
-        cityId: null,
-      },
-      select: { id: true, isActive: true },
-    });
-
-    if (existing) {
-      if (!existing.isActive) {
-        await prisma.staffAssignment.update({
-          where: { id: existing.id },
-          data: { isActive: true },
-        });
-      }
-    } else {
-      await prisma.staffAssignment.create({
-        data: {
+  try {
+    if (staffRole) {
+      const existing = await prisma.staffAssignment.findFirst({
+        where: {
           userId: user.id,
           role: staffRole,
           countryId: null,
           cityId: null,
-          isActive: true,
         },
+        select: { id: true, isActive: true },
+      });
+
+      if (existing) {
+        if (!existing.isActive) {
+          await prisma.staffAssignment.update({
+            where: { id: existing.id },
+            data: { isActive: true },
+          });
+        }
+      } else {
+        await prisma.staffAssignment.create({
+          data: {
+            userId: user.id,
+            role: staffRole,
+            countryId: null,
+            cityId: null,
+            isActive: true,
+          },
+        });
+      }
+    } else {
+      // Deactivate all assignments when logging in as USER role
+      await prisma.staffAssignment.updateMany({
+        where: { userId: user.id, isActive: true },
+        data: { isActive: false },
       });
     }
-  } else {
-    // Deactivate all assignments when logging in as USER role
-    await prisma.staffAssignment.updateMany({
-      where: { userId: user.id, isActive: true },
-      data: { isActive: false },
-    });
+  } catch (error) {
+    if (!isMissingStaffAssignmentTableError(error)) {
+      throw error;
+    }
   }
 
   const token = randomUUID();

@@ -6,6 +6,10 @@ import { redirect } from 'next/navigation';
 import { trackServerEvent } from '@/lib/analytics/server';
 import { assertNoSpamText, enforceRateLimit } from '@/lib/abuse/guard';
 import { requireUser } from '@/lib/auth/session';
+import {
+  isMissingStaffAssignmentTableError,
+  toLegacyStaffAssignments,
+} from '@/lib/auth/staff-assignments';
 import { prisma } from '@/lib/db/prisma';
 import { notifyCommentForPost } from '@/lib/kakao/message';
 import { canCreateComment, canDeleteComment, canReportComment, isAdmin } from '@/lib/permissions';
@@ -124,28 +128,68 @@ async function createComment(
       return { ok: false as const, message: '작성 계정을 선택할 권한이 없습니다.' };
     }
 
-    const targetAuthor = await prisma.user.findUnique({
-      where: { id: authorUserIdOverride },
-      select: {
-        id: true,
-        displayName: true,
-        staffAssignments: {
-          where: { isActive: true },
-          select: { id: true, role: true, countryId: true, cityId: true },
-        },
-        accountType: true,
-        isManagedAccount: true,
-        isActive: true,
-        status: true,
-        countryId: true,
-        cityId: true,
-        city: {
-          select: {
-            countryId: true,
+    const targetAuthor = await prisma.user
+      .findUnique({
+        where: { id: authorUserIdOverride },
+        select: {
+          id: true,
+          displayName: true,
+          role: true,
+          staffAssignments: {
+            where: { isActive: true },
+            select: { id: true, role: true, countryId: true, cityId: true },
+          },
+          accountType: true,
+          isManagedAccount: true,
+          isActive: true,
+          status: true,
+          countryId: true,
+          cityId: true,
+          city: {
+            select: {
+              countryId: true,
+            },
           },
         },
-      },
-    });
+      })
+      .catch(async (error) => {
+        if (!isMissingStaffAssignmentTableError(error)) {
+          throw error;
+        }
+
+        const legacyTargetAuthor = await prisma.user.findUnique({
+          where: { id: authorUserIdOverride },
+          select: {
+            id: true,
+            displayName: true,
+            role: true,
+            accountType: true,
+            isManagedAccount: true,
+            isActive: true,
+            status: true,
+            countryId: true,
+            cityId: true,
+            city: {
+              select: {
+                countryId: true,
+              },
+            },
+          },
+        });
+
+        if (!legacyTargetAuthor) {
+          return null;
+        }
+
+        return {
+          ...legacyTargetAuthor,
+          staffAssignments: toLegacyStaffAssignments(
+            legacyTargetAuthor.role,
+            legacyTargetAuthor.countryId,
+            legacyTargetAuthor.cityId,
+          ),
+        };
+      });
 
     if (
       !targetAuthor ||

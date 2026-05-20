@@ -12,6 +12,7 @@ import {
 } from '@prisma/client';
 
 import { requireUser, invalidateSessionCache } from '@/lib/auth/session';
+import { isMissingStaffAssignmentTableError } from '@/lib/auth/staff-assignments';
 import { prisma } from '@/lib/db/prisma';
 import { canMakeFinalUserDecision, STAFF_ROLES, USER_ROLES } from '@/lib/permissions';
 import type { SessionUser } from '@/lib/auth/types';
@@ -93,6 +94,12 @@ function normalizeQuickCommentTemplates(value: FormDataEntryValue | null) {
 function requireAdmin(user: SessionUser | null) {
   if (!user || !canMakeFinalUserDecision(user)) {
     redirect('/posts?error=권한이 없습니다.');
+  }
+}
+
+function redirectIfStaffAssignmentTableMissing(error: unknown): never | void {
+  if (isMissingStaffAssignmentTableError(error)) {
+    redirect('/admin/users?error=스태프 권한 테이블이 아직 준비되지 않았습니다. 마이그레이션 후 다시 시도해 주세요.');
   }
 }
 
@@ -190,32 +197,38 @@ export async function addStaffAssignmentAction(formData: FormData) {
     redirect('/admin/users?error=사용자를 찾을 수 없습니다.');
   }
 
-  // Check for existing active assignment with same scope
-  const existingAssignment = await prisma.staffAssignment.findFirst({
-    where: {
-      userId: targetUserId,
-      role,
-      countryId: countryId ?? null,
-      cityId: cityId ?? null,
-      isActive: true,
-    },
-    select: { id: true },
-  });
+  let assignment: { id: string };
+  try {
+    // Check for existing active assignment with same scope
+    const existingAssignment = await prisma.staffAssignment.findFirst({
+      where: {
+        userId: targetUserId,
+        role,
+        countryId: countryId ?? null,
+        cityId: cityId ?? null,
+        isActive: true,
+      },
+      select: { id: true },
+    });
 
-  if (existingAssignment) {
-    redirect(`/admin/users?error=${encodeURIComponent('이미 동일한 스태프 권한이 존재합니다.')}`);
+    if (existingAssignment) {
+      redirect(`/admin/users?error=${encodeURIComponent('이미 동일한 스태프 권한이 존재합니다.')}`);
+    }
+
+    assignment = await prisma.staffAssignment.create({
+      data: {
+        userId: targetUserId,
+        role,
+        countryId,
+        cityId,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+  } catch (error) {
+    redirectIfStaffAssignmentTableMissing(error);
+    throw error;
   }
-
-  const assignment = await prisma.staffAssignment.create({
-    data: {
-      userId: targetUserId,
-      role,
-      countryId,
-      cityId,
-      isActive: true,
-    },
-    select: { id: true },
-  });
 
   await logModerationAction(
     user.id,
@@ -240,10 +253,23 @@ export async function deactivateStaffAssignmentAction(formData: FormData) {
     redirect('/admin/users?error=잘못된 요청입니다.');
   }
 
-  const assignment = await prisma.staffAssignment.findUnique({
-    where: { id: assignmentId },
-    select: { id: true, userId: true, role: true, isActive: true },
-  });
+  let assignment:
+    | {
+        id: string;
+        userId: string;
+        role: StaffRole;
+        isActive: boolean;
+      }
+    | null = null;
+  try {
+    assignment = await prisma.staffAssignment.findUnique({
+      where: { id: assignmentId },
+      select: { id: true, userId: true, role: true, isActive: true },
+    });
+  } catch (error) {
+    redirectIfStaffAssignmentTableMissing(error);
+    throw error;
+  }
 
   if (!assignment) {
     redirect('/admin/users?error=스태프 권한을 찾을 수 없습니다.');
@@ -253,10 +279,15 @@ export async function deactivateStaffAssignmentAction(formData: FormData) {
     redirect(`/admin/users?error=${encodeURIComponent('이미 비활성화된 스태프 권한입니다.')}`);
   }
 
-  await prisma.staffAssignment.update({
-    where: { id: assignmentId },
-    data: { isActive: false },
-  });
+  try {
+    await prisma.staffAssignment.update({
+      where: { id: assignmentId },
+      data: { isActive: false },
+    });
+  } catch (error) {
+    redirectIfStaffAssignmentTableMissing(error);
+    throw error;
+  }
 
   await logModerationAction(
     user.id,
@@ -281,16 +312,33 @@ export async function deleteStaffAssignmentAction(formData: FormData) {
     redirect('/admin/users?error=잘못된 요청입니다.');
   }
 
-  const assignment = await prisma.staffAssignment.findUnique({
-    where: { id: assignmentId },
-    select: { id: true, userId: true, role: true },
-  });
+  let assignment:
+    | {
+        id: string;
+        userId: string;
+        role: StaffRole;
+      }
+    | null = null;
+  try {
+    assignment = await prisma.staffAssignment.findUnique({
+      where: { id: assignmentId },
+      select: { id: true, userId: true, role: true },
+    });
+  } catch (error) {
+    redirectIfStaffAssignmentTableMissing(error);
+    throw error;
+  }
 
   if (!assignment) {
     redirect('/admin/users?error=스태프 권한을 찾을 수 없습니다.');
   }
 
-  await prisma.staffAssignment.delete({ where: { id: assignmentId } });
+  try {
+    await prisma.staffAssignment.delete({ where: { id: assignmentId } });
+  } catch (error) {
+    redirectIfStaffAssignmentTableMissing(error);
+    throw error;
+  }
 
   await logModerationAction(
     user.id,

@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation';
-import { Prisma, type UserRole } from '@prisma/client';
 
 import {
   addStaffAssignmentAction,
@@ -11,6 +10,10 @@ import {
 } from '@/app/admin/actions';
 import { adminManagementNavItems, ManagementSectionNav } from '@/components/admin/management-section-nav';
 import { getCurrentUser } from '@/lib/auth/session';
+import {
+  isMissingStaffAssignmentTableError,
+  toLegacyStaffAssignments,
+} from '@/lib/auth/staff-assignments';
 import { prisma } from '@/lib/db/prisma';
 import { canMakeFinalUserDecision } from '@/lib/permissions';
 import { DateTimeText } from '@/components/ui/date-time-text';
@@ -25,36 +28,6 @@ const MAX_RECENT_USER_MODERATION_ACTIONS = 40;
 type AdminUsersPageProps = {
   searchParams: Promise<{ error?: string }>;
 };
-
-function isMissingStaffAssignmentTableError(error: unknown) {
-  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
-    return false;
-  }
-
-  if (error.code !== 'P2021') {
-    return false;
-  }
-
-  const table = (error.meta?.table as string | undefined) ?? '';
-  return table.endsWith('StaffAssignment');
-}
-
-function toLegacyStaffAssignments(role: UserRole, countryId: string | null, cityId: string | null) {
-  if (role === 'ADMIN' || role === 'MODERATOR' || role === 'COORDINATOR') {
-    return [
-      {
-        id: `legacy:${role}`,
-        role,
-        countryId,
-        cityId,
-        isActive: true,
-        createdAt: new Date(0),
-      },
-    ];
-  }
-
-  return [];
-}
 
 export default async function AdminUsersPage({ searchParams }: AdminUsersPageProps) {
   const currentUser = await getCurrentUser();
@@ -117,7 +90,11 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
 
       return usersWithoutAssignments.map((user) => ({
         ...user,
-        staffAssignments: toLegacyStaffAssignments(user.role, user.countryId, user.cityId),
+        staffAssignments: toLegacyStaffAssignments(user.role, user.countryId, user.cityId).map((assignment) => ({
+          ...assignment,
+          isActive: true,
+          createdAt: new Date(0),
+        })),
       }));
     });
 
