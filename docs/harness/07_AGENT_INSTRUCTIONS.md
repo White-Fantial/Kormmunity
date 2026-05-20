@@ -26,6 +26,12 @@ Build a Korean-language, Kakao-friendly community market board for Korean reside
 - Admins make final user restriction/deletion decisions.
 - Every moderation action must be logged.
 
+## Branch Policy
+
+- All agent PRs must target the **`staging`** branch, not `main`.
+- The `staging` → `main` merge is performed manually by the repository owner.
+- Never open a PR against `main` directly.
+
 ## Development Style
 - Implement incrementally by phase.
 - Keep DB schema explicit and migration-safe.

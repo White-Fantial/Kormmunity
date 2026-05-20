@@ -4,6 +4,13 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+## Branch Policy
+
+- **Base branch**: `staging`
+- All agent work (PRs, branches, merges) **must** target `staging`, never `main`.
+- The `staging` → `main` merge is done manually by the repository owner.
+- When creating a pull request, always set the base branch to `staging`.
+
 ## Mandatory Harness-First Rule (All Agents)
 
 This rule applies to every coding agent used in this repository (including GitHub Copilot coding agent, ChatGPT, Claude, and equivalent agents).
