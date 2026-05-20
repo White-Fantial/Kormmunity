@@ -1,5 +1,6 @@
 import { getCurrentUser } from '@/lib/auth/session';
 import {
+  canAccessAdsManagerSection,
   canAccessCoordinatorSection,
   canAccessOperatorBoard,
   canMakeFinalUserDecision,
@@ -20,6 +21,9 @@ export async function HeaderNavConditional() {
       ) : null}
       {currentUser && canModerate(currentUser) ? (
         <HeaderNavLink href="/moderator">모더레이션</HeaderNavLink>
+      ) : null}
+      {currentUser && canAccessAdsManagerSection(currentUser) ? (
+        <HeaderNavLink href="/ads-manager/campaigns">광고 매니저</HeaderNavLink>
       ) : null}
       {currentUser && canMakeFinalUserDecision(currentUser) ? (
         <HeaderNavLink href="/admin">관리자</HeaderNavLink>

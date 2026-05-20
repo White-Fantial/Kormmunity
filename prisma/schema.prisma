@@ -97,6 +97,8 @@ enum ReportReviewStatus {
 enum StaffRole {
   MODERATOR
   COORDINATOR
+  AD_MANAGER
+  PARTNER_MANAGER
   ADMIN
 }
 

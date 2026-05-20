@@ -6,9 +6,24 @@ import type { AdCampaignStatus, AdPlacementType } from '@prisma/client';
 
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
-import { canMakeFinalUserDecision } from '@/lib/permissions';
+import { canAccessAdsManagerSection } from '@/lib/permissions';
 
-const ADS_PATH = '/admin/ads';
+const ADS_MANAGER_SECTION_PATH = {
+  campaigns: '/ads-manager/campaigns',
+  products: '/ads-manager/products',
+  rules: '/ads-manager/rules',
+} as const;
+
+type AdsManagerSection = keyof typeof ADS_MANAGER_SECTION_PATH;
+
+function redirectAdsManager(section: AdsManagerSection, query?: Record<string, string>): never {
+  const basePath = ADS_MANAGER_SECTION_PATH[section];
+  if (!query || Object.keys(query).length === 0) {
+    redirect(basePath);
+  }
+
+  redirect(`${basePath}?${new URLSearchParams(query).toString()}`);
+}
 
 function normalizeText(value: FormDataEntryValue | null): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -16,7 +31,7 @@ function normalizeText(value: FormDataEntryValue | null): string {
 
 function requireAdminUser() {
   return getCurrentUser().then((user) => {
-    if (!user || !canMakeFinalUserDecision(user)) {
+    if (!user || !canAccessAdsManagerSection(user)) {
       redirect('/posts');
     }
 
@@ -40,7 +55,7 @@ export async function createAdProductAction(formData: FormData) {
   const sortOrder = parseInt(normalizeText(formData.get('sortOrder')) || '0', 10);
 
   if (!code || !name || !placementType) {
-    redirect(`${ADS_PATH}?error=${encodeURIComponent('코드, 이름, 노출 위치는 필수입니다.')}`);
+    redirectAdsManager('products', { error: '코드, 이름, 노출 위치는 필수입니다.' });
   }
 
   await prisma.adProduct.create({
@@ -57,8 +72,8 @@ export async function createAdProductAction(formData: FormData) {
     },
   });
 
-  revalidatePath(ADS_PATH);
-  redirect(ADS_PATH);
+  revalidatePath(ADS_MANAGER_SECTION_PATH.products);
+  redirectAdsManager('products');
 }
 
 export async function updateAdProductAction(formData: FormData) {
@@ -75,7 +90,7 @@ export async function updateAdProductAction(formData: FormData) {
   const sortOrder = parseInt(normalizeText(formData.get('sortOrder')) || '0', 10);
 
   if (!id || !name || !placementType) {
-    redirect(`${ADS_PATH}?error=${encodeURIComponent('상품 ID, 이름, 노출 위치는 필수입니다.')}`);
+    redirectAdsManager('products', { error: '상품 ID, 이름, 노출 위치는 필수입니다.' });
   }
 
   await prisma.adProduct.update({
@@ -92,8 +107,8 @@ export async function updateAdProductAction(formData: FormData) {
     },
   });
 
-  revalidatePath(ADS_PATH);
-  redirect(ADS_PATH);
+  revalidatePath(ADS_MANAGER_SECTION_PATH.products);
+  redirectAdsManager('products');
 }
 
 export async function toggleAdProductActiveAction(formData: FormData) {
@@ -101,18 +116,18 @@ export async function toggleAdProductActiveAction(formData: FormData) {
 
   const id = normalizeText(formData.get('id'));
   if (!id) {
-    redirect(`${ADS_PATH}?error=${encodeURIComponent('상품 ID가 없습니다.')}`);
+    redirectAdsManager('products', { error: '상품 ID가 없습니다.' });
   }
 
   const product = await prisma.adProduct.findUnique({ where: { id }, select: { isActive: true } });
   if (!product) {
-    redirect(`${ADS_PATH}?error=${encodeURIComponent('광고 상품을 찾을 수 없습니다.')}`);
+    redirectAdsManager('products', { error: '광고 상품을 찾을 수 없습니다.' });
   }
 
   await prisma.adProduct.update({ where: { id }, data: { isActive: !product.isActive } });
 
-  revalidatePath(ADS_PATH);
-  redirect(ADS_PATH);
+  revalidatePath(ADS_MANAGER_SECTION_PATH.products);
+  redirectAdsManager('products');
 }
 
 // ─── AdCampaign ───────────────────────────────────────────────────────────────
@@ -132,7 +147,7 @@ export async function createAdCampaignAction(formData: FormData) {
   const notes = normalizeText(formData.get('notes')) || null;
 
   if (!postId || !adProductId) {
-    redirect(`${ADS_PATH}?error=${encodeURIComponent('게시글 ID와 광고 상품은 필수입니다.')}`);
+    redirectAdsManager('campaigns', { error: '게시글 ID와 광고 상품은 필수입니다.' });
   }
 
   // Verify post is ADVERTISEMENT category
@@ -142,11 +157,13 @@ export async function createAdCampaignAction(formData: FormData) {
   });
 
   if (!post) {
-    redirect(`${ADS_PATH}?error=${encodeURIComponent('게시글을 찾을 수 없습니다.')}`);
+    redirectAdsManager('campaigns', { error: '게시글을 찾을 수 없습니다.' });
   }
 
   if (post.category.type !== 'ADVERTISEMENT') {
-    redirect(`${ADS_PATH}?error=${encodeURIComponent('광고 카테고리 게시글만 캠페인으로 등록할 수 있습니다.')}`);
+    redirectAdsManager('campaigns', {
+      error: '광고 카테고리 게시글만 캠페인으로 등록할 수 있습니다.',
+    });
   }
 
   await prisma.adCampaign.create({
@@ -165,8 +182,8 @@ export async function createAdCampaignAction(formData: FormData) {
     },
   });
 
-  revalidatePath(ADS_PATH);
-  redirect(ADS_PATH);
+  revalidatePath(ADS_MANAGER_SECTION_PATH.campaigns);
+  redirectAdsManager('campaigns');
 }
 
 export async function updateAdCampaignStatusAction(formData: FormData) {
@@ -176,18 +193,18 @@ export async function updateAdCampaignStatusAction(formData: FormData) {
   const status = normalizeText(formData.get('status')) as AdCampaignStatus;
 
   if (!id || !status) {
-    redirect(`${ADS_PATH}?error=${encodeURIComponent('캠페인 ID와 상태는 필수입니다.')}`);
+    redirectAdsManager('campaigns', { error: '캠페인 ID와 상태는 필수입니다.' });
   }
 
   const validStatuses: AdCampaignStatus[] = ['DRAFT', 'ACTIVE', 'PAUSED', 'ENDED', 'CANCELLED'];
   if (!validStatuses.includes(status)) {
-    redirect(`${ADS_PATH}?error=${encodeURIComponent('유효하지 않은 캠페인 상태입니다.')}`);
+    redirectAdsManager('campaigns', { error: '유효하지 않은 캠페인 상태입니다.' });
   }
 
   await prisma.adCampaign.update({ where: { id }, data: { status } });
 
-  revalidatePath(ADS_PATH);
-  redirect(ADS_PATH);
+  revalidatePath(ADS_MANAGER_SECTION_PATH.campaigns);
+  redirectAdsManager('campaigns');
 }
 
 export async function updateAdCampaignAction(formData: FormData) {
@@ -204,7 +221,7 @@ export async function updateAdCampaignAction(formData: FormData) {
   const notes = normalizeText(formData.get('notes')) || null;
 
   if (!id) {
-    redirect(`${ADS_PATH}?error=${encodeURIComponent('캠페인 ID가 없습니다.')}`);
+    redirectAdsManager('campaigns', { error: '캠페인 ID가 없습니다.' });
   }
 
   await prisma.adCampaign.update({
@@ -221,8 +238,8 @@ export async function updateAdCampaignAction(formData: FormData) {
     },
   });
 
-  revalidatePath(ADS_PATH);
-  redirect(ADS_PATH);
+  revalidatePath(ADS_MANAGER_SECTION_PATH.campaigns);
+  redirectAdsManager('campaigns');
 }
 
 // ─── AdPlacementRule ──────────────────────────────────────────────────────────
@@ -236,7 +253,7 @@ export async function upsertAdPlacementRuleAction(formData: FormData) {
   const maxPerPage = parseInt(normalizeText(formData.get('maxPerPage')) || '2', 10);
 
   if (!placementType) {
-    redirect(`${ADS_PATH}?error=${encodeURIComponent('노출 위치는 필수입니다.')}`);
+    redirectAdsManager('rules', { error: '노출 위치는 필수입니다.' });
   }
 
   await prisma.adPlacementRule.upsert({
@@ -255,6 +272,6 @@ export async function upsertAdPlacementRuleAction(formData: FormData) {
     },
   });
 
-  revalidatePath(ADS_PATH);
-  redirect(`${ADS_PATH}?success=${encodeURIComponent('노출 규칙이 저장되었습니다.')}`);
+  revalidatePath(ADS_MANAGER_SECTION_PATH.rules);
+  redirectAdsManager('rules', { success: '노출 규칙이 저장되었습니다.' });
 }

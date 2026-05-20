@@ -74,7 +74,13 @@ export type PostCreationFormOptions = {
 };
 
 export const USER_ROLES = ['USER', 'MODERATOR', 'COORDINATOR', 'ADMIN'] as const;
-export const STAFF_ROLES = ['MODERATOR', 'COORDINATOR', 'ADMIN'] as const;
+export const STAFF_ROLES = [
+  'MODERATOR',
+  'COORDINATOR',
+  'AD_MANAGER',
+  'PARTNER_MANAGER',
+  'ADMIN',
+] as const;
 export type StaffRoleValue = (typeof STAFF_ROLES)[number];
 
 // ─── Core staff assignment helpers ────────────────────────────────────────────
@@ -89,6 +95,10 @@ function hasModeratorAssignment(assignments: StaffAssignmentItem[]): boolean {
 
 function hasCoordinatorAssignment(assignments: StaffAssignmentItem[]): boolean {
   return assignments.some((a) => a.role === 'COORDINATOR' || a.role === 'ADMIN');
+}
+
+function hasAdManagerAssignment(assignments: StaffAssignmentItem[]): boolean {
+  return assignments.some((a) => a.role === 'AD_MANAGER' || a.role === 'ADMIN');
 }
 
 /**
@@ -558,6 +568,10 @@ export function canAccessCoordinatorSection(user: PermissionUser | null | undefi
 
 export function canAccessOperatorBoard(user: PermissionUser | null | undefined) {
   return canCoordinate(user) || canModerate(user);
+}
+
+export function canAccessAdsManagerSection(user: PermissionUser | null | undefined) {
+  return hasAdManagerAssignment(user?.staffAssignments ?? []);
 }
 
 export function canHoldPost(user: PermissionUser | null | undefined) {

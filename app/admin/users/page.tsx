@@ -129,6 +129,8 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
   const staffRoleLabels: Record<string, string> = {
     MODERATOR: '모더레이터',
     COORDINATOR: '운영진',
+    AD_MANAGER: '광고 매니저',
+    PARTNER_MANAGER: '파트너 매니저',
     ADMIN: '관리자',
   };
 
@@ -334,6 +336,8 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                           >
                             <option value="MODERATOR">모더레이터 (MODERATOR)</option>
                             <option value="COORDINATOR">운영진 (COORDINATOR)</option>
+                            <option value="AD_MANAGER">광고 매니저 (AD_MANAGER)</option>
+                            <option value="PARTNER_MANAGER">파트너 매니저 (PARTNER_MANAGER)</option>
                             <option value="ADMIN">관리자 (ADMIN)</option>
                           </select>
                           <select
