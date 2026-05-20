@@ -12,6 +12,7 @@ import {
   canRestorePost,
   canDeleteComment,
   canModerateUser,
+  canMakeFinalUserDecision,
 } from '@/lib/permissions';
 import {
   applyCommunityScoreChange,
@@ -541,14 +542,21 @@ export async function requestUserReviewAction(formData: FormData) {
 
   const targetUser = await prisma.user.findUnique({
     where: { id: targetUserId },
-    select: { id: true, status: true, role: true },
+    select: {
+      id: true,
+      status: true,
+      staffAssignments: {
+        where: { isActive: true },
+        select: { id: true, role: true, countryId: true, cityId: true },
+      },
+    },
   });
 
   if (!targetUser) {
     redirect('/moderator?error=사용자를 찾을 수 없습니다.');
   }
 
-  if (targetUser.role === 'ADMIN') {
+  if (canMakeFinalUserDecision(targetUser)) {
     redirect('/moderator?error=관리자에 대한 검토 요청은 불가합니다.');
   }
 

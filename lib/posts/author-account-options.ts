@@ -24,7 +24,6 @@ type UserWithStaffAssignments = {
 
 export type AuthorSelectionCandidate = {
   id: string;
-  staffAssignments: StaffAssignmentItem[];
   accountType: AccountType;
   isManagedAccount: boolean;
   isActive: boolean;
