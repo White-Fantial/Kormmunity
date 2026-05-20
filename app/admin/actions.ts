@@ -13,7 +13,7 @@ import {
 
 import { requireUser, invalidateSessionCache } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
-import { canMakeFinalUserDecision, STAFF_ROLES } from '@/lib/permissions';
+import { canMakeFinalUserDecision, STAFF_ROLES, USER_ROLES } from '@/lib/permissions';
 import type { SessionUser } from '@/lib/auth/types';
 import type { StaffRole, UserStatus } from '@prisma/client';
 import {
