@@ -2,6 +2,7 @@ import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { unstable_cache, revalidateTag } from 'next/cache';
+import { Prisma, type UserRole } from '@prisma/client';
 
 import { prisma } from '@/lib/db/prisma';
 import type { SessionUser } from '@/lib/auth/types';
@@ -26,43 +27,112 @@ export function invalidateSessionCache(token: string) {
   revalidateTag(getSessionCacheTag(token), { expire: 0 });
 }
 
+function toLegacyStaffAssignments(
+  role: UserRole,
+  countryId: string | null,
+  cityId: string | null,
+): SessionUser['staffAssignments'] {
+  if (role === 'ADMIN' || role === 'MODERATOR' || role === 'COORDINATOR') {
+    return [
+      {
+        id: `legacy:${role}`,
+        role,
+        countryId,
+        cityId,
+      },
+    ];
+  }
+
+  return [];
+}
+
+function isMissingStaffAssignmentTableError(error: unknown) {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+    return false;
+  }
+
+  if (error.code !== 'P2021') {
+    return false;
+  }
+
+  const table = (error.meta?.table as string | undefined) ?? '';
+  return table.endsWith('StaffAssignment');
+}
+
 async function fetchSessionUserByToken(token: string): Promise<SessionUser | null> {
   return unstable_cache(
     async () => {
-      const session = await prisma.session.findUnique({
-        where: { token },
-        select: {
-          expiresAt: true,
-          user: {
-            select: {
-              id: true,
-              kakaoId: true,
-              displayName: true,
-              accountType: true,
-              isManagedAccount: true,
-              isActive: true,
-              status: true,
-              countryId: true,
-              cityId: true,
-              staffAssignments: {
-                where: { isActive: true },
-                select: {
-                  id: true,
-                  role: true,
-                  countryId: true,
-                  cityId: true,
+      try {
+        const session = await prisma.session.findUnique({
+          where: { token },
+          select: {
+            expiresAt: true,
+            user: {
+              select: {
+                id: true,
+                kakaoId: true,
+                displayName: true,
+                accountType: true,
+                isManagedAccount: true,
+                isActive: true,
+                status: true,
+                countryId: true,
+                cityId: true,
+                staffAssignments: {
+                  where: { isActive: true },
+                  select: {
+                    id: true,
+                    role: true,
+                    countryId: true,
+                    cityId: true,
+                  },
                 },
               },
             },
           },
-        },
-      });
+        });
 
-      if (!session || session.expiresAt <= new Date()) {
-        return null;
+        if (!session || session.expiresAt <= new Date()) {
+          return null;
+        }
+
+        return session.user;
+      } catch (error) {
+        if (!isMissingStaffAssignmentTableError(error)) {
+          throw error;
+        }
+
+        const session = await prisma.session.findUnique({
+          where: { token },
+          select: {
+            expiresAt: true,
+            user: {
+              select: {
+                id: true,
+                kakaoId: true,
+                displayName: true,
+                accountType: true,
+                isManagedAccount: true,
+                isActive: true,
+                status: true,
+                countryId: true,
+                cityId: true,
+                role: true,
+              },
+            },
+          },
+        });
+
+        if (!session || session.expiresAt <= new Date()) {
+          return null;
+        }
+
+        const { role, ...user } = session.user;
+        return {
+          ...user,
+          staffAssignments: toLegacyStaffAssignments(role, user.countryId, user.cityId),
+        };
       }
-
-      return session.user;
     },
     ['session', token],
     { revalidate: SESSION_CACHE_TTL_SECONDS, tags: [getSessionCacheTag(token)] },
