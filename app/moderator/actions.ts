@@ -545,6 +545,8 @@ export async function requestUserReviewAction(formData: FormData) {
     select: {
       id: true,
       status: true,
+      countryId: true,
+      cityId: true,
       staffAssignments: {
         where: { isActive: true },
         select: { id: true, role: true, countryId: true, cityId: true },
