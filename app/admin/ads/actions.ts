@@ -2,10 +2,25 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import type { AdCampaignStatus, AdContentStatus, AdPlacementType, AdProposalStatus, Prisma } from '@prisma/client';
+import type {
+  AdBillingStatus,
+  AdCampaignStatus,
+  AdContentStatus,
+  AdPlacementType,
+  AdPricingModel,
+  AdProposalStatus,
+  Prisma,
+} from '@prisma/client';
 
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
+import {
+  buildPricingSnapshot,
+  calculateEstimatedAmount,
+  getBillingUnitForPricingModel,
+  resolveGeoMultiplier,
+  resolvePlacementMultiplier,
+} from '@/lib/ads/pricing';
 import {
   canAccessAdsManagerSection,
   canCreateAdProposal,
@@ -54,6 +69,19 @@ function parseNullableDateTime(value: string | null): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function parseNullableInt(value: string): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = parseInt(value, 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function normalizeAdPricingModel(value: string): AdPricingModel {
+  return value === 'CPM' ? 'CPM' : 'FIXED';
+}
+
 async function logAdAudit(
   tx: Prisma.TransactionClient,
   data: {
@@ -91,7 +119,7 @@ export async function createAdProductAction(formData: FormData) {
   const placementType = normalizeText(formData.get('placementType')) as AdPlacementType;
   const size = normalizeText(formData.get('size')) || 'M';
   const layout = normalizeText(formData.get('layout')) || 'THUMBNAIL';
-  const pricingModel = normalizeText(formData.get('pricingModel')) || 'FIXED';
+  const pricingModel = normalizeAdPricingModel(normalizeText(formData.get('pricingModel')) || 'FIXED');
   const basePrice = parseFloat(normalizeText(formData.get('basePrice')) || '0');
   const description = normalizeText(formData.get('description')) || null;
   const sortOrder = parseInt(normalizeText(formData.get('sortOrder')) || '0', 10);
@@ -107,7 +135,9 @@ export async function createAdProductAction(formData: FormData) {
       placementType,
       size: size as 'S' | 'M' | 'L',
       layout: layout as 'TEXT' | 'THUMBNAIL' | 'IMAGE' | 'FEATURED',
-      pricingModel: pricingModel as 'FIXED' | 'CPM',
+      pricingModel,
+      billingUnit: getBillingUnitForPricingModel(pricingModel),
+      currency: 'NZD',
       basePrice,
       description,
       sortOrder: Number.isNaN(sortOrder) ? 0 : sortOrder,
@@ -126,7 +156,7 @@ export async function updateAdProductAction(formData: FormData) {
   const placementType = normalizeText(formData.get('placementType')) as AdPlacementType;
   const size = normalizeText(formData.get('size')) || 'M';
   const layout = normalizeText(formData.get('layout')) || 'THUMBNAIL';
-  const pricingModel = normalizeText(formData.get('pricingModel')) || 'FIXED';
+  const pricingModel = normalizeAdPricingModel(normalizeText(formData.get('pricingModel')) || 'FIXED');
   const basePrice = parseFloat(normalizeText(formData.get('basePrice')) || '0');
   const description = normalizeText(formData.get('description')) || null;
   const sortOrder = parseInt(normalizeText(formData.get('sortOrder')) || '0', 10);
@@ -142,7 +172,9 @@ export async function updateAdProductAction(formData: FormData) {
       placementType,
       size: size as 'S' | 'M' | 'L',
       layout: layout as 'TEXT' | 'THUMBNAIL' | 'IMAGE' | 'FEATURED',
-      pricingModel: pricingModel as 'FIXED' | 'CPM',
+      pricingModel,
+      billingUnit: getBillingUnitForPricingModel(pricingModel),
+      currency: 'NZD',
       basePrice,
       description,
       sortOrder: Number.isNaN(sortOrder) ? 0 : sortOrder,
@@ -496,6 +528,7 @@ export async function createAdCampaignAction(formData: FormData) {
   const startAt = parseNullableDateTime(normalizeText(formData.get('startAt')) || null);
   const endAt = parseNullableDateTime(normalizeText(formData.get('endAt')) || null);
   const maxImpressions = normalizeText(formData.get('maxImpressions'));
+  const maxImpressionsValue = parseNullableInt(maxImpressions);
   const targetCountryId = normalizeText(formData.get('targetCountryId')) || null;
   const targetCityId = normalizeText(formData.get('targetCityId')) || null;
   const landingUrl = normalizeText(formData.get('landingUrl')) || null;
@@ -503,6 +536,22 @@ export async function createAdCampaignAction(formData: FormData) {
 
   if (!adProductId || (!adContentId && !legacyPostId)) {
     redirectAdsManager('campaigns', { error: '광고 콘텐츠 ID(또는 legacy 게시글 ID)와 광고 상품은 필수입니다.' });
+  }
+
+  const adProduct = await prisma.adProduct.findUnique({
+    where: { id: adProductId },
+    select: {
+      id: true,
+      placementType: true,
+      pricingModel: true,
+      billingUnit: true,
+      currency: true,
+      basePrice: true,
+    },
+  });
+
+  if (!adProduct) {
+    redirectAdsManager('campaigns', { error: '광고 상품을 찾을 수 없습니다.' });
   }
 
   let advertiserId: string | null = null;
@@ -541,6 +590,41 @@ export async function createAdCampaignAction(formData: FormData) {
     }
   }
 
+  const pricingAt = startAt ?? new Date();
+  const geoMultiplier = await resolveGeoMultiplier(prisma, {
+    targetCityId,
+    targetCountryId,
+    at: pricingAt,
+  });
+  const placementMultiplier = await resolvePlacementMultiplier(prisma, {
+    placementType: adProduct.placementType,
+    at: pricingAt,
+  });
+  const basePrice = Number(adProduct.basePrice);
+  const billingUnit = getBillingUnitForPricingModel(adProduct.pricingModel);
+  const estimated = calculateEstimatedAmount({
+    pricingModel: adProduct.pricingModel,
+    basePrice,
+    geoMultiplier: geoMultiplier.multiplier,
+    placementMultiplier: placementMultiplier.multiplier,
+    startAt,
+    endAt,
+    impressions: maxImpressionsValue ?? 0,
+  });
+  const pricingSnapshot = buildPricingSnapshot({
+    pricingModel: adProduct.pricingModel,
+    billingUnit,
+    currency: adProduct.currency,
+    basePrice,
+    geoMultiplier,
+    placementMultiplier,
+    startAt,
+    endAt,
+    maxImpressions: maxImpressionsValue,
+    estimatedAmount: estimated.amount,
+    billableDays: estimated.billableDays,
+  });
+
   const campaign = await prisma.adCampaign.create({
     data: {
       advertiserId,
@@ -551,9 +635,12 @@ export async function createAdCampaignAction(formData: FormData) {
       priority: Number.isNaN(priority) ? 0 : priority,
       startAt,
       endAt,
-      maxImpressions: maxImpressions ? parseInt(maxImpressions, 10) || null : null,
+      maxImpressions: maxImpressionsValue,
       targetCountryId,
       targetCityId,
+      estimatedAmount: estimated.amount,
+      billingStatus: 'ESTIMATED',
+      pricingSnapshot,
       landingUrl,
       notes,
     },
@@ -568,7 +655,17 @@ export async function createAdCampaignAction(formData: FormData) {
       campaignId: campaign.id,
       actionType: 'CAMPAIGN_CREATED',
       message: '광고 캠페인이 생성되었습니다.',
-      metadata: { legacyPostId },
+      metadata: {
+        legacyPostId,
+        pricingModel: adProduct.pricingModel,
+        billingUnit,
+        currency: adProduct.currency,
+        basePrice,
+        geoMultiplier: geoMultiplier.multiplier,
+        placementMultiplier: placementMultiplier.multiplier,
+        billableDays: estimated.billableDays,
+        estimatedAmount: estimated.amount,
+      },
     },
   });
 
@@ -626,6 +723,7 @@ export async function updateAdCampaignAction(formData: FormData) {
   const startAt = parseNullableDateTime(normalizeText(formData.get('startAt')) || null);
   const endAt = parseNullableDateTime(normalizeText(formData.get('endAt')) || null);
   const maxImpressions = normalizeText(formData.get('maxImpressions'));
+  const maxImpressionsValue = parseNullableInt(maxImpressions);
   const targetCountryId = normalizeText(formData.get('targetCountryId')) || null;
   const targetCityId = normalizeText(formData.get('targetCityId')) || null;
   const landingUrl = normalizeText(formData.get('landingUrl')) || null;
@@ -637,12 +735,61 @@ export async function updateAdCampaignAction(formData: FormData) {
 
   const existing = await prisma.adCampaign.findUnique({
     where: { id },
-    select: { advertiserId: true, adContentId: true },
+    select: {
+      advertiserId: true,
+      adContentId: true,
+      billingStatus: true,
+      adProduct: {
+        select: {
+          pricingModel: true,
+          placementType: true,
+          basePrice: true,
+          currency: true,
+        },
+      },
+    },
   });
 
   if (!existing) {
     redirectAdsManager('campaigns', { error: '캠페인을 찾을 수 없습니다.' });
   }
+
+  const pricingAt = startAt ?? new Date();
+  const geoMultiplier = await resolveGeoMultiplier(prisma, {
+    targetCityId,
+    targetCountryId,
+    at: pricingAt,
+  });
+  const placementMultiplier = await resolvePlacementMultiplier(prisma, {
+    placementType: existing.adProduct.placementType,
+    at: pricingAt,
+  });
+  const basePrice = Number(existing.adProduct.basePrice);
+  const billingUnit = getBillingUnitForPricingModel(existing.adProduct.pricingModel);
+  const estimated = calculateEstimatedAmount({
+    pricingModel: existing.adProduct.pricingModel,
+    basePrice,
+    geoMultiplier: geoMultiplier.multiplier,
+    placementMultiplier: placementMultiplier.multiplier,
+    startAt,
+    endAt,
+    impressions: maxImpressionsValue ?? 0,
+  });
+  const pricingSnapshot = buildPricingSnapshot({
+    pricingModel: existing.adProduct.pricingModel,
+    billingUnit,
+    currency: existing.adProduct.currency,
+    basePrice,
+    geoMultiplier,
+    placementMultiplier,
+    startAt,
+    endAt,
+    maxImpressions: maxImpressionsValue,
+    estimatedAmount: estimated.amount,
+    billableDays: estimated.billableDays,
+  });
+  const nextBillingStatus: AdBillingStatus =
+    existing.billingStatus === 'DRAFT' ? 'ESTIMATED' : existing.billingStatus;
 
   await prisma.$transaction(async (tx) => {
     await tx.adCampaign.update({
@@ -651,9 +798,12 @@ export async function updateAdCampaignAction(formData: FormData) {
         priority: Number.isNaN(priority) ? 0 : priority,
         startAt,
         endAt,
-        maxImpressions: maxImpressions ? parseInt(maxImpressions, 10) || null : null,
+        maxImpressions: maxImpressionsValue,
         targetCountryId,
         targetCityId,
+        estimatedAmount: estimated.amount,
+        billingStatus: nextBillingStatus,
+        pricingSnapshot,
         landingUrl,
         notes,
       },
@@ -666,6 +816,16 @@ export async function updateAdCampaignAction(formData: FormData) {
       campaignId: id,
       actionType: 'CAMPAIGN_UPDATED',
       message: '캠페인 설정이 수정되었습니다.',
+      metadata: {
+        pricingModel: existing.adProduct.pricingModel,
+        billingUnit,
+        currency: existing.adProduct.currency,
+        basePrice,
+        geoMultiplier: geoMultiplier.multiplier,
+        placementMultiplier: placementMultiplier.multiplier,
+        billableDays: estimated.billableDays,
+        estimatedAmount: estimated.amount,
+      },
     });
   });
 
