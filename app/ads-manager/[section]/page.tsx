@@ -21,6 +21,8 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { canAccessAdsManagerSection } from '@/lib/permissions';
 import {
+  AD_BILLING_STATUS_LABELS,
+  AD_BILLING_UNIT_LABELS,
   AD_CAMPAIGN_STATUS_LABELS,
   AD_LAYOUT_LABELS,
   AD_PLACEMENT_TYPE_LABELS,
@@ -87,6 +89,8 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
         size: true,
         layout: true,
         pricingModel: true,
+        billingUnit: true,
+        currency: true,
         basePrice: true,
         isActive: true,
         sortOrder: true,
@@ -103,6 +107,9 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
         startAt: true,
         endAt: true,
         maxImpressions: true,
+        estimatedAmount: true,
+        finalAmount: true,
+        billingStatus: true,
         landingUrl: true,
         notes: true,
         targetCountryId: true,
@@ -301,6 +308,14 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                   campaign._count.impressions > 0
                     ? ((campaign._count.clicks / campaign._count.impressions) * 100).toFixed(2)
                     : '0.00';
+                const estimatedAmountText =
+                  campaign.estimatedAmount != null
+                    ? `NZD ${Number(campaign.estimatedAmount).toFixed(2)}`
+                    : '-';
+                const finalAmountText =
+                  campaign.finalAmount != null
+                    ? `NZD ${Number(campaign.finalAmount).toFixed(2)}`
+                    : '-';
 
                 return (
                   <div
@@ -335,6 +350,9 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                           {campaign.targetCity ? ` / ${campaign.targetCity.name}` : ''}
                           {campaign.maxImpressions ? ` · 최대 ${campaign.maxImpressions.toLocaleString()}회` : ''}
                           {campaign.advertiser ? ` · ${campaign.advertiser.name}` : ''}
+                        </p>
+                        <p className="text-xs text-[#888]">
+                          과금 상태 {AD_BILLING_STATUS_LABELS[campaign.billingStatus]} · 견적 {estimatedAmountText} · 확정 {finalAmountText}
                         </p>
                         <p className="text-xs text-[#888]">
                           content: {campaign.adContentId ?? '-'} / legacy post: {campaign.postId ?? '-'}
@@ -447,6 +465,19 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                     placeholder="City ID (선택)"
                     className={inputClass}
                   />
+                </label>
+                <label className="space-y-1 text-sm sm:col-span-2">
+                  <span className="text-[#555]">과금 요약</span>
+                  <p className="rounded-lg border border-[#f0f0f0] bg-[#fafafa] px-3 py-2 text-xs text-[#666]">
+                    상태: {AD_BILLING_STATUS_LABELS[selectedCampaign.billingStatus]} · 견적:{' '}
+                    {selectedCampaign.estimatedAmount != null
+                      ? `NZD ${Number(selectedCampaign.estimatedAmount).toFixed(2)}`
+                      : '-'}{' '}
+                    · 확정:{' '}
+                    {selectedCampaign.finalAmount != null
+                      ? `NZD ${Number(selectedCampaign.finalAmount).toFixed(2)}`
+                      : '-'}
+                  </p>
                 </label>
                 <label className="space-y-1 text-sm sm:col-span-2">
                   <span className="text-[#555]">랜딩 URL (빈칸 = 게시글 상세)</span>
@@ -847,8 +878,10 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                         {AD_SIZE_LABELS[product.size]} / {AD_LAYOUT_LABELS[product.layout]}
                       </td>
                       <td className="px-4 py-2">
-                        NZD {Number(product.basePrice).toFixed(2)}
-                        <span className="ml-1 text-xs text-[#888]">({product.pricingModel})</span>
+                        {product.currency} {Number(product.basePrice).toFixed(2)}
+                        <span className="ml-1 text-xs text-[#888]">
+                          ({product.pricingModel} / {AD_BILLING_UNIT_LABELS[product.billingUnit]})
+                        </span>
                       </td>
                       <td className="px-4 py-2">{product._count.campaigns}개</td>
                       <td className="px-4 py-2">
@@ -940,6 +973,12 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                     <option value="FIXED">고정가 (FIXED)</option>
                     <option value="CPM">노출 보장형 (CPM)</option>
                   </select>
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="text-[#555]">통화/과금 단위</span>
+                  <p className="rounded-lg border border-[#f0f0f0] bg-[#fafafa] px-3 py-2 text-xs text-[#666]">
+                    {selectedProduct.currency} / {AD_BILLING_UNIT_LABELS[selectedProduct.billingUnit]}
+                  </p>
                 </label>
                 <label className="space-y-1 text-sm">
                   <span className="text-[#555]">기준 단가 (NZD)</span>

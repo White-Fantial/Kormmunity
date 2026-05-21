@@ -139,6 +139,22 @@ enum AdPricingModel {
   CPM
 }
 
+enum AdBillingUnit {
+  DAY
+  WEEK
+  MONTH
+  IMPRESSION_1000
+}
+
+enum AdBillingStatus {
+  DRAFT
+  ESTIMATED
+  INVOICED
+  PAID
+  WAIVED
+  CANCELLED
+}
+
 enum AdvertiserMemberRole {
   OWNER
   MEMBER
@@ -240,6 +256,7 @@ model Country {
   posts       Post[]
   permissions PostPermission[]
   adCampaigns AdCampaign[]    @relation("AdCampaignTargetCountry")
+  adGeoPricings AdGeoPricing[]
   advertisers Advertiser[]
   staffAssignments StaffAssignment[]
 }
@@ -256,6 +273,7 @@ model City {
   posts     Post[]
   permissions PostPermission[]
   adCampaigns AdCampaign[]    @relation("AdCampaignTargetCity")
+  adGeoPricings AdGeoPricing[]
   advertisers Advertiser[]
   staffAssignments StaffAssignment[]
 }
@@ -680,6 +698,8 @@ model AdProduct {
   size          AdSize          @default(M)
   layout        AdLayout        @default(THUMBNAIL)
   pricingModel  AdPricingModel  @default(FIXED)
+  currency      String          @default("NZD")
+  billingUnit   AdBillingUnit   @default(DAY)
   basePrice     Decimal         @db.Decimal(10, 2) @default(0)
   isActive      Boolean         @default(true)
   sortOrder     Int             @default(0)
@@ -702,6 +722,10 @@ model AdCampaign {
   maxImpressions  Int?
   targetCountryId String?
   targetCityId    String?
+  estimatedAmount Decimal?          @db.Decimal(10, 2)
+  finalAmount     Decimal?          @db.Decimal(10, 2)
+  billingStatus   AdBillingStatus   @default(DRAFT)
+  pricingSnapshot Json?
   landingUrl      String?
   notes           String?
   post            Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
@@ -785,6 +809,36 @@ model AdDailyStat {
   @@unique([campaignId, date])
   @@index([campaignId, date(sort: Desc)])
   @@index([date(sort: Desc)])
+}
+
+model AdGeoPricing {
+  id            String    @id @default(cuid())
+  countryId     String?
+  cityId        String?
+  multiplier    Decimal   @db.Decimal(8, 4)
+  isActive      Boolean   @default(true)
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+  country       Country?  @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  city          City?     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([cityId, isActive, effectiveFrom, effectiveTo])
+  @@index([countryId, isActive, effectiveFrom, effectiveTo])
+}
+
+model AdPlacementPricing {
+  id            String          @id @default(cuid())
+  placementType AdPlacementType
+  multiplier    Decimal         @db.Decimal(8, 4)
+  isActive      Boolean         @default(true)
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([placementType, isActive, effectiveFrom, effectiveTo])
 }
 
 model StaffAssignment {
