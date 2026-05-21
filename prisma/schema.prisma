@@ -134,11 +134,6 @@ enum AdCampaignStatus {
   CANCELLED
 }
 
-enum AdPricingModel {
-  FIXED
-  CPM
-}
-
 enum AdBillingUnit {
   DAY
   WEEK
@@ -697,7 +692,6 @@ model AdProduct {
   placementType AdPlacementType
   size          AdSize          @default(M)
   layout        AdLayout        @default(THUMBNAIL)
-  pricingModel  AdPricingModel  @default(FIXED)
   currency      String          @default("NZD")
   billingUnit   AdBillingUnit   @default(DAY)
   basePrice     Decimal         @db.Decimal(10, 2) @default(0)

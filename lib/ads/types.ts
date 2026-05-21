@@ -1,7 +1,6 @@
 export type AdLayout = 'TEXT' | 'THUMBNAIL' | 'IMAGE' | 'FEATURED';
 export type AdSize = 'S' | 'M' | 'L';
 export type AdPlacementType = 'TOP_FIXED' | 'FEED_INLINE';
-export type AdPricingModel = 'FIXED' | 'CPM';
 export type AdCampaignStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CANCELLED';
 export type AdBillingStatus = 'DRAFT' | 'ESTIMATED' | 'INVOICED' | 'PAID' | 'WAIVED' | 'CANCELLED';
 export type AdBillingUnit = 'DAY' | 'WEEK' | 'MONTH' | 'IMPRESSION_1000';
@@ -22,11 +21,6 @@ export const AD_SIZE_LABELS: Record<AdSize, string> = {
 export const AD_PLACEMENT_TYPE_LABELS: Record<AdPlacementType, string> = {
   TOP_FIXED: '상단 고정',
   FEED_INLINE: '피드 중간 삽입',
-};
-
-export const AD_PRICING_MODEL_LABELS: Record<AdPricingModel, string> = {
-  FIXED: '고정가 (FIXED)',
-  CPM: '노출 보장형 (CPM)',
 };
 
 export const AD_CAMPAIGN_STATUS_LABELS: Record<AdCampaignStatus, string> = {

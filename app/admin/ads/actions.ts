@@ -8,7 +8,6 @@ import type {
   AdCampaignStatus,
   AdContentStatus,
   AdPlacementType,
-  AdPricingModel,
   AdProposalStatus,
   Prisma,
 } from '@prisma/client';
@@ -18,7 +17,6 @@ import { prisma } from '@/lib/db/prisma';
 import {
   buildPricingSnapshot,
   calculateEstimatedAmount,
-  getBillingUnitForPricingModel,
   resolveGeoMultiplier,
   resolvePlacementMultiplier,
 } from '@/lib/ads/pricing';
@@ -79,18 +77,14 @@ function parseNullableInt(value: string): number | null {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
-function normalizeAdPricingModel(value: string): AdPricingModel {
-  return value === 'CPM' ? 'CPM' : 'FIXED';
-}
-
 const VALID_BILLING_UNITS: AdBillingUnit[] = ['DAY', 'WEEK', 'MONTH', 'IMPRESSION_1000'];
 
-function normalizeAdBillingUnit(value: string, pricingModel: AdPricingModel): AdBillingUnit {
+function normalizeAdBillingUnit(value: string): AdBillingUnit {
   if ((VALID_BILLING_UNITS as string[]).includes(value)) {
     return value as AdBillingUnit;
   }
 
-  return getBillingUnitForPricingModel(pricingModel);
+  return 'DAY';
 }
 
 async function logAdAudit(
@@ -130,8 +124,7 @@ export async function createAdProductAction(formData: FormData) {
   const placementType = normalizeText(formData.get('placementType')) as AdPlacementType;
   const size = normalizeText(formData.get('size')) || 'M';
   const layout = normalizeText(formData.get('layout')) || 'THUMBNAIL';
-  const pricingModel = normalizeAdPricingModel(normalizeText(formData.get('pricingModel')) || 'FIXED');
-  const billingUnit = normalizeAdBillingUnit(normalizeText(formData.get('billingUnit')), pricingModel);
+  const billingUnit = normalizeAdBillingUnit(normalizeText(formData.get('billingUnit')));
   const currency = normalizeText(formData.get('currency')) || 'NZD';
   const basePrice = parseFloat(normalizeText(formData.get('basePrice')) || '0');
   const description = normalizeText(formData.get('description')) || null;
@@ -148,7 +141,6 @@ export async function createAdProductAction(formData: FormData) {
       placementType,
       size: size as 'S' | 'M' | 'L',
       layout: layout as 'TEXT' | 'THUMBNAIL' | 'IMAGE' | 'FEATURED',
-      pricingModel,
       billingUnit,
       currency,
       basePrice,
@@ -169,8 +161,7 @@ export async function updateAdProductAction(formData: FormData) {
   const placementType = normalizeText(formData.get('placementType')) as AdPlacementType;
   const size = normalizeText(formData.get('size')) || 'M';
   const layout = normalizeText(formData.get('layout')) || 'THUMBNAIL';
-  const pricingModel = normalizeAdPricingModel(normalizeText(formData.get('pricingModel')) || 'FIXED');
-  const billingUnit = normalizeAdBillingUnit(normalizeText(formData.get('billingUnit')), pricingModel);
+  const billingUnit = normalizeAdBillingUnit(normalizeText(formData.get('billingUnit')));
   const currency = normalizeText(formData.get('currency')) || 'NZD';
   const basePrice = parseFloat(normalizeText(formData.get('basePrice')) || '0');
   const description = normalizeText(formData.get('description')) || null;
@@ -187,7 +178,6 @@ export async function updateAdProductAction(formData: FormData) {
       placementType,
       size: size as 'S' | 'M' | 'L',
       layout: layout as 'TEXT' | 'THUMBNAIL' | 'IMAGE' | 'FEATURED',
-      pricingModel,
       billingUnit,
       currency,
       basePrice,
@@ -618,7 +608,6 @@ export async function createAdCampaignAction(formData: FormData) {
     select: {
       id: true,
       placementType: true,
-      pricingModel: true,
       billingUnit: true,
       currency: true,
       basePrice: true,
@@ -676,9 +665,9 @@ export async function createAdCampaignAction(formData: FormData) {
     at: pricingAt,
   });
   const basePrice = Number(adProduct.basePrice);
-  const billingUnit = getBillingUnitForPricingModel(adProduct.pricingModel);
+  const billingUnit = adProduct.billingUnit;
   const estimated = calculateEstimatedAmount({
-    pricingModel: adProduct.pricingModel,
+    billingUnit,
     basePrice,
     geoMultiplier: geoMultiplier.multiplier,
     placementMultiplier: placementMultiplier.multiplier,
@@ -687,7 +676,6 @@ export async function createAdCampaignAction(formData: FormData) {
     impressions: maxImpressionsValue ?? 0,
   });
   const pricingSnapshot = buildPricingSnapshot({
-    pricingModel: adProduct.pricingModel,
     billingUnit,
     currency: adProduct.currency,
     basePrice,
@@ -698,6 +686,7 @@ export async function createAdCampaignAction(formData: FormData) {
     maxImpressions: maxImpressionsValue,
     estimatedAmount: estimated.amount,
     billableDays: estimated.billableDays,
+    billableQuantity: estimated.billableQuantity,
   });
 
   const campaign = await prisma.adCampaign.create({
@@ -732,13 +721,13 @@ export async function createAdCampaignAction(formData: FormData) {
       message: '광고 캠페인이 생성되었습니다.',
       metadata: {
         legacyPostId,
-        pricingModel: adProduct.pricingModel,
         billingUnit,
         currency: adProduct.currency,
         basePrice,
         geoMultiplier: geoMultiplier.multiplier,
         placementMultiplier: placementMultiplier.multiplier,
         billableDays: estimated.billableDays,
+        billableQuantity: estimated.billableQuantity,
         estimatedAmount: estimated.amount,
       },
     },
@@ -816,7 +805,7 @@ export async function updateAdCampaignAction(formData: FormData) {
       billingStatus: true,
       adProduct: {
         select: {
-          pricingModel: true,
+          billingUnit: true,
           placementType: true,
           basePrice: true,
           currency: true,
@@ -840,9 +829,9 @@ export async function updateAdCampaignAction(formData: FormData) {
     at: pricingAt,
   });
   const basePrice = Number(existing.adProduct.basePrice);
-  const billingUnit = getBillingUnitForPricingModel(existing.adProduct.pricingModel);
+  const billingUnit = existing.adProduct.billingUnit;
   const estimated = calculateEstimatedAmount({
-    pricingModel: existing.adProduct.pricingModel,
+    billingUnit,
     basePrice,
     geoMultiplier: geoMultiplier.multiplier,
     placementMultiplier: placementMultiplier.multiplier,
@@ -851,7 +840,6 @@ export async function updateAdCampaignAction(formData: FormData) {
     impressions: maxImpressionsValue ?? 0,
   });
   const pricingSnapshot = buildPricingSnapshot({
-    pricingModel: existing.adProduct.pricingModel,
     billingUnit,
     currency: existing.adProduct.currency,
     basePrice,
@@ -862,6 +850,7 @@ export async function updateAdCampaignAction(formData: FormData) {
     maxImpressions: maxImpressionsValue,
     estimatedAmount: estimated.amount,
     billableDays: estimated.billableDays,
+    billableQuantity: estimated.billableQuantity,
   });
   const nextBillingStatus: AdBillingStatus =
     existing.billingStatus === 'DRAFT' ? 'ESTIMATED' : existing.billingStatus;
@@ -892,13 +881,13 @@ export async function updateAdCampaignAction(formData: FormData) {
       actionType: 'CAMPAIGN_UPDATED',
       message: '캠페인 설정이 수정되었습니다.',
       metadata: {
-        pricingModel: existing.adProduct.pricingModel,
         billingUnit,
         currency: existing.adProduct.currency,
         basePrice,
         geoMultiplier: geoMultiplier.multiplier,
         placementMultiplier: placementMultiplier.multiplier,
         billableDays: estimated.billableDays,
+        billableQuantity: estimated.billableQuantity,
         estimatedAmount: estimated.amount,
       },
     });
