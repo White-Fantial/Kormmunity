@@ -3,11 +3,16 @@ import { redirect } from 'next/navigation';
 
 import {
   createAdCampaignAction,
+  createAdContentAction,
   createAdProductAction,
+  createAdProposalAction,
   toggleAdProductActiveAction,
   updateAdCampaignAction,
   updateAdCampaignStatusAction,
+  updateAdContentAction,
+  updateAdContentStatusAction,
   updateAdProductAction,
+  updateAdProposalStatusAction,
   upsertAdPlacementRuleAction,
 } from '@/app/admin/ads/actions';
 import { adsManagerNavItems, ManagementSectionNav } from '@/components/admin/management-section-nav';
@@ -31,10 +36,12 @@ type AdminAdsPageProps = {
     success?: string;
     campaignId?: string;
     productId?: string;
+    proposalId?: string;
+    contentId?: string;
   }>;
 };
 
-const AD_MANAGER_SECTIONS = ['campaigns', 'products', 'rules'] as const;
+const AD_MANAGER_SECTIONS = ['campaigns', 'products', 'proposals', 'contents', 'rules'] as const;
 type AdManagerSection = (typeof AD_MANAGER_SECTIONS)[number];
 
 function isAdManagerSection(value: string): value is AdManagerSection {
@@ -69,7 +76,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
 
   const activeSection = routeParams.section;
 
-  const [adProducts, adCampaigns, placementRules, countries] = await Promise.all([
+  const [adProducts, adCampaigns, placementRules, countries, advertisers, adProposals, adContents] = await Promise.all([
     prisma.adProduct.findMany({
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
       select: {
@@ -100,7 +107,11 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
         notes: true,
         targetCountryId: true,
         targetCityId: true,
+        postId: true,
+        adContentId: true,
         post: { select: { id: true, title: true, status: true } },
+        adContent: { select: { id: true, title: true, status: true } },
+        advertiser: { select: { name: true } },
         adProduct: { select: { id: true, name: true, code: true, placementType: true } },
         targetCountry: { select: { name: true } },
         targetCity: { select: { name: true } },
@@ -123,6 +134,44 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
       orderBy: { sortOrder: 'asc' },
       select: { id: true, name: true, cities: { where: { isActive: true }, select: { id: true, name: true } } },
     }),
+    prisma.advertiser.findMany({
+      where: { isActive: true },
+      orderBy: [{ name: 'asc' }],
+      select: { id: true, name: true },
+    }),
+    prisma.adProposal.findMany({
+      orderBy: [{ createdAt: 'desc' }],
+      select: {
+        id: true,
+        status: true,
+        title: true,
+        body: true,
+        advertiserId: true,
+        advertiser: { select: { name: true } },
+        negotiationNotes: true,
+        rejectedReason: true,
+        createdAt: true,
+      },
+    }),
+    prisma.adContent.findMany({
+      orderBy: [{ updatedAt: 'desc' }],
+      select: {
+        id: true,
+        status: true,
+        title: true,
+        body: true,
+        advertiserId: true,
+        advertiser: { select: { name: true } },
+        proposalId: true,
+        landingUrl: true,
+        thumbnailUrl: true,
+        displayName: true,
+        categoryName: true,
+        cityName: true,
+        reviewNotes: true,
+        updatedAt: true,
+      },
+    }),
   ]);
 
   const inlineRule = placementRules.find((r) => r.placementType === 'FEED_INLINE');
@@ -131,6 +180,12 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
     : null;
   const selectedProduct = query.productId
     ? adProducts.find((product) => product.id === query.productId)
+    : null;
+  const selectedProposal = query.proposalId
+    ? adProposals.find((proposal) => proposal.id === query.proposalId)
+    : null;
+  const selectedContent = query.contentId
+    ? adContents.find((content) => content.id === query.contentId)
     : null;
 
   const inputClass =
@@ -165,8 +220,12 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
             <div className="border-t border-[#f0f0f0] px-4 pb-4 pt-3">
               <form action={createAdCampaignAction} className="grid gap-3 sm:grid-cols-2">
                 <label className="space-y-1 text-sm">
-                  <span className="text-[#555]">광고 게시글 ID <span className="text-red-500">*</span></span>
-                  <input type="text" name="postId" required placeholder="Post ID" className={inputClass} />
+                  <span className="text-[#555]">광고 콘텐츠 ID <span className="text-red-500">*</span></span>
+                  <input type="text" name="adContentId" required placeholder="AdContent ID" className={inputClass} />
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="text-[#555]">legacy 게시글 ID (선택)</span>
+                  <input type="text" name="postId" placeholder="Legacy Post ID" className={inputClass} />
                 </label>
                 <label className="space-y-1 text-sm">
                   <span className="text-[#555]">광고 상품 <span className="text-red-500">*</span></span>
@@ -260,7 +319,9 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                             href={`/ads-manager/campaigns?campaignId=${campaign.id}`}
                             className="text-sm font-medium text-[#3c1e1e] underline-offset-2 hover:underline"
                           >
-                            {campaign.post.title ?? `(제목 없음) — ${campaign.post.id.slice(0, 8)}`}
+                            {campaign.adContent?.title ??
+                              campaign.post?.title ??
+                              `(제목 없음) — ${campaign.id.slice(0, 8)}`}
                           </Link>
                           <span className="text-xs text-[#888]">[{campaign.adProduct.code}] {campaign.adProduct.name}</span>
                         </div>
@@ -273,6 +334,10 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                           {campaign.targetCountry ? ` · ${campaign.targetCountry.name}` : ''}
                           {campaign.targetCity ? ` / ${campaign.targetCity.name}` : ''}
                           {campaign.maxImpressions ? ` · 최대 ${campaign.maxImpressions.toLocaleString()}회` : ''}
+                          {campaign.advertiser ? ` · ${campaign.advertiser.name}` : ''}
+                        </p>
+                        <p className="text-xs text-[#888]">
+                          content: {campaign.adContentId ?? '-'} / legacy post: {campaign.postId ?? '-'}
                         </p>
                         {(campaign.startAt || campaign.endAt) && (
                           <p className="text-xs text-[#888]">
@@ -404,6 +469,269 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                 <div className="sm:col-span-2">
                   <FormSubmitButton idleLabel="캠페인 수정 저장" pendingLabel="저장 중..." className={submitClass} />
                 </div>
+              </form>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {/* ── Proposals tab ──────────────────────────────────────────────────── */}
+      {activeSection === 'proposals' && (
+        <div className="space-y-6">
+          <div className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
+            <h2 className="mb-4 font-semibold">광고 제안 등록</h2>
+            <form action={createAdProposalAction} className="grid gap-3 sm:grid-cols-2">
+              <label className="space-y-1 text-sm">
+                <span className="text-[#555]">광고주 <span className="text-red-500">*</span></span>
+                <select name="advertiserId" required className={selectClass}>
+                  <option value="">광고주 선택</option>
+                  {advertisers.map((advertiser) => (
+                    <option key={advertiser.id} value={advertiser.id}>{advertiser.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="text-[#555]">상품 코드 (선택)</span>
+                <input type="text" name="advertisedProductCode" className={inputClass} />
+              </label>
+              <label className="space-y-1 text-sm sm:col-span-2">
+                <span className="text-[#555]">제안 제목 <span className="text-red-500">*</span></span>
+                <input type="text" name="title" required className={inputClass} />
+              </label>
+              <label className="space-y-1 text-sm sm:col-span-2">
+                <span className="text-[#555]">제안 내용 <span className="text-red-500">*</span></span>
+                <textarea name="body" required rows={4} className={inputClass} />
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="text-[#555]">희망 시작일</span>
+                <input type="datetime-local" name="requestedStartAt" className={inputClass} />
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="text-[#555]">희망 종료일</span>
+                <input type="datetime-local" name="requestedEndAt" className={inputClass} />
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="text-[#555]">예산 (NZD)</span>
+                <input type="number" step="0.01" min="0" name="requestedBudget" className={inputClass} />
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="text-[#555]">희망 랜딩 URL</span>
+                <input type="url" name="requestedLandingUrl" className={inputClass} />
+              </label>
+              <div className="sm:col-span-2">
+                <FormSubmitButton idleLabel="제안 등록" pendingLabel="등록 중..." className={submitClass} />
+              </div>
+            </form>
+          </div>
+
+          <div className="space-y-3">
+            {adProposals.length === 0 ? (
+              <p className="rounded-xl border border-[#e8e8e8] bg-white p-4 text-sm text-[#888]">
+                등록된 광고 제안이 없습니다.
+              </p>
+            ) : (
+              adProposals.map((proposal) => (
+                <div key={proposal.id} className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold">{proposal.title}</p>
+                      <p className="text-xs text-[#888]">{proposal.advertiser.name} · {proposal.status}</p>
+                    </div>
+                    <Link href={`/ads-manager/proposals?proposalId=${proposal.id}`} className="text-xs underline">
+                      상세 보기
+                    </Link>
+                  </div>
+                  <p className="line-clamp-2 text-sm text-[#666]">{proposal.body}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {(['SUBMITTED', 'IN_NEGOTIATION', 'NEGOTIATED', 'REJECTED'] as const).map((status) => (
+                      proposal.status !== status ? (
+                        <form key={status} action={updateAdProposalStatusAction}>
+                          <input type="hidden" name="id" value={proposal.id} />
+                          <input type="hidden" name="status" value={status} />
+                          <button type="submit" className="rounded-lg border border-[#e8e8e8] px-2 py-1 text-xs hover:bg-[#f9f9f9]">
+                            {status}
+                          </button>
+                        </form>
+                      ) : null
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {selectedProposal ? (
+            <div className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
+              <h2 className="mb-3 text-base font-semibold">제안 상세/상태 변경</h2>
+              <form action={updateAdProposalStatusAction} className="grid gap-3 sm:grid-cols-2">
+                <input type="hidden" name="id" value={selectedProposal.id} />
+                <label className="space-y-1 text-sm">
+                  <span className="text-[#555]">상태</span>
+                  <select name="status" defaultValue={selectedProposal.status} className={selectClass}>
+                    <option value="SUBMITTED">SUBMITTED</option>
+                    <option value="IN_NEGOTIATION">IN_NEGOTIATION</option>
+                    <option value="NEGOTIATED">NEGOTIATED</option>
+                    <option value="REJECTED">REJECTED</option>
+                  </select>
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="text-[#555]">반려 사유</span>
+                  <input type="text" name="rejectedReason" defaultValue={selectedProposal.rejectedReason ?? ''} className={inputClass} />
+                </label>
+                <label className="space-y-1 text-sm sm:col-span-2">
+                  <span className="text-[#555]">협의 메모</span>
+                  <textarea name="negotiationNotes" rows={3} defaultValue={selectedProposal.negotiationNotes ?? ''} className={inputClass} />
+                </label>
+                <div className="sm:col-span-2">
+                  <FormSubmitButton idleLabel="상태 저장" pendingLabel="저장 중..." className={submitClass} />
+                </div>
+              </form>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {/* ── Contents tab ───────────────────────────────────────────────────── */}
+      {activeSection === 'contents' && (
+        <div className="space-y-6">
+          <div className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
+            <h2 className="mb-4 font-semibold">광고 콘텐츠 등록</h2>
+            <form action={createAdContentAction} className="grid gap-3 sm:grid-cols-2">
+              <label className="space-y-1 text-sm">
+                <span className="text-[#555]">광고주</span>
+                <select name="advertiserId" className={selectClass}>
+                  <option value="">광고주 선택</option>
+                  {advertisers.map((advertiser) => (
+                    <option key={advertiser.id} value={advertiser.id}>{advertiser.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="text-[#555]">연결 제안 ID (선택)</span>
+                <input type="text" name="proposalId" className={inputClass} />
+              </label>
+              <label className="space-y-1 text-sm sm:col-span-2">
+                <span className="text-[#555]">제목</span>
+                <input type="text" name="title" className={inputClass} />
+              </label>
+              <label className="space-y-1 text-sm sm:col-span-2">
+                <span className="text-[#555]">본문 <span className="text-red-500">*</span></span>
+                <textarea name="body" rows={4} required className={inputClass} />
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="text-[#555]">썸네일 URL</span>
+                <input type="url" name="thumbnailUrl" className={inputClass} />
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="text-[#555]">랜딩 URL</span>
+                <input type="url" name="landingUrl" className={inputClass} />
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="text-[#555]">노출 작성자명</span>
+                <input type="text" name="displayName" className={inputClass} />
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="text-[#555]">카테고리명</span>
+                <input type="text" name="categoryName" className={inputClass} />
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="text-[#555]">도시명</span>
+                <input type="text" name="cityName" className={inputClass} />
+              </label>
+              <div className="sm:col-span-2">
+                <FormSubmitButton idleLabel="콘텐츠 등록" pendingLabel="등록 중..." className={submitClass} />
+              </div>
+            </form>
+          </div>
+
+          <div className="space-y-3">
+            {adContents.length === 0 ? (
+              <p className="rounded-xl border border-[#e8e8e8] bg-white p-4 text-sm text-[#888]">
+                등록된 광고 콘텐츠가 없습니다.
+              </p>
+            ) : (
+              adContents.map((content) => (
+                <div key={content.id} className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold">{content.title ?? '(제목 없음)'}</p>
+                      <p className="text-xs text-[#888]">{content.advertiser.name} · {content.status}</p>
+                    </div>
+                    <Link href={`/ads-manager/contents?contentId=${content.id}`} className="text-xs underline">
+                      상세 보기
+                    </Link>
+                  </div>
+                  <p className="line-clamp-2 text-sm text-[#666]">{content.body}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {(['DRAFT', 'REVIEW', 'APPROVED', 'REJECTED'] as const).map((status) => (
+                      content.status !== status ? (
+                        <form key={status} action={updateAdContentStatusAction}>
+                          <input type="hidden" name="id" value={content.id} />
+                          <input type="hidden" name="status" value={status} />
+                          <button type="submit" className="rounded-lg border border-[#e8e8e8] px-2 py-1 text-xs hover:bg-[#f9f9f9]">
+                            {status}
+                          </button>
+                        </form>
+                      ) : null
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {selectedContent ? (
+            <div className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
+              <h2 className="mb-3 text-base font-semibold">콘텐츠 상세/수정</h2>
+              <form action={updateAdContentAction} className="grid gap-3 sm:grid-cols-2">
+                <input type="hidden" name="id" value={selectedContent.id} />
+                <label className="space-y-1 text-sm sm:col-span-2">
+                  <span className="text-[#555]">제목</span>
+                  <input type="text" name="title" defaultValue={selectedContent.title ?? ''} className={inputClass} />
+                </label>
+                <label className="space-y-1 text-sm sm:col-span-2">
+                  <span className="text-[#555]">본문</span>
+                  <textarea name="body" rows={4} defaultValue={selectedContent.body} className={inputClass} />
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="text-[#555]">썸네일 URL</span>
+                  <input type="url" name="thumbnailUrl" defaultValue={selectedContent.thumbnailUrl ?? ''} className={inputClass} />
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="text-[#555]">랜딩 URL</span>
+                  <input type="url" name="landingUrl" defaultValue={selectedContent.landingUrl ?? ''} className={inputClass} />
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="text-[#555]">노출 작성자명</span>
+                  <input type="text" name="displayName" defaultValue={selectedContent.displayName ?? ''} className={inputClass} />
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="text-[#555]">카테고리명</span>
+                  <input type="text" name="categoryName" defaultValue={selectedContent.categoryName ?? ''} className={inputClass} />
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="text-[#555]">도시명</span>
+                  <input type="text" name="cityName" defaultValue={selectedContent.cityName ?? ''} className={inputClass} />
+                </label>
+                <label className="space-y-1 text-sm sm:col-span-2">
+                  <span className="text-[#555]">리뷰 메모</span>
+                  <textarea name="reviewNotes" rows={3} defaultValue={selectedContent.reviewNotes ?? ''} className={inputClass} />
+                </label>
+                <div className="sm:col-span-2">
+                  <FormSubmitButton idleLabel="콘텐츠 저장" pendingLabel="저장 중..." className={submitClass} />
+                </div>
+              </form>
+              <form action={updateAdContentStatusAction} className="mt-3 flex flex-wrap gap-2">
+                <input type="hidden" name="id" value={selectedContent.id} />
+                <select name="status" defaultValue={selectedContent.status} className={selectClass}>
+                  <option value="DRAFT">DRAFT</option>
+                  <option value="REVIEW">REVIEW</option>
+                  <option value="APPROVED">APPROVED</option>
+                  <option value="REJECTED">REJECTED</option>
+                </select>
+                <button type="submit" className="rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm hover:bg-[#f9f9f9]">
+                  상태 변경
+                </button>
               </form>
             </div>
           ) : null}

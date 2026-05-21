@@ -4,7 +4,7 @@ type LegacyAdminAdsPageProps = {
   searchParams: Promise<{ tab?: string; error?: string; success?: string }>;
 };
 
-const VALID_SECTIONS = ['campaigns', 'products', 'rules'] as const;
+const VALID_SECTIONS = ['campaigns', 'proposals', 'contents', 'products', 'rules'] as const;
 
 function resolveSection(tab: string | undefined) {
   if (tab && (VALID_SECTIONS as readonly string[]).includes(tab)) {

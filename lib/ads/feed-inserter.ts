@@ -6,14 +6,30 @@ const BODY_PREVIEW_LENGTH = 220;
 
 type RawCampaign = {
   id: string;
-  postId: string;
+  postId: string | null;
+  adContentId: string | null;
   landingUrl: string | null;
   priority: number;
+  advertiser: {
+    name: string;
+  } | null;
   adProduct: {
     placementType: string;
     size: string;
     layout: string;
   };
+  adContent: {
+    id: string;
+    status: string;
+    title: string | null;
+    body: string;
+    thumbnailUrl: string | null;
+    landingUrl: string | null;
+    displayName: string | null;
+    categoryName: string | null;
+    cityName: string | null;
+    createdAt: Date;
+  } | null;
   post: {
     id: string;
     title: string | null;
@@ -29,27 +45,58 @@ type RawCampaign = {
       accountType: 'REAL_USER' | 'PERSONA' | 'OPERATOR' | 'SYSTEM';
       neighbourWarmth: number;
     };
-  };
+  } | null;
 };
 
 function toAdFeedItem(campaign: RawCampaign): AdFeedItem {
+  const title = campaign.adContent?.title ?? campaign.post?.title ?? null;
+  const body = campaign.adContent?.body ?? campaign.post?.body ?? '';
+  const fallbackHref = campaign.adContent
+    ? `/ads/${campaign.adContent.id}`
+    : campaign.post
+      ? `/posts/${campaign.post.id}`
+      : '/posts';
+  const href = campaign.landingUrl ?? campaign.adContent?.landingUrl ?? fallbackHref;
+  const createdAt =
+    campaign.adContent?.createdAt ??
+    campaign.post?.createdAt ??
+    new Date();
+  const authorDisplayName =
+    campaign.adContent?.displayName ??
+    campaign.advertiser?.name ??
+    campaign.post?.author.displayName ??
+    '광고';
+  const category = campaign.adContent?.categoryName
+    ? { name: campaign.adContent.categoryName }
+    : campaign.post?.category ?? null;
+  const city = campaign.adContent?.cityName
+    ? { name: campaign.adContent.cityName }
+    : campaign.post?.city ?? null;
+  const thumbnailUrl =
+    campaign.adContent?.thumbnailUrl ??
+    campaign.post?.images[0]?.url ??
+    null;
+
   return {
-    id: campaign.post.id,
-    title: campaign.post.title,
-    bodyPreview: campaign.post.body.slice(0, BODY_PREVIEW_LENGTH),
-    href: campaign.landingUrl ?? `/posts/${campaign.post.id}`,
-    createdAt: campaign.post.createdAt.toISOString(),
-    thumbnailUrl: campaign.post.images[0]?.url ?? null,
-    category: campaign.post.category,
-    city: campaign.post.city,
+    id: campaign.adContent?.id ?? campaign.post?.id ?? campaign.id,
+    title,
+    bodyPreview: body.slice(0, BODY_PREVIEW_LENGTH),
+    href,
+    createdAt: createdAt.toISOString(),
+    thumbnailUrl,
+    category,
+    city,
     author: {
-      displayName: campaign.post.author.displayName,
-      profileImageUrl: campaign.post.author.profileImageUrl,
-      isOperator: shouldShowOperatorBadge(campaign.post.author),
+      displayName: authorDisplayName,
+      profileImageUrl: campaign.post?.author.profileImageUrl ?? null,
+      isOperator: campaign.post?.author
+        ? shouldShowOperatorBadge(campaign.post.author)
+        : false,
     },
     isAd: true,
     adCampaignId: campaign.id,
-    adPostId: campaign.post.id,
+    adContentId: campaign.adContent?.id ?? null,
+    adPostId: campaign.post?.id ?? null,
     adLayout: campaign.adProduct.layout as AdLayout,
     adSize: campaign.adProduct.size as AdSize,
     adPlacementType: campaign.adProduct.placementType as AdPlacementType,
@@ -93,13 +140,31 @@ export async function fetchActiveAdSlots(options: {
       select: {
         id: true,
         postId: true,
+        adContentId: true,
         landingUrl: true,
         priority: true,
+        advertiser: {
+          select: { name: true },
+        },
         adProduct: {
           select: {
             placementType: true,
             size: true,
             layout: true,
+          },
+        },
+        adContent: {
+          select: {
+            id: true,
+            status: true,
+            title: true,
+            body: true,
+            thumbnailUrl: true,
+            landingUrl: true,
+            displayName: true,
+            categoryName: true,
+            cityName: true,
+            createdAt: true,
           },
         },
         post: {
@@ -138,7 +203,9 @@ export async function fetchActiveAdSlots(options: {
 
   // Only show ads for published posts
   const activeCampaigns = campaigns.filter(
-    (c) => c.post.status === 'PUBLISHED',
+    (c) =>
+      (c.adContent && c.adContent.status === 'APPROVED') ||
+      (c.post && c.post.status === 'PUBLISHED'),
   ) as RawCampaign[];
 
   const topFixedCampaigns = activeCampaigns.filter(
@@ -168,6 +235,11 @@ const DEFAULT_INLINE_RULE: InlinePlacementRule = {
 
 const AD_SCHEMA_TOKENS = [
   'AdCampaign',
+  'AdContent',
+  'AdProposal',
+  'Advertiser',
+  'AdvertiserMember',
+  'AdAuditLog',
   'AdProduct',
   'AdPlacementRule',
   'AdImpression',

@@ -34,7 +34,8 @@ export type InfinitePostItem = {
   // Ad-specific fields (only present when isAd: true)
   isAd?: boolean;
   adCampaignId?: string;
-  adPostId?: string;
+  adContentId?: string | null;
+  adPostId?: string | null;
   adLayout?: string;
   adSize?: string;
   adPlacementType?: string;

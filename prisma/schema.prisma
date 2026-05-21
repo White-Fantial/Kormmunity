@@ -139,6 +139,25 @@ enum AdPricingModel {
   CPM
 }
 
+enum AdvertiserMemberRole {
+  OWNER
+  MEMBER
+}
+
+enum AdProposalStatus {
+  SUBMITTED
+  IN_NEGOTIATION
+  NEGOTIATED
+  REJECTED
+}
+
+enum AdContentStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  REJECTED
+}
+
 model User {
   id                   String             @id @default(cuid())
   kakaoId              String             @unique
@@ -189,6 +208,12 @@ model User {
   locationChangeLogs   LocationChangeLog[] @relation("LocationChangeUser")
   actedLocationChanges LocationChangeLog[] @relation("LocationChangeActor")
   staffAssignments     StaffAssignment[]
+  advertiserMemberships AdvertiserMember[]
+  submittedAdProposals AdProposal[] @relation("AdProposalSubmittedBy")
+  negotiatedAdProposals AdProposal[] @relation("AdProposalNegotiatedBy")
+  adContentsCreated AdContent[] @relation("AdContentCreatedBy")
+  adContentsReviewed AdContent[] @relation("AdContentReviewedBy")
+  adAuditLogs AdAuditLog[] @relation("AdAuditActor")
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 }
@@ -664,7 +689,9 @@ model AdProduct {
 
 model AdCampaign {
   id              String           @id @default(cuid())
-  postId          String
+  advertiserId    String?
+  postId          String?
+  adContentId     String?
   adProductId     String
   status          AdCampaignStatus @default(DRAFT)
   priority        Int              @default(0)
@@ -675,7 +702,9 @@ model AdCampaign {
   targetCityId    String?
   landingUrl      String?
   notes           String?
-  post            Post             @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post            Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  adContent       AdContent?       @relation(fields: [adContentId], references: [id], onDelete: Cascade)
+  advertiser      Advertiser?      @relation(fields: [advertiserId], references: [id], onDelete: SetNull)
   adProduct       AdProduct        @relation(fields: [adProductId], references: [id])
   targetCountry   Country?         @relation("AdCampaignTargetCountry", fields: [targetCountryId], references: [id])
   targetCity      City?            @relation("AdCampaignTargetCity", fields: [targetCityId], references: [id])
@@ -686,8 +715,11 @@ model AdCampaign {
   updatedAt       DateTime         @updatedAt
 
   @@index([status, startAt, endAt])
+  @@index([status, startAt, endAt, targetCountryId, targetCityId])
   @@index([adProductId, status])
+  @@index([advertiserId, status])
   @@index([postId, status])
+  @@index([adContentId, status])
   @@index([targetCountryId, status])
   @@index([targetCityId, status])
 }
@@ -706,7 +738,8 @@ model AdPlacementRule {
 model AdImpression {
   id                String          @id @default(cuid())
   campaignId        String
-  postId            String
+  postId            String?
+  adContentId       String?
   placementType     AdPlacementType
   pageKey           String
   positionIndex     Int
@@ -717,13 +750,15 @@ model AdImpression {
 
   @@index([campaignId, viewedAt])
   @@index([postId, viewedAt])
+  @@index([adContentId, viewedAt])
   @@index([viewedAt])
 }
 
 model AdClick {
   id                String     @id @default(cuid())
   campaignId        String
-  postId            String
+  postId            String?
+  adContentId       String?
   impressionId      String?
   viewerUserId      String?
   viewerFingerprint String?
@@ -732,6 +767,7 @@ model AdClick {
 
   @@index([campaignId, clickedAt])
   @@index([postId, clickedAt])
+  @@index([adContentId, clickedAt])
   @@index([clickedAt])
 }
 
@@ -764,4 +800,115 @@ model StaffAssignment {
   @@index([userId, isActive])
   @@index([role, isActive])
   @@index([countryId, cityId])
+}
+
+model Advertiser {
+  id             String             @id @default(cuid())
+  name           String
+  slug           String             @unique
+  contactEmail   String?
+  contactPhone   String?
+  websiteUrl     String?
+  isActive       Boolean            @default(true)
+  notes          String?
+  members        AdvertiserMember[]
+  proposals      AdProposal[]
+  adContents     AdContent[]
+  adCampaigns    AdCampaign[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+}
+
+model AdvertiserMember {
+  id            String               @id @default(cuid())
+  advertiserId  String
+  userId        String
+  role          AdvertiserMemberRole @default(MEMBER)
+  isActive      Boolean              @default(true)
+  advertiser    Advertiser           @relation(fields: [advertiserId], references: [id], onDelete: Cascade)
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@unique([advertiserId, userId])
+  @@index([userId, isActive])
+  @@index([advertiserId, role, isActive])
+}
+
+model AdProposal {
+  id                    String           @id @default(cuid())
+  advertiserId          String
+  submittedByUserId     String?
+  negotiatedByUserId    String?
+  status                AdProposalStatus @default(SUBMITTED)
+  title                 String
+  body                  String
+  requestedStartAt      DateTime?
+  requestedEndAt        DateTime?
+  requestedBudget       Decimal?         @db.Decimal(10, 2)
+  requestedLandingUrl   String?
+  negotiationNotes      String?
+  rejectedReason        String?
+  advertisedProductCode String?
+  advertiser            Advertiser       @relation(fields: [advertiserId], references: [id], onDelete: Cascade)
+  submittedByUser       User?            @relation("AdProposalSubmittedBy", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+  negotiatedByUser      User?            @relation("AdProposalNegotiatedBy", fields: [negotiatedByUserId], references: [id], onDelete: SetNull)
+  adContent             AdContent?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  @@index([advertiserId, status, createdAt])
+  @@index([status, updatedAt])
+}
+
+model AdContent {
+  id               String          @id @default(cuid())
+  advertiserId     String
+  proposalId       String?         @unique
+  createdByUserId  String?
+  reviewedByUserId String?
+  status           AdContentStatus @default(DRAFT)
+  title            String?
+  body             String
+  thumbnailUrl     String?
+  landingUrl       String?
+  displayName      String?
+  categoryName     String?
+  cityName         String?
+  reviewNotes      String?
+  approvedAt       DateTime?
+  rejectedAt       DateTime?
+  advertiser       Advertiser      @relation(fields: [advertiserId], references: [id], onDelete: Cascade)
+  proposal         AdProposal?     @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+  createdByUser    User?           @relation("AdContentCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  reviewedByUser   User?           @relation("AdContentReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  campaigns        AdCampaign[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([advertiserId, status, createdAt])
+  @@index([status, updatedAt])
+}
+
+model AdAuditLog {
+  id            String   @id @default(cuid())
+  actorId       String?
+  advertiserId  String?
+  proposalId    String?
+  adContentId   String?
+  campaignId    String?
+  actionType    String
+  message       String?
+  metadata      Json?
+  actor         User?    @relation("AdAuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  advertiser    Advertiser? @relation(fields: [advertiserId], references: [id], onDelete: SetNull)
+  proposal      AdProposal? @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+  adContent     AdContent?  @relation(fields: [adContentId], references: [id], onDelete: SetNull)
+  campaign      AdCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  createdAt     DateTime @default(now())
+
+  @@index([campaignId, createdAt])
+  @@index([proposalId, createdAt])
+  @@index([adContentId, createdAt])
+  @@index([advertiserId, createdAt])
 }

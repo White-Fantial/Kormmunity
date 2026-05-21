@@ -48,7 +48,11 @@ export function AdCard({ ad }: AdCardProps) {
     void fetch('/api/ads/click', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ campaignId: ad.adCampaignId, postId: ad.adPostId }),
+      body: JSON.stringify({
+        campaignId: ad.adCampaignId,
+        postId: ad.adPostId,
+        adContentId: ad.adContentId,
+      }),
       keepalive: true,
     });
   }
@@ -59,6 +63,7 @@ export function AdCard({ ad }: AdCardProps) {
         <AdImpressionTracker
           campaignId={ad.adCampaignId}
           postId={ad.adPostId}
+          adContentId={ad.adContentId}
           placementType={ad.adPlacementType}
         />
         <Link
@@ -106,6 +111,7 @@ export function AdCard({ ad }: AdCardProps) {
       <AdImpressionTracker
         campaignId={ad.adCampaignId}
         postId={ad.adPostId}
+        adContentId={ad.adContentId}
         placementType={ad.adPlacementType}
       />
       <Link href={ad.href} className="block space-y-3 p-3 sm:p-4" onClick={handleClick}>

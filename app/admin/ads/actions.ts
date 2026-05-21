@@ -2,15 +2,22 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import type { AdCampaignStatus, AdPlacementType } from '@prisma/client';
+import type { AdCampaignStatus, AdContentStatus, AdPlacementType, AdProposalStatus, Prisma } from '@prisma/client';
 
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
-import { canAccessAdsManagerSection } from '@/lib/permissions';
+import {
+  canAccessAdsManagerSection,
+  canCreateAdProposal,
+  canEditAdProposal,
+  canManageAdContent,
+} from '@/lib/permissions';
 
 const ADS_MANAGER_SECTION_PATH = {
   campaigns: '/ads-manager/campaigns',
   products: '/ads-manager/products',
+  proposals: '/ads-manager/proposals',
+  contents: '/ads-manager/contents',
   rules: '/ads-manager/rules',
 } as const;
 
@@ -29,20 +36,55 @@ function normalizeText(value: FormDataEntryValue | null): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function requireAdminUser() {
-  return getCurrentUser().then((user) => {
-    if (!user || !canAccessAdsManagerSection(user)) {
-      redirect('/posts');
-    }
+async function requireAdsUser() {
+  const user = await getCurrentUser();
+  if (!user || !canAccessAdsManagerSection(user)) {
+    redirect('/posts');
+  }
 
-    return user;
+  return user;
+}
+
+function parseNullableDateTime(value: string | null): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+async function logAdAudit(
+  tx: Prisma.TransactionClient,
+  data: {
+    actorId?: string | null;
+    advertiserId?: string | null;
+    proposalId?: string | null;
+    adContentId?: string | null;
+    campaignId?: string | null;
+    actionType: string;
+    message?: string | null;
+    metadata?: Prisma.InputJsonValue;
+  },
+) {
+  await tx.adAuditLog.create({
+    data: {
+      actorId: data.actorId ?? null,
+      advertiserId: data.advertiserId ?? null,
+      proposalId: data.proposalId ?? null,
+      adContentId: data.adContentId ?? null,
+      campaignId: data.campaignId ?? null,
+      actionType: data.actionType,
+      message: data.message ?? null,
+      metadata: data.metadata,
+    },
   });
 }
 
 // ─── AdProduct ────────────────────────────────────────────────────────────────
 
 export async function createAdProductAction(formData: FormData) {
-  await requireAdminUser();
+  await requireAdsUser();
 
   const code = normalizeText(formData.get('code'));
   const name = normalizeText(formData.get('name'));
@@ -62,13 +104,13 @@ export async function createAdProductAction(formData: FormData) {
     data: {
       code,
       name,
-      placementType: placementType as AdPlacementType,
+      placementType,
       size: size as 'S' | 'M' | 'L',
       layout: layout as 'TEXT' | 'THUMBNAIL' | 'IMAGE' | 'FEATURED',
       pricingModel: pricingModel as 'FIXED' | 'CPM',
       basePrice,
       description,
-      sortOrder: isNaN(sortOrder) ? 0 : sortOrder,
+      sortOrder: Number.isNaN(sortOrder) ? 0 : sortOrder,
     },
   });
 
@@ -77,7 +119,7 @@ export async function createAdProductAction(formData: FormData) {
 }
 
 export async function updateAdProductAction(formData: FormData) {
-  await requireAdminUser();
+  await requireAdsUser();
 
   const id = normalizeText(formData.get('id'));
   const name = normalizeText(formData.get('name'));
@@ -97,13 +139,13 @@ export async function updateAdProductAction(formData: FormData) {
     where: { id },
     data: {
       name,
-      placementType: placementType as AdPlacementType,
+      placementType,
       size: size as 'S' | 'M' | 'L',
       layout: layout as 'TEXT' | 'THUMBNAIL' | 'IMAGE' | 'FEATURED',
       pricingModel: pricingModel as 'FIXED' | 'CPM',
       basePrice,
       description,
-      sortOrder: isNaN(sortOrder) ? 0 : sortOrder,
+      sortOrder: Number.isNaN(sortOrder) ? 0 : sortOrder,
     },
   });
 
@@ -112,7 +154,7 @@ export async function updateAdProductAction(formData: FormData) {
 }
 
 export async function toggleAdProductActiveAction(formData: FormData) {
-  await requireAdminUser();
+  await requireAdsUser();
 
   const id = normalizeText(formData.get('id'));
   if (!id) {
@@ -130,55 +172,403 @@ export async function toggleAdProductActiveAction(formData: FormData) {
   redirectAdsManager('products');
 }
 
+// ─── AdProposal ────────────────────────────────────────────────────────────────
+
+export async function createAdProposalAction(formData: FormData) {
+  const currentUser = await requireAdsUser();
+
+  const advertiserId = normalizeText(formData.get('advertiserId'));
+  const title = normalizeText(formData.get('title'));
+  const body = normalizeText(formData.get('body'));
+  const requestedStartAt = parseNullableDateTime(normalizeText(formData.get('requestedStartAt')) || null);
+  const requestedEndAt = parseNullableDateTime(normalizeText(formData.get('requestedEndAt')) || null);
+  const requestedBudgetRaw = normalizeText(formData.get('requestedBudget'));
+  const requestedLandingUrl = normalizeText(formData.get('requestedLandingUrl')) || null;
+  const advertisedProductCode = normalizeText(formData.get('advertisedProductCode')) || null;
+
+  if (!advertiserId || !title || !body) {
+    redirectAdsManager('proposals', { error: '광고주, 제목, 내용은 필수입니다.' });
+  }
+
+  const allowed = await canCreateAdProposal(currentUser, advertiserId);
+  if (!allowed) {
+    redirectAdsManager('proposals', { error: '제안을 등록할 권한이 없습니다.' });
+  }
+
+  const requestedBudget = requestedBudgetRaw ? Number(requestedBudgetRaw) : null;
+
+  const proposal = await prisma.adProposal.create({
+    data: {
+      advertiserId,
+      submittedByUserId: currentUser.id,
+      status: 'SUBMITTED',
+      title,
+      body,
+      requestedStartAt,
+      requestedEndAt,
+      requestedBudget,
+      requestedLandingUrl,
+      advertisedProductCode,
+    },
+    select: { id: true },
+  });
+
+  await prisma.adAuditLog.create({
+    data: {
+      actorId: currentUser.id,
+      advertiserId,
+      proposalId: proposal.id,
+      actionType: 'PROPOSAL_SUBMITTED',
+      message: '광고 제안이 등록되었습니다.',
+    },
+  });
+
+  revalidatePath(ADS_MANAGER_SECTION_PATH.proposals);
+  redirectAdsManager('proposals', { success: '광고 제안이 등록되었습니다.' });
+}
+
+export async function updateAdProposalStatusAction(formData: FormData) {
+  const currentUser = await requireAdsUser();
+
+  const id = normalizeText(formData.get('id'));
+  const status = normalizeText(formData.get('status')) as AdProposalStatus;
+  const negotiationNotes = normalizeText(formData.get('negotiationNotes')) || null;
+  const rejectedReason = normalizeText(formData.get('rejectedReason')) || null;
+
+  if (!id || !status) {
+    redirectAdsManager('proposals', { error: '제안 ID와 상태는 필수입니다.' });
+  }
+
+  const validStatuses: AdProposalStatus[] = [
+    'SUBMITTED',
+    'IN_NEGOTIATION',
+    'NEGOTIATED',
+    'REJECTED',
+  ];
+  if (!validStatuses.includes(status)) {
+    redirectAdsManager('proposals', { error: '유효하지 않은 제안 상태입니다.' });
+  }
+
+  const proposal = await prisma.adProposal.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      advertiserId: true,
+      status: true,
+      submittedByUserId: true,
+    },
+  });
+
+  if (!proposal) {
+    redirectAdsManager('proposals', { error: '광고 제안을 찾을 수 없습니다.' });
+  }
+
+  const isManager = canManageAdContent(currentUser);
+  if (!isManager) {
+    const allowed = await canEditAdProposal(currentUser, proposal);
+    if (!allowed) {
+      redirectAdsManager('proposals', { error: '제안을 수정할 권한이 없습니다.' });
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.adProposal.update({
+      where: { id },
+      data: {
+        status,
+        negotiationNotes,
+        rejectedReason,
+        negotiatedByUserId:
+          status === 'IN_NEGOTIATION' || status === 'NEGOTIATED' || status === 'REJECTED'
+            ? currentUser.id
+            : null,
+      },
+    });
+
+    await logAdAudit(tx, {
+      actorId: currentUser.id,
+      advertiserId: proposal.advertiserId,
+      proposalId: proposal.id,
+      actionType: 'PROPOSAL_STATUS_CHANGED',
+      message: `광고 제안 상태가 ${status}로 변경되었습니다.`,
+      metadata: { from: proposal.status, to: status },
+    });
+  });
+
+  revalidatePath(ADS_MANAGER_SECTION_PATH.proposals);
+  redirectAdsManager('proposals', { success: '제안 상태가 변경되었습니다.' });
+}
+
+// ─── AdContent ─────────────────────────────────────────────────────────────────
+
+export async function createAdContentAction(formData: FormData) {
+  const currentUser = await requireAdsUser();
+
+  if (!canManageAdContent(currentUser)) {
+    redirectAdsManager('contents', { error: '광고 콘텐츠를 생성할 권한이 없습니다.' });
+  }
+
+  const proposalId = normalizeText(formData.get('proposalId')) || null;
+  let advertiserId = normalizeText(formData.get('advertiserId')) || null;
+  const title = normalizeText(formData.get('title')) || null;
+  const body = normalizeText(formData.get('body'));
+  const thumbnailUrl = normalizeText(formData.get('thumbnailUrl')) || null;
+  const landingUrl = normalizeText(formData.get('landingUrl')) || null;
+  const displayName = normalizeText(formData.get('displayName')) || null;
+  const categoryName = normalizeText(formData.get('categoryName')) || null;
+  const cityName = normalizeText(formData.get('cityName')) || null;
+
+  if (!body) {
+    redirectAdsManager('contents', { error: '콘텐츠 본문은 필수입니다.' });
+  }
+
+  if (proposalId) {
+    const proposal = await prisma.adProposal.findUnique({
+      where: { id: proposalId },
+      select: { advertiserId: true },
+    });
+
+    if (!proposal) {
+      redirectAdsManager('contents', { error: '연결할 제안을 찾을 수 없습니다.' });
+    }
+
+    advertiserId = proposal.advertiserId;
+  }
+
+  if (!advertiserId) {
+    redirectAdsManager('contents', { error: '광고주를 선택해 주세요.' });
+  }
+
+  const content = await prisma.adContent.create({
+    data: {
+      advertiserId,
+      proposalId,
+      createdByUserId: currentUser.id,
+      status: 'DRAFT',
+      title,
+      body,
+      thumbnailUrl,
+      landingUrl,
+      displayName,
+      categoryName,
+      cityName,
+    },
+    select: { id: true },
+  });
+
+  await prisma.adAuditLog.create({
+    data: {
+      actorId: currentUser.id,
+      advertiserId,
+      proposalId,
+      adContentId: content.id,
+      actionType: 'CONTENT_CREATED',
+      message: '광고 콘텐츠가 생성되었습니다.',
+    },
+  });
+
+  revalidatePath(ADS_MANAGER_SECTION_PATH.contents);
+  redirectAdsManager('contents', { success: '광고 콘텐츠가 생성되었습니다.' });
+}
+
+export async function updateAdContentAction(formData: FormData) {
+  const currentUser = await requireAdsUser();
+
+  if (!canManageAdContent(currentUser)) {
+    redirectAdsManager('contents', { error: '광고 콘텐츠를 수정할 권한이 없습니다.' });
+  }
+
+  const id = normalizeText(formData.get('id'));
+  const title = normalizeText(formData.get('title')) || null;
+  const body = normalizeText(formData.get('body'));
+  const thumbnailUrl = normalizeText(formData.get('thumbnailUrl')) || null;
+  const landingUrl = normalizeText(formData.get('landingUrl')) || null;
+  const displayName = normalizeText(formData.get('displayName')) || null;
+  const categoryName = normalizeText(formData.get('categoryName')) || null;
+  const cityName = normalizeText(formData.get('cityName')) || null;
+  const reviewNotes = normalizeText(formData.get('reviewNotes')) || null;
+
+  if (!id || !body) {
+    redirectAdsManager('contents', { error: '콘텐츠 ID와 본문은 필수입니다.' });
+  }
+
+  const existing = await prisma.adContent.findUnique({
+    where: { id },
+    select: { id: true, advertiserId: true },
+  });
+
+  if (!existing) {
+    redirectAdsManager('contents', { error: '광고 콘텐츠를 찾을 수 없습니다.' });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.adContent.update({
+      where: { id },
+      data: {
+        title,
+        body,
+        thumbnailUrl,
+        landingUrl,
+        displayName,
+        categoryName,
+        cityName,
+        reviewNotes,
+      },
+    });
+
+    await logAdAudit(tx, {
+      actorId: currentUser.id,
+      advertiserId: existing.advertiserId,
+      adContentId: id,
+      actionType: 'CONTENT_UPDATED',
+      message: '광고 콘텐츠가 수정되었습니다.',
+    });
+  });
+
+  revalidatePath(ADS_MANAGER_SECTION_PATH.contents);
+  redirectAdsManager('contents', { success: '광고 콘텐츠를 수정했습니다.' });
+}
+
+export async function updateAdContentStatusAction(formData: FormData) {
+  const currentUser = await requireAdsUser();
+
+  if (!canManageAdContent(currentUser)) {
+    redirectAdsManager('contents', { error: '광고 콘텐츠 상태를 변경할 권한이 없습니다.' });
+  }
+
+  const id = normalizeText(formData.get('id'));
+  const status = normalizeText(formData.get('status')) as AdContentStatus;
+  const reviewNotes = normalizeText(formData.get('reviewNotes')) || null;
+
+  if (!id || !status) {
+    redirectAdsManager('contents', { error: '콘텐츠 ID와 상태는 필수입니다.' });
+  }
+
+  const validStatuses: AdContentStatus[] = ['DRAFT', 'REVIEW', 'APPROVED', 'REJECTED'];
+  if (!validStatuses.includes(status)) {
+    redirectAdsManager('contents', { error: '유효하지 않은 콘텐츠 상태입니다.' });
+  }
+
+  const existing = await prisma.adContent.findUnique({
+    where: { id },
+    select: { id: true, advertiserId: true, status: true },
+  });
+
+  if (!existing) {
+    redirectAdsManager('contents', { error: '광고 콘텐츠를 찾을 수 없습니다.' });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.adContent.update({
+      where: { id },
+      data: {
+        status,
+        reviewNotes,
+        reviewedByUserId: status === 'APPROVED' || status === 'REJECTED' ? currentUser.id : null,
+        approvedAt: status === 'APPROVED' ? new Date() : null,
+        rejectedAt: status === 'REJECTED' ? new Date() : null,
+      },
+    });
+
+    await logAdAudit(tx, {
+      actorId: currentUser.id,
+      advertiserId: existing.advertiserId,
+      adContentId: id,
+      actionType: 'CONTENT_STATUS_CHANGED',
+      message: `광고 콘텐츠 상태가 ${status}로 변경되었습니다.`,
+      metadata: { from: existing.status, to: status },
+    });
+  });
+
+  revalidatePath(ADS_MANAGER_SECTION_PATH.contents);
+  redirectAdsManager('contents', { success: '콘텐츠 상태가 변경되었습니다.' });
+}
+
 // ─── AdCampaign ───────────────────────────────────────────────────────────────
 
 export async function createAdCampaignAction(formData: FormData) {
-  await requireAdminUser();
+  const currentUser = await requireAdsUser();
 
-  const postId = normalizeText(formData.get('postId'));
+  const adContentId = normalizeText(formData.get('adContentId')) || null;
+  const legacyPostId = normalizeText(formData.get('postId')) || null;
   const adProductId = normalizeText(formData.get('adProductId'));
   const priority = parseInt(normalizeText(formData.get('priority')) || '0', 10);
-  const startAt = normalizeText(formData.get('startAt')) || null;
-  const endAt = normalizeText(formData.get('endAt')) || null;
+  const startAt = parseNullableDateTime(normalizeText(formData.get('startAt')) || null);
+  const endAt = parseNullableDateTime(normalizeText(formData.get('endAt')) || null);
   const maxImpressions = normalizeText(formData.get('maxImpressions'));
   const targetCountryId = normalizeText(formData.get('targetCountryId')) || null;
   const targetCityId = normalizeText(formData.get('targetCityId')) || null;
   const landingUrl = normalizeText(formData.get('landingUrl')) || null;
   const notes = normalizeText(formData.get('notes')) || null;
 
-  if (!postId || !adProductId) {
-    redirectAdsManager('campaigns', { error: '게시글 ID와 광고 상품은 필수입니다.' });
+  if (!adProductId || (!adContentId && !legacyPostId)) {
+    redirectAdsManager('campaigns', { error: '광고 콘텐츠 ID(또는 legacy 게시글 ID)와 광고 상품은 필수입니다.' });
   }
 
-  // Verify post is ADVERTISEMENT category
-  const post = await prisma.post.findUnique({
-    where: { id: postId },
-    select: { id: true, status: true, category: { select: { type: true } } },
-  });
+  let advertiserId: string | null = null;
 
-  if (!post) {
-    redirectAdsManager('campaigns', { error: '게시글을 찾을 수 없습니다.' });
-  }
-
-  if (post.category.type !== 'ADVERTISEMENT') {
-    redirectAdsManager('campaigns', {
-      error: '광고 카테고리 게시글만 캠페인으로 등록할 수 있습니다.',
+  if (adContentId) {
+    const adContent = await prisma.adContent.findUnique({
+      where: { id: adContentId },
+      select: { id: true, status: true, advertiserId: true },
     });
+
+    if (!adContent) {
+      redirectAdsManager('campaigns', { error: '광고 콘텐츠를 찾을 수 없습니다.' });
+    }
+
+    if (adContent.status !== 'APPROVED') {
+      redirectAdsManager('campaigns', { error: '승인된 광고 콘텐츠만 캠페인에 연결할 수 있습니다.' });
+    }
+
+    advertiserId = adContent.advertiserId;
   }
 
-  await prisma.adCampaign.create({
+  if (legacyPostId) {
+    const post = await prisma.post.findUnique({
+      where: { id: legacyPostId },
+      select: { id: true, category: { select: { type: true } } },
+    });
+
+    if (!post) {
+      redirectAdsManager('campaigns', { error: 'legacy 게시글을 찾을 수 없습니다.' });
+    }
+
+    if (post.category.type !== 'ADVERTISEMENT') {
+      redirectAdsManager('campaigns', {
+        error: 'legacy 게시글은 광고 카테고리만 연결 가능합니다.',
+      });
+    }
+  }
+
+  const campaign = await prisma.adCampaign.create({
     data: {
-      postId,
+      advertiserId,
+      adContentId,
+      postId: legacyPostId,
       adProductId,
       status: 'DRAFT',
-      priority: isNaN(priority) ? 0 : priority,
-      startAt: startAt ? new Date(startAt) : null,
-      endAt: endAt ? new Date(endAt) : null,
+      priority: Number.isNaN(priority) ? 0 : priority,
+      startAt,
+      endAt,
       maxImpressions: maxImpressions ? parseInt(maxImpressions, 10) || null : null,
       targetCountryId,
       targetCityId,
       landingUrl,
       notes,
+    },
+    select: { id: true },
+  });
+
+  await prisma.adAuditLog.create({
+    data: {
+      actorId: currentUser.id,
+      advertiserId,
+      adContentId,
+      campaignId: campaign.id,
+      actionType: 'CAMPAIGN_CREATED',
+      message: '광고 캠페인이 생성되었습니다.',
+      metadata: { legacyPostId },
     },
   });
 
@@ -187,7 +577,7 @@ export async function createAdCampaignAction(formData: FormData) {
 }
 
 export async function updateAdCampaignStatusAction(formData: FormData) {
-  await requireAdminUser();
+  const currentUser = await requireAdsUser();
 
   const id = normalizeText(formData.get('id'));
   const status = normalizeText(formData.get('status')) as AdCampaignStatus;
@@ -201,19 +591,40 @@ export async function updateAdCampaignStatusAction(formData: FormData) {
     redirectAdsManager('campaigns', { error: '유효하지 않은 캠페인 상태입니다.' });
   }
 
-  await prisma.adCampaign.update({ where: { id }, data: { status } });
+  const existing = await prisma.adCampaign.findUnique({
+    where: { id },
+    select: { status: true, advertiserId: true, adContentId: true },
+  });
+
+  if (!existing) {
+    redirectAdsManager('campaigns', { error: '캠페인을 찾을 수 없습니다.' });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.adCampaign.update({ where: { id }, data: { status } });
+
+    await logAdAudit(tx, {
+      actorId: currentUser.id,
+      advertiserId: existing.advertiserId,
+      adContentId: existing.adContentId,
+      campaignId: id,
+      actionType: 'CAMPAIGN_STATUS_CHANGED',
+      message: `캠페인 상태가 ${status}로 변경되었습니다.`,
+      metadata: { from: existing.status, to: status },
+    });
+  });
 
   revalidatePath(ADS_MANAGER_SECTION_PATH.campaigns);
   redirectAdsManager('campaigns');
 }
 
 export async function updateAdCampaignAction(formData: FormData) {
-  await requireAdminUser();
+  const currentUser = await requireAdsUser();
 
   const id = normalizeText(formData.get('id'));
   const priority = parseInt(normalizeText(formData.get('priority')) || '0', 10);
-  const startAt = normalizeText(formData.get('startAt')) || null;
-  const endAt = normalizeText(formData.get('endAt')) || null;
+  const startAt = parseNullableDateTime(normalizeText(formData.get('startAt')) || null);
+  const endAt = parseNullableDateTime(normalizeText(formData.get('endAt')) || null);
   const maxImpressions = normalizeText(formData.get('maxImpressions'));
   const targetCountryId = normalizeText(formData.get('targetCountryId')) || null;
   const targetCityId = normalizeText(formData.get('targetCityId')) || null;
@@ -224,18 +635,38 @@ export async function updateAdCampaignAction(formData: FormData) {
     redirectAdsManager('campaigns', { error: '캠페인 ID가 없습니다.' });
   }
 
-  await prisma.adCampaign.update({
+  const existing = await prisma.adCampaign.findUnique({
     where: { id },
-    data: {
-      priority: isNaN(priority) ? 0 : priority,
-      startAt: startAt ? new Date(startAt) : null,
-      endAt: endAt ? new Date(endAt) : null,
-      maxImpressions: maxImpressions ? parseInt(maxImpressions, 10) || null : null,
-      targetCountryId,
-      targetCityId,
-      landingUrl,
-      notes,
-    },
+    select: { advertiserId: true, adContentId: true },
+  });
+
+  if (!existing) {
+    redirectAdsManager('campaigns', { error: '캠페인을 찾을 수 없습니다.' });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.adCampaign.update({
+      where: { id },
+      data: {
+        priority: Number.isNaN(priority) ? 0 : priority,
+        startAt,
+        endAt,
+        maxImpressions: maxImpressions ? parseInt(maxImpressions, 10) || null : null,
+        targetCountryId,
+        targetCityId,
+        landingUrl,
+        notes,
+      },
+    });
+
+    await logAdAudit(tx, {
+      actorId: currentUser.id,
+      advertiserId: existing.advertiserId,
+      adContentId: existing.adContentId,
+      campaignId: id,
+      actionType: 'CAMPAIGN_UPDATED',
+      message: '캠페인 설정이 수정되었습니다.',
+    });
   });
 
   revalidatePath(ADS_MANAGER_SECTION_PATH.campaigns);
@@ -245,7 +676,7 @@ export async function updateAdCampaignAction(formData: FormData) {
 // ─── AdPlacementRule ──────────────────────────────────────────────────────────
 
 export async function upsertAdPlacementRuleAction(formData: FormData) {
-  await requireAdminUser();
+  await requireAdsUser();
 
   const placementType = normalizeText(formData.get('placementType')) as AdPlacementType;
   const insertAfter = parseInt(normalizeText(formData.get('insertAfter')) || '5', 10);
@@ -260,15 +691,15 @@ export async function upsertAdPlacementRuleAction(formData: FormData) {
     where: { placementType },
     create: {
       placementType,
-      insertAfter: isNaN(insertAfter) ? 5 : insertAfter,
-      repeatInterval: isNaN(repeatInterval) ? 10 : repeatInterval,
-      maxPerPage: isNaN(maxPerPage) ? 2 : maxPerPage,
+      insertAfter: Number.isNaN(insertAfter) ? 5 : insertAfter,
+      repeatInterval: Number.isNaN(repeatInterval) ? 10 : repeatInterval,
+      maxPerPage: Number.isNaN(maxPerPage) ? 2 : maxPerPage,
       isActive: true,
     },
     update: {
-      insertAfter: isNaN(insertAfter) ? 5 : insertAfter,
-      repeatInterval: isNaN(repeatInterval) ? 10 : repeatInterval,
-      maxPerPage: isNaN(maxPerPage) ? 2 : maxPerPage,
+      insertAfter: Number.isNaN(insertAfter) ? 5 : insertAfter,
+      repeatInterval: Number.isNaN(repeatInterval) ? 10 : repeatInterval,
+      maxPerPage: Number.isNaN(maxPerPage) ? 2 : maxPerPage,
     },
   });
 

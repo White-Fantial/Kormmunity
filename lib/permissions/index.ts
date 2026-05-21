@@ -1,5 +1,11 @@
 import { CategoryVisibilityMode } from '@prisma/client';
-import type { CategoryType, PostStatus, StaffRole, UserStatus } from '@prisma/client';
+import type {
+  AdProposalStatus,
+  CategoryType,
+  PostStatus,
+  StaffRole,
+  UserStatus,
+} from '@prisma/client';
 
 import { prisma } from '@/lib/db/prisma';
 import {
@@ -99,6 +105,10 @@ function hasCoordinatorAssignment(assignments: StaffAssignmentItem[]): boolean {
 
 function hasAdManagerAssignment(assignments: StaffAssignmentItem[]): boolean {
   return assignments.some((a) => a.role === 'AD_MANAGER' || a.role === 'ADMIN');
+}
+
+function hasPartnerManagerAssignment(assignments: StaffAssignmentItem[]): boolean {
+  return assignments.some((a) => a.role === 'PARTNER_MANAGER' || a.role === 'ADMIN');
 }
 
 /**
@@ -571,6 +581,69 @@ export function canAccessOperatorBoard(user: PermissionUser | null | undefined) 
 }
 
 export function canAccessAdsManagerSection(user: PermissionUser | null | undefined) {
+  return hasAdManagerAssignment(user?.staffAssignments ?? []);
+}
+
+type PermissionAdProposal = {
+  id: string;
+  advertiserId: string;
+  status: AdProposalStatus;
+  submittedByUserId: string | null;
+};
+
+const EDITABLE_AD_PROPOSAL_STATUSES: AdProposalStatus[] = ['SUBMITTED', 'IN_NEGOTIATION'];
+
+export async function canCreateAdProposal(
+  user: PermissionUser | null | undefined,
+  advertiserId: string,
+) {
+  if (!user || !advertiserId) {
+    return false;
+  }
+
+  const assignments = user.staffAssignments ?? [];
+  if (hasAdManagerAssignment(assignments) || hasPartnerManagerAssignment(assignments)) {
+    return true;
+  }
+
+  const membership = await prisma.advertiserMember.findFirst({
+    where: { advertiserId, userId: user.id, isActive: true },
+    select: { id: true },
+  });
+
+  return Boolean(membership);
+}
+
+export async function canEditAdProposal(
+  user: PermissionUser | null | undefined,
+  proposal: PermissionAdProposal,
+) {
+  if (!user || user.status === 'SUSPENDED' || user.status === 'DELETED') {
+    return false;
+  }
+
+  if (!EDITABLE_AD_PROPOSAL_STATUSES.includes(proposal.status)) {
+    return false;
+  }
+
+  const assignments = user.staffAssignments ?? [];
+  if (hasAdManagerAssignment(assignments) || hasPartnerManagerAssignment(assignments)) {
+    return true;
+  }
+
+  const membership = await prisma.advertiserMember.findFirst({
+    where: { advertiserId: proposal.advertiserId, userId: user.id, isActive: true },
+    select: { id: true },
+  });
+
+  return Boolean(membership) && proposal.submittedByUserId === user.id;
+}
+
+export function canManageAdContent(user: PermissionUser | null | undefined) {
+  return hasAdManagerAssignment(user?.staffAssignments ?? []);
+}
+
+export function canLinkAdCampaignToContent(user: PermissionUser | null | undefined) {
   return hasAdManagerAssignment(user?.staffAssignments ?? []);
 }
 
