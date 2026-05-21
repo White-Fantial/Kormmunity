@@ -1,23 +1,25 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
+import { reviewAdvertiserMemberCampaignAction } from '@/app/advertiser-member/actions';
 import {
   advertiserMemberNavItems,
   ManagementSectionNav,
 } from '@/components/admin/management-section-nav';
+import { FormSubmitButton } from '@/components/ui/form-submit-button';
+import { getCurrentUser } from '@/lib/auth/session';
+import { prisma } from '@/lib/db/prisma';
+import { canAccessAdvertiserMemberSection } from '@/lib/permissions';
 import {
   AD_BILLING_STATUS_LABELS,
   AD_CAMPAIGN_STATUS_LABELS,
   AD_PLACEMENT_TYPE_LABELS,
 } from '@/lib/ads/types';
-import { getCurrentUser } from '@/lib/auth/session';
-import { prisma } from '@/lib/db/prisma';
-import { canAccessAdvertiserMemberSection } from '@/lib/permissions';
 
 export const dynamic = 'force-dynamic';
 
 type AdvertiserMemberCampaignsPageProps = {
-  searchParams: Promise<{ campaignId?: string }>;
+  searchParams: Promise<{ campaignId?: string; error?: string; success?: string }>;
 };
 
 export default async function AdvertiserMemberCampaignsPage({
@@ -53,6 +55,8 @@ export default async function AdvertiserMemberCampaignsPage({
           estimatedAmount: true,
           finalAmount: true,
           notes: true,
+          reviewNotes: true,
+          reviewedAt: true,
           createdAt: true,
           updatedAt: true,
           postId: true,
@@ -72,12 +76,24 @@ export default async function AdvertiserMemberCampaignsPage({
     ? adCampaigns.find((campaign) => campaign.id === query.campaignId)
     : null;
 
+  const inputClass =
+    'w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40';
+  const submitClass =
+    'rounded-xl bg-[#fee500] px-4 py-2 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00] disabled:cursor-not-allowed disabled:opacity-60';
+
   return (
     <section className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold">광고주 멤버 — 캠페인 조회</h1>
         <ManagementSectionNav items={advertiserMemberNavItems} />
       </div>
+
+      {query.error ? (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{query.error}</p>
+      ) : null}
+      {query.success ? (
+        <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{query.success}</p>
+      ) : null}
 
       <div className="space-y-3">
         {adCampaigns.length === 0 ? (
@@ -91,6 +107,7 @@ export default async function AdvertiserMemberCampaignsPage({
                 ? ((campaign._count.clicks / campaign._count.impressions) * 100).toFixed(2)
                 : '0.00';
             const statusColor: Record<string, string> = {
+              REVIEW: 'text-blue-700 bg-blue-50',
               ACTIVE: 'text-green-700 bg-green-50',
               PAUSED: 'text-amber-700 bg-amber-50',
               DRAFT: 'text-gray-600 bg-gray-50',
@@ -126,20 +143,29 @@ export default async function AdvertiserMemberCampaignsPage({
                       {campaign.priority}
                     </p>
                     <p className="text-xs text-[#888]">
-                      진행상태 {AD_CAMPAIGN_STATUS_LABELS[campaign.status]} · 과금 상태{' '}
-                      {AD_BILLING_STATUS_LABELS[campaign.billingStatus]}
+                      과금 상태 {AD_BILLING_STATUS_LABELS[campaign.billingStatus]}
                     </p>
                     <p className="text-xs text-[#888]">
                       노출 {campaign._count.impressions.toLocaleString()}회 · 클릭{' '}
                       {campaign._count.clicks.toLocaleString()}회 · CTR {ctr}%
                     </p>
                   </div>
-                  <Link
-                    href={`/advertiser-member/campaigns?campaignId=${campaign.id}`}
-                    className="text-xs underline"
-                  >
-                    상세 보기
-                  </Link>
+                  <div className="flex flex-col items-end gap-1.5">
+                    <Link
+                      href={`/advertiser-member/campaigns?campaignId=${campaign.id}`}
+                      className="text-xs underline"
+                    >
+                      상세 보기
+                    </Link>
+                    <Link
+                      href={`/ads/preview/campaign/${campaign.id}`}
+                      className="text-xs underline text-[#666]"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      미리보기
+                    </Link>
+                  </div>
                 </div>
               </div>
             );
@@ -238,9 +264,71 @@ export default async function AdvertiserMemberCampaignsPage({
                 </dd>
               </div>
             ) : null}
+            {selectedCampaign.reviewNotes ? (
+              <div className="sm:col-span-2">
+                <dt className="text-xs text-[#888]">이전 리뷰 메모</dt>
+                <dd className="mt-0.5 whitespace-pre-wrap text-[#666]">
+                  {selectedCampaign.reviewNotes}
+                </dd>
+              </div>
+            ) : null}
+            <div className="sm:col-span-2">
+              <dt className="text-xs text-[#888]">캠페인 미리보기</dt>
+              <dd className="mt-0.5">
+                <Link
+                  href={`/ads/preview/campaign/${selectedCampaign.id}`}
+                  className="text-xs underline"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  미리보기 열기
+                </Link>
+              </dd>
+            </div>
           </dl>
+
+          {selectedCampaign.status === 'REVIEW' ? (
+            <div className="mt-4 space-y-3 border-t border-[#f0f0f0] pt-4">
+              <h3 className="text-sm font-semibold">캠페인 리뷰</h3>
+              <p className="text-xs text-[#888]">
+                캠페인 내용을 미리보기로 확인한 후 승인하거나 수정 요청을 할 수 있습니다.
+                내용 직접 수정은 광고 매니저에게 전달됩니다.
+              </p>
+
+              <form action={reviewAdvertiserMemberCampaignAction}>
+                <input type="hidden" name="id" value={selectedCampaign.id} />
+                <input type="hidden" name="action" value="APPROVE" />
+                <FormSubmitButton
+                  idleLabel="캠페인 승인"
+                  pendingLabel="처리 중..."
+                  className={submitClass}
+                />
+              </form>
+
+              <form action={reviewAdvertiserMemberCampaignAction} className="space-y-2">
+                <input type="hidden" name="id" value={selectedCampaign.id} />
+                <input type="hidden" name="action" value="REQUEST_CHANGES" />
+                <label className="space-y-1 text-sm">
+                  <span className="text-[#555]">수정 요청 내용</span>
+                  <textarea
+                    name="reviewNotes"
+                    rows={3}
+                    required
+                    placeholder="광고 매니저에게 요청할 수정 사항을 입력해 주세요."
+                    className={inputClass}
+                  />
+                </label>
+                <FormSubmitButton
+                  idleLabel="수정 요청 보내기"
+                  pendingLabel="전송 중..."
+                  className={submitClass}
+                />
+              </form>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>
   );
 }
+

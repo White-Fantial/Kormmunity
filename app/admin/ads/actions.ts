@@ -543,7 +543,7 @@ export async function updateAdContentStatusAction(formData: FormData) {
     redirectAdsManager('contents', { error: '콘텐츠 ID와 상태는 필수입니다.' });
   }
 
-  const validStatuses: AdContentStatus[] = ['DRAFT', 'REVIEW', 'REQUEST_CHANGES', 'APPROVED', 'REJECTED'];
+  const validStatuses: AdContentStatus[] = ['DRAFT', 'REVIEW', 'APPROVED', 'REJECTED'];
   if (!validStatuses.includes(status)) {
     redirectAdsManager('contents', { error: '유효하지 않은 콘텐츠 상태입니다.' });
   }
@@ -564,7 +564,7 @@ export async function updateAdContentStatusAction(formData: FormData) {
         status,
         reviewNotes,
         reviewedByUserId:
-          status === 'APPROVED' || status === 'REJECTED' || status === 'REQUEST_CHANGES'
+          status === 'APPROVED' || status === 'REJECTED'
             ? currentUser.id
             : null,
         approvedAt: status === 'APPROVED' ? new Date() : null,
@@ -753,7 +753,7 @@ export async function updateAdCampaignStatusAction(formData: FormData) {
     redirectAdsManager('campaigns', { error: '캠페인 ID와 상태는 필수입니다.' });
   }
 
-  const validStatuses: AdCampaignStatus[] = ['DRAFT', 'ACTIVE', 'PAUSED', 'ENDED', 'CANCELLED'];
+  const validStatuses: AdCampaignStatus[] = ['DRAFT', 'REVIEW', 'ACTIVE', 'PAUSED', 'ENDED', 'CANCELLED'];
   if (!validStatuses.includes(status)) {
     redirectAdsManager('campaigns', { error: '유효하지 않은 캠페인 상태입니다.' });
   }

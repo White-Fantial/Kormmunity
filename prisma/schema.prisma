@@ -128,6 +128,7 @@ enum AdLayout {
 
 enum AdCampaignStatus {
   DRAFT
+  REVIEW
   ACTIVE
   PAUSED
   ENDED
@@ -165,7 +166,6 @@ enum AdProposalStatus {
 enum AdContentStatus {
   DRAFT
   REVIEW
-  REQUEST_CHANGES
   APPROVED
   REJECTED
 }
@@ -225,6 +225,7 @@ model User {
   negotiatedAdProposals AdProposal[] @relation("AdProposalNegotiatedBy")
   adContentsCreated AdContent[] @relation("AdContentCreatedBy")
   adContentsReviewed AdContent[] @relation("AdContentReviewedBy")
+  reviewedAdCampaigns AdCampaign[] @relation("AdCampaignReviewedBy")
   adAuditLogs AdAuditLog[] @relation("AdAuditActor")
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
@@ -723,12 +724,16 @@ model AdCampaign {
   pricingSnapshot Json?
   landingUrl      String?
   notes           String?
+  reviewNotes     String?
+  reviewedByUserId String?
+  reviewedAt      DateTime?
   post            Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
   adContent       AdContent?       @relation(fields: [adContentId], references: [id], onDelete: Cascade)
   advertiser      Advertiser?      @relation(fields: [advertiserId], references: [id], onDelete: SetNull)
   adProduct       AdProduct        @relation(fields: [adProductId], references: [id])
   targetCountry   Country?         @relation("AdCampaignTargetCountry", fields: [targetCountryId], references: [id])
   targetCity      City?            @relation("AdCampaignTargetCity", fields: [targetCityId], references: [id])
+  reviewedByUser  User?            @relation("AdCampaignReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
   impressions     AdImpression[]
   clicks          AdClick[]
   dailyStats      AdDailyStat[]
