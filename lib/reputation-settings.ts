@@ -25,6 +25,8 @@ export const REPUTATION_SETTING_DEFAULTS = {
   NEIGHBOUR_WARMTH_MAX_WARMTH: 100,
   NEIGHBOUR_WARMTH_GROWTH_CURVE: 1.6,
   NEIGHBOUR_WARMTH_DROP_CURVE: 1.4,
+  GLOBAL_HOT_ENABLED: 0,
+  GLOBAL_HOT_MIN_SCORE: 50,
 } as const;
 
 export type ReputationSettingKey = keyof typeof REPUTATION_SETTING_DEFAULTS;
@@ -33,7 +35,7 @@ export type ReputationSettingField = {
   label: string;
   description?: string;
   step?: string;
-  section: 'community' | 'warmth-delta' | 'warmth-curve';
+  section: 'community' | 'warmth-delta' | 'warmth-curve' | 'global-hot';
 };
 
 export const REPUTATION_SETTING_FIELDS: readonly ReputationSettingField[] = [
@@ -61,6 +63,8 @@ export const REPUTATION_SETTING_FIELDS: readonly ReputationSettingField[] = [
   { key: 'NEIGHBOUR_WARMTH_MAX_WARMTH', label: '최대 온기(maxWarmth)', step: '0.1', section: 'warmth-curve' },
   { key: 'NEIGHBOUR_WARMTH_GROWTH_CURVE', label: '증가 곡선(growthCurve)', step: '0.01', section: 'warmth-curve' },
   { key: 'NEIGHBOUR_WARMTH_DROP_CURVE', label: '감소 곡선(dropCurve)', step: '0.01', section: 'warmth-curve' },
+  { key: 'GLOBAL_HOT_ENABLED', label: '글로벌핫 메뉴 활성화 (1=활성, 0=비활성)', step: '1', section: 'global-hot' },
+  { key: 'GLOBAL_HOT_MIN_SCORE', label: '글로벌핫 최소 커뮤니티 점수', step: '0.1', section: 'global-hot' },
 ] as const;
 
 const COMMUNITY_SCORE_REASON_TO_SETTING_KEY = {
@@ -173,5 +177,13 @@ export async function getWarmthCurveConfig(): Promise<WarmthCurveConfig> {
     maxWarmth: settings.NEIGHBOUR_WARMTH_MAX_WARMTH,
     growthCurve: settings.NEIGHBOUR_WARMTH_GROWTH_CURVE,
     dropCurve: settings.NEIGHBOUR_WARMTH_DROP_CURVE,
+  };
+}
+
+export async function getGlobalHotSettings(): Promise<{ enabled: boolean; minScore: number }> {
+  const settings = await getReputationSettings();
+  return {
+    enabled: settings.GLOBAL_HOT_ENABLED >= 1,
+    minScore: settings.GLOBAL_HOT_MIN_SCORE,
   };
 }
