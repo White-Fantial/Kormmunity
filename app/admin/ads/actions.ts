@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import type {
   AdBillingStatus,
+  AdBillingUnit,
   AdCampaignStatus,
   AdContentStatus,
   AdPlacementType,
@@ -82,6 +83,16 @@ function normalizeAdPricingModel(value: string): AdPricingModel {
   return value === 'CPM' ? 'CPM' : 'FIXED';
 }
 
+const VALID_BILLING_UNITS: AdBillingUnit[] = ['DAY', 'WEEK', 'MONTH', 'IMPRESSION_1000'];
+
+function normalizeAdBillingUnit(value: string, pricingModel: AdPricingModel): AdBillingUnit {
+  if ((VALID_BILLING_UNITS as string[]).includes(value)) {
+    return value as AdBillingUnit;
+  }
+
+  return getBillingUnitForPricingModel(pricingModel);
+}
+
 async function logAdAudit(
   tx: Prisma.TransactionClient,
   data: {
@@ -120,6 +131,8 @@ export async function createAdProductAction(formData: FormData) {
   const size = normalizeText(formData.get('size')) || 'M';
   const layout = normalizeText(formData.get('layout')) || 'THUMBNAIL';
   const pricingModel = normalizeAdPricingModel(normalizeText(formData.get('pricingModel')) || 'FIXED');
+  const billingUnit = normalizeAdBillingUnit(normalizeText(formData.get('billingUnit')), pricingModel);
+  const currency = normalizeText(formData.get('currency')) || 'NZD';
   const basePrice = parseFloat(normalizeText(formData.get('basePrice')) || '0');
   const description = normalizeText(formData.get('description')) || null;
   const sortOrder = parseInt(normalizeText(formData.get('sortOrder')) || '0', 10);
@@ -136,8 +149,8 @@ export async function createAdProductAction(formData: FormData) {
       size: size as 'S' | 'M' | 'L',
       layout: layout as 'TEXT' | 'THUMBNAIL' | 'IMAGE' | 'FEATURED',
       pricingModel,
-      billingUnit: getBillingUnitForPricingModel(pricingModel),
-      currency: 'NZD',
+      billingUnit,
+      currency,
       basePrice,
       description,
       sortOrder: Number.isNaN(sortOrder) ? 0 : sortOrder,
@@ -157,6 +170,8 @@ export async function updateAdProductAction(formData: FormData) {
   const size = normalizeText(formData.get('size')) || 'M';
   const layout = normalizeText(formData.get('layout')) || 'THUMBNAIL';
   const pricingModel = normalizeAdPricingModel(normalizeText(formData.get('pricingModel')) || 'FIXED');
+  const billingUnit = normalizeAdBillingUnit(normalizeText(formData.get('billingUnit')), pricingModel);
+  const currency = normalizeText(formData.get('currency')) || 'NZD';
   const basePrice = parseFloat(normalizeText(formData.get('basePrice')) || '0');
   const description = normalizeText(formData.get('description')) || null;
   const sortOrder = parseInt(normalizeText(formData.get('sortOrder')) || '0', 10);
@@ -173,8 +188,8 @@ export async function updateAdProductAction(formData: FormData) {
       size: size as 'S' | 'M' | 'L',
       layout: layout as 'TEXT' | 'THUMBNAIL' | 'IMAGE' | 'FEATURED',
       pricingModel,
-      billingUnit: getBillingUnitForPricingModel(pricingModel),
-      currency: 'NZD',
+      billingUnit,
+      currency,
       basePrice,
       description,
       sortOrder: Number.isNaN(sortOrder) ? 0 : sortOrder,
@@ -419,6 +434,7 @@ export async function updateAdContentAction(formData: FormData) {
   const categoryName = normalizeText(formData.get('categoryName')) || null;
   const cityName = normalizeText(formData.get('cityName')) || null;
   const reviewNotes = normalizeText(formData.get('reviewNotes')) || null;
+  const proposalId = normalizeText(formData.get('proposalId')) || null;
 
   if (!id || !body) {
     redirectAdsManager('contents', { error: '콘텐츠 ID와 본문은 필수입니다.' });
@@ -445,6 +461,7 @@ export async function updateAdContentAction(formData: FormData) {
         categoryName,
         cityName,
         reviewNotes,
+        proposalId,
       },
     });
 

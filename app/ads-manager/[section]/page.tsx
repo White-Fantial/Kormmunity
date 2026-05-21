@@ -28,8 +28,10 @@ import {
   AD_CAMPAIGN_STATUS_LABELS,
   AD_LAYOUT_LABELS,
   AD_PLACEMENT_TYPE_LABELS,
+  AD_PRICING_MODEL_LABELS,
   AD_SIZE_LABELS,
 } from '@/lib/ads/types';
+import { AdContentCreateForm } from '@/components/ads/ad-content-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -231,6 +233,15 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
   const selectedPlacementPricing = query.placementPricingId
     ? adPlacementPricings.find((pricing) => pricing.id === query.placementPricingId)
     : null;
+
+  const negotiatedProposals = adProposals
+    .filter((p) => p.status === 'NEGOTIATED')
+    .map((p) => ({
+      id: p.id,
+      title: p.title,
+      advertiserId: p.advertiserId,
+      advertiserName: p.advertiser.name,
+    }));
 
   const inputClass =
     'w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40';
@@ -693,52 +704,13 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
         <div className="space-y-6">
           <div className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
             <h2 className="mb-4 font-semibold">광고 콘텐츠 등록</h2>
-            <form action={createAdContentAction} className="grid gap-3 sm:grid-cols-2">
-              <label className="space-y-1 text-sm">
-                <span className="text-[#555]">광고주</span>
-                <select name="advertiserId" className={selectClass}>
-                  <option value="">광고주 선택</option>
-                  {advertisers.map((advertiser) => (
-                    <option key={advertiser.id} value={advertiser.id}>{advertiser.name}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-[#555]">연결 제안 ID (선택)</span>
-                <input type="text" name="proposalId" className={inputClass} />
-              </label>
-              <label className="space-y-1 text-sm sm:col-span-2">
-                <span className="text-[#555]">제목</span>
-                <input type="text" name="title" className={inputClass} />
-              </label>
-              <label className="space-y-1 text-sm sm:col-span-2">
-                <span className="text-[#555]">본문 <span className="text-red-500">*</span></span>
-                <textarea name="body" rows={4} required className={inputClass} />
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-[#555]">썸네일 URL</span>
-                <input type="url" name="thumbnailUrl" className={inputClass} />
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-[#555]">랜딩 URL</span>
-                <input type="url" name="landingUrl" className={inputClass} />
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-[#555]">노출 작성자명</span>
-                <input type="text" name="displayName" className={inputClass} />
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-[#555]">카테고리명</span>
-                <input type="text" name="categoryName" className={inputClass} />
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-[#555]">도시명</span>
-                <input type="text" name="cityName" className={inputClass} />
-              </label>
-              <div className="sm:col-span-2">
-                <FormSubmitButton idleLabel="콘텐츠 등록" pendingLabel="등록 중..." className={submitClass} />
-              </div>
-            </form>
+            <AdContentCreateForm
+              advertisers={advertisers}
+              negotiatedProposals={negotiatedProposals}
+              createAction={createAdContentAction}
+              inputClass={inputClass}
+              selectClass={selectClass}
+            />
           </div>
 
           <div className="space-y-3">
@@ -799,7 +771,10 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                   <input type="url" name="landingUrl" defaultValue={selectedContent.landingUrl ?? ''} className={inputClass} />
                 </label>
                 <label className="space-y-1 text-sm">
-                  <span className="text-[#555]">노출 작성자명</span>
+                  <span className="text-[#555]">
+                    노출 작성자명{' '}
+                    <span className="text-xs text-[#888]">(빈칸이면 광고주 이름이 표시됩니다)</span>
+                  </span>
                   <input type="text" name="displayName" defaultValue={selectedContent.displayName ?? ''} className={inputClass} />
                 </label>
                 <label className="space-y-1 text-sm">
@@ -809,6 +784,17 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                 <label className="space-y-1 text-sm">
                   <span className="text-[#555]">도시명</span>
                   <input type="text" name="cityName" defaultValue={selectedContent.cityName ?? ''} className={inputClass} />
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="text-[#555]">연결 제안 (Negotiated 상태만 표시)</span>
+                  <select name="proposalId" defaultValue={selectedContent.proposalId ?? ''} className={selectClass}>
+                    <option value="">제안 연결 안 함</option>
+                    {negotiatedProposals.map((proposal) => (
+                      <option key={proposal.id} value={proposal.id}>
+                        {proposal.title} — {proposal.advertiserName}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label className="space-y-1 text-sm sm:col-span-2">
                   <span className="text-[#555]">리뷰 메모</span>
@@ -879,9 +865,22 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                 <label className="space-y-1 text-sm">
                   <span className="text-[#555]">가격 모델</span>
                   <select name="pricingModel" className={selectClass}>
-                    <option value="FIXED">고정가 (FIXED)</option>
-                    <option value="CPM">노출 보장형 (CPM)</option>
+                    {Object.entries(AD_PRICING_MODEL_LABELS).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
                   </select>
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="text-[#555]">과금 단위</span>
+                  <select name="billingUnit" className={selectClass}>
+                    {Object.entries(AD_BILLING_UNIT_LABELS).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="text-[#555]">통화 (예: NZD)</span>
+                  <input type="text" name="currency" defaultValue="NZD" maxLength={10} className={inputClass} />
                 </label>
                 <label className="space-y-1 text-sm">
                   <span className="text-[#555]">기준 단가 (NZD)</span>
@@ -1036,15 +1035,32 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                     defaultValue={selectedProduct.pricingModel}
                     className={selectClass}
                   >
-                    <option value="FIXED">고정가 (FIXED)</option>
-                    <option value="CPM">노출 보장형 (CPM)</option>
+                    {Object.entries(AD_PRICING_MODEL_LABELS).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
                   </select>
                 </label>
                 <label className="space-y-1 text-sm">
-                  <span className="text-[#555]">통화/과금 단위</span>
-                  <p className="rounded-lg border border-[#f0f0f0] bg-[#fafafa] px-3 py-2 text-xs text-[#666]">
-                    {selectedProduct.currency} / {AD_BILLING_UNIT_LABELS[selectedProduct.billingUnit]}
-                  </p>
+                  <span className="text-[#555]">과금 단위</span>
+                  <select
+                    name="billingUnit"
+                    defaultValue={selectedProduct.billingUnit}
+                    className={selectClass}
+                  >
+                    {Object.entries(AD_BILLING_UNIT_LABELS).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="text-[#555]">통화 (예: NZD)</span>
+                  <input
+                    type="text"
+                    name="currency"
+                    defaultValue={selectedProduct.currency}
+                    maxLength={10}
+                    className={inputClass}
+                  />
                 </label>
                 <label className="space-y-1 text-sm">
                   <span className="text-[#555]">기준 단가 (NZD)</span>
