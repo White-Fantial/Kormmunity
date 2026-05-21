@@ -753,7 +753,15 @@ export async function updateAdCampaignStatusAction(formData: FormData) {
     redirectAdsManager('campaigns', { error: '캠페인 ID와 상태는 필수입니다.' });
   }
 
-  const validStatuses: AdCampaignStatus[] = ['DRAFT', 'REVIEW', 'ACTIVE', 'PAUSED', 'ENDED', 'CANCELLED'];
+  const validStatuses: AdCampaignStatus[] = [
+    'DRAFT',
+    'REVIEW',
+    'REQUEST_CHANGES',
+    'ACTIVE',
+    'PAUSED',
+    'ENDED',
+    'CANCELLED',
+  ];
   if (!validStatuses.includes(status)) {
     redirectAdsManager('campaigns', { error: '유효하지 않은 캠페인 상태입니다.' });
   }
@@ -808,6 +816,7 @@ export async function updateAdCampaignAction(formData: FormData) {
     select: {
       advertiserId: true,
       adContentId: true,
+      status: true,
       billingStatus: true,
       adProduct: {
         select: {
@@ -876,6 +885,7 @@ export async function updateAdCampaignAction(formData: FormData) {
         pricingSnapshot,
         landingUrl,
         notes,
+        ...(existing.status === 'REQUEST_CHANGES' ? { status: 'REVIEW' } : {}),
       },
     });
 
@@ -895,6 +905,10 @@ export async function updateAdCampaignAction(formData: FormData) {
         billableDays: estimated.billableDays,
         billableQuantity: estimated.billableQuantity,
         estimatedAmount: estimated.amount,
+        campaignStatusTransition:
+          existing.status === 'REQUEST_CHANGES'
+            ? { from: 'REQUEST_CHANGES', to: 'REVIEW' }
+            : null,
       },
     });
   });

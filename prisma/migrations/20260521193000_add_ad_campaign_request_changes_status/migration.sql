@@ -1,0 +1,7 @@
+DO $$
+BEGIN
+  ALTER TYPE "AdCampaignStatus" ADD VALUE 'REQUEST_CHANGES' AFTER 'REVIEW';
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;

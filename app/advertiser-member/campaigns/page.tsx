@@ -111,6 +111,7 @@ export default async function AdvertiserMemberCampaignsPage({
                 : '0.00';
             const statusColor: Record<string, string> = {
               REVIEW: 'text-blue-700 bg-blue-50',
+              REQUEST_CHANGES: 'text-orange-700 bg-orange-50',
               ACTIVE: 'text-green-700 bg-green-50',
               PAUSED: 'text-amber-700 bg-amber-50',
               DRAFT: 'text-gray-600 bg-gray-50',

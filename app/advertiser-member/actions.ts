@@ -249,7 +249,7 @@ export async function reviewAdvertiserMemberCampaignAction(formData: FormData) {
     await tx.adCampaign.update({
       where: { id: campaignId },
       data: {
-        status: 'DRAFT',
+        status: action === 'APPROVE' ? 'DRAFT' : 'REQUEST_CHANGES',
         reviewNotes,
         reviewedByUserId: currentUser.id,
         reviewedAt: new Date(),
@@ -271,7 +271,7 @@ export async function reviewAdvertiserMemberCampaignAction(formData: FormData) {
             : '광고주 멤버가 캠페인 수정을 요청했습니다.',
         metadata: {
           from: campaign.status,
-          to: 'DRAFT',
+          to: action === 'APPROVE' ? 'DRAFT' : 'REQUEST_CHANGES',
           reviewNotes,
         },
       },
@@ -289,4 +289,3 @@ export async function reviewAdvertiserMemberCampaignAction(formData: FormData) {
     campaignId,
   });
 }
-

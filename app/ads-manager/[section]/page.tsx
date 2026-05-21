@@ -388,6 +388,8 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
               adCampaigns.map((campaign) => {
                 const statusLabel = AD_CAMPAIGN_STATUS_LABELS[campaign.status];
                 const statusColor: Record<string, string> = {
+                  REVIEW: 'text-blue-700 bg-blue-50',
+                  REQUEST_CHANGES: 'text-orange-700 bg-orange-50',
                   ACTIVE: 'text-green-700 bg-green-50',
                   PAUSED: 'text-amber-700 bg-amber-50',
                   DRAFT: 'text-gray-600 bg-gray-50',
@@ -459,7 +461,9 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                       </div>
 
                       <div className="flex flex-wrap gap-2">
-                        {(['DRAFT', 'REVIEW', 'ACTIVE', 'PAUSED', 'ENDED', 'CANCELLED'] as const).map((s) => (
+                        {(
+                          ['DRAFT', 'REVIEW', 'REQUEST_CHANGES', 'ACTIVE', 'PAUSED', 'ENDED', 'CANCELLED'] as const
+                        ).map((s) => (
                           campaign.status !== s && (
                             <form key={s} action={updateAdCampaignStatusAction}>
                               <input type="hidden" name="id" value={campaign.id} />
