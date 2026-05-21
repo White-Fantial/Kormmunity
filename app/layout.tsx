@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 
 import './globals.css';
 import { HeaderNavLink } from '@/components/ui/header-nav-link';
+import { GlobalHotNavLink } from '@/components/ui/global-hot-nav-link';
 import { NotificationBell } from '@/components/ui/notification-bell';
 import { HeaderProfileMenu } from '@/components/ui/header-profile-menu';
 
@@ -101,6 +102,7 @@ export default async function RootLayout({
             </div>
             <nav className="flex gap-2 overflow-x-auto text-sm [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <HeaderNavLink href="/posts">홈</HeaderNavLink>
+              <GlobalHotNavLink />
               <HeaderNavLink href="/posts/new">글쓰기</HeaderNavLink>
               <HeaderNavLink href="/my/posts">내글</HeaderNavLink>
               <HeaderNavLink href="/my/saved">저장한글</HeaderNavLink>

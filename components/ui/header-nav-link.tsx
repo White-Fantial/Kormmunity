@@ -14,8 +14,12 @@ const inactiveClassName = 'border-[#e8e8e8] bg-white text-[#1a1a1a] hover:border
 const activeClassName = 'border-[#fee500] bg-[#fee500] font-semibold text-[#3c1e1e]';
 const pathMatchers: Partial<Record<HeaderNavLinkProps['href'], (pathname: string) => boolean>> = {
   '/posts': (pathname) =>
-    pathname === '/posts' || (pathname.startsWith('/posts/') && !pathname.startsWith('/posts/new')),
+    pathname === '/posts' ||
+    (pathname.startsWith('/posts/') &&
+      !pathname.startsWith('/posts/new') &&
+      !pathname.startsWith('/posts/global-hot')),
   '/posts/new': (pathname) => pathname === '/posts/new',
+  '/posts/global-hot': (pathname) => pathname === '/posts/global-hot',
 };
 
 function isActivePath(href: string, pathname: string) {

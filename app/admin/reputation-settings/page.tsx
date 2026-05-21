@@ -21,6 +21,7 @@ const sectionTitle: Record<(typeof REPUTATION_SETTING_FIELDS)[number]['section']
   community: 'communityScore 설정',
   'warmth-delta': '온기 delta 설정',
   'warmth-curve': '온기 곡선 설정',
+  'global-hot': '글로벌핫 설정',
 };
 
 export default async function AdminReputationSettingsPage({
@@ -49,7 +50,7 @@ export default async function AdminReputationSettingsPage({
       ) : null}
 
       <form action={updateReputationSettingsAction} className="space-y-4 rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
-        {(['community', 'warmth-delta', 'warmth-curve'] as const).map((section) => (
+        {(['community', 'warmth-delta', 'warmth-curve', 'global-hot'] as const).map((section) => (
           <div key={section} className="space-y-3 border-b border-[#f0f0f0] pb-4 last:border-b-0 last:pb-0">
             <h2 className="font-semibold">{sectionTitle[section]}</h2>
             <div className="grid gap-3 md:grid-cols-2">
