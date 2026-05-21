@@ -4,6 +4,10 @@ import { redirect } from 'next/navigation';
 import {
   createAdvertiserMemberProposalAction,
 } from '@/app/advertiser-member/actions';
+import {
+  advertiserMemberNavItems,
+  ManagementSectionNav,
+} from '@/components/admin/management-section-nav';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
@@ -86,6 +90,7 @@ export default async function AdvertiserMemberProposalsPage({
     <section className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold">광고주 멤버 — 광고 제안</h1>
+        <ManagementSectionNav items={advertiserMemberNavItems} />
       </div>
 
       {query.error ? (

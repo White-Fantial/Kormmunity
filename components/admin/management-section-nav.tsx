@@ -45,6 +45,11 @@ export const partnerManagerNavItems = [
   { href: '/partner-manager', label: '광고주 관리' },
 ] as const satisfies readonly ManagementNavItem[];
 
+export const advertiserMemberNavItems = [
+  { href: '/advertiser-member/proposals', label: '광고 제안' },
+  { href: '/advertiser-member/contents', label: '광고 콘텐츠' },
+] as const satisfies readonly ManagementNavItem[];
+
 type ManagementSectionNavProps = {
   items: readonly ManagementNavItem[];
 };
