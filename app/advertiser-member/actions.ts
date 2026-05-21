@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import type { AdContentStatus, AdProposalStatus } from '@prisma/client';
+import type { AdProposalStatus } from '@prisma/client';
 
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
@@ -13,7 +13,7 @@ import {
 } from '@/lib/permissions';
 
 const ADVERTISER_MEMBER_PROPOSALS_PATH = '/advertiser-member/proposals';
-const ADVERTISER_MEMBER_CONTENTS_PATH = '/advertiser-member/contents';
+const ADVERTISER_MEMBER_CAMPAIGNS_PATH = '/advertiser-member/campaigns';
 
 function normalizeText(value: FormDataEntryValue | null): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -176,106 +176,117 @@ export async function updateAdvertiserMemberProposalAction(formData: FormData) {
   redirectAdvertiserMember({ success: '광고 제안이 수정되었습니다.' });
 }
 
-export async function reviewAdvertiserMemberAdContentAction(formData: FormData) {
+export async function reviewAdvertiserMemberCampaignAction(formData: FormData) {
   const currentUser = await requireAdvertiserMemberUser();
 
-  const contentId = normalizeText(formData.get('id'));
-  const status = normalizeText(formData.get('status')) as AdContentStatus;
+  const campaignId = normalizeText(formData.get('id'));
+  const action = normalizeText(formData.get('action')); // 'APPROVE' or 'REQUEST_CHANGES'
   const reviewNotes = normalizeText(formData.get('reviewNotes')) || null;
 
-  if (!contentId || !status) {
-    redirectAdvertiserMemberTo(ADVERTISER_MEMBER_CONTENTS_PATH, {
-      error: '콘텐츠 ID와 리뷰 결과는 필수입니다.',
-      ...(contentId ? { contentId } : {}),
+  if (!campaignId || !action) {
+    redirectAdvertiserMemberTo(ADVERTISER_MEMBER_CAMPAIGNS_PATH, {
+      error: '캠페인 ID와 처리 방법은 필수입니다.',
+      ...(campaignId ? { campaignId } : {}),
     });
   }
 
-  const validStatuses: AdContentStatus[] = ['REQUEST_CHANGES', 'APPROVED'];
-  if (!validStatuses.includes(status)) {
-    redirectAdvertiserMemberTo(ADVERTISER_MEMBER_CONTENTS_PATH, {
-      error: '유효하지 않은 리뷰 상태입니다.',
-      contentId,
+  if (action !== 'APPROVE' && action !== 'REQUEST_CHANGES') {
+    redirectAdvertiserMemberTo(ADVERTISER_MEMBER_CAMPAIGNS_PATH, {
+      error: '유효하지 않은 처리 방법입니다.',
+      campaignId,
     });
   }
 
-  if (status === 'REQUEST_CHANGES' && !reviewNotes) {
-    redirectAdvertiserMemberTo(ADVERTISER_MEMBER_CONTENTS_PATH, {
+  if (action === 'REQUEST_CHANGES' && !reviewNotes) {
+    redirectAdvertiserMemberTo(ADVERTISER_MEMBER_CAMPAIGNS_PATH, {
       error: '수정 요청 시 수정 내용을 입력해 주세요.',
-      contentId,
+      campaignId,
     });
   }
 
-  const content = await prisma.adContent.findUnique({
-    where: { id: contentId },
+  const campaign = await prisma.adCampaign.findUnique({
+    where: { id: campaignId },
     select: { id: true, advertiserId: true, status: true },
   });
 
-  if (!content) {
-    redirectAdvertiserMemberTo(ADVERTISER_MEMBER_CONTENTS_PATH, {
-      error: '광고 콘텐츠를 찾을 수 없습니다.',
-      contentId,
+  if (!campaign) {
+    redirectAdvertiserMemberTo(ADVERTISER_MEMBER_CAMPAIGNS_PATH, {
+      error: '캠페인을 찾을 수 없습니다.',
+      campaignId,
     });
   }
 
-  const membership = await prisma.advertiserMember.findFirst({
-    where: {
-      advertiserId: content.advertiserId,
-      userId: currentUser.id,
-      isActive: true,
-    },
-    select: { id: true },
-  });
-  if (!membership) {
-    redirectAdvertiserMemberTo(ADVERTISER_MEMBER_CONTENTS_PATH, {
-      error: '해당 광고 콘텐츠를 리뷰할 권한이 없습니다.',
-      contentId,
+  if (campaign.status !== 'REVIEW') {
+    redirectAdvertiserMemberTo(ADVERTISER_MEMBER_CAMPAIGNS_PATH, {
+      error: '리뷰 대기 상태의 캠페인만 처리할 수 있습니다.',
+      campaignId,
     });
   }
 
-  if (content.status !== 'REVIEW' && content.status !== 'REQUEST_CHANGES') {
-    redirectAdvertiserMemberTo(ADVERTISER_MEMBER_CONTENTS_PATH, {
-      error: '리뷰 가능한 상태의 콘텐츠가 아닙니다.',
-      contentId,
+  if (campaign.advertiserId) {
+    const membership = await prisma.advertiserMember.findFirst({
+      where: {
+        advertiserId: campaign.advertiserId,
+        userId: currentUser.id,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+    if (!membership) {
+      redirectAdvertiserMemberTo(ADVERTISER_MEMBER_CAMPAIGNS_PATH, {
+        error: '해당 캠페인을 리뷰할 권한이 없습니다.',
+        campaignId,
+      });
+    }
+  } else {
+    redirectAdvertiserMemberTo(ADVERTISER_MEMBER_CAMPAIGNS_PATH, {
+      error: '광고주가 지정되지 않은 캠페인입니다.',
+      campaignId,
     });
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.adContent.update({
-      where: { id: contentId },
+    await tx.adCampaign.update({
+      where: { id: campaignId },
       data: {
-        status,
+        status: 'DRAFT',
         reviewNotes,
         reviewedByUserId: currentUser.id,
-        approvedAt: status === 'APPROVED' ? new Date() : null,
-        rejectedAt: null,
+        reviewedAt: new Date(),
       },
     });
 
     await tx.adAuditLog.create({
       data: {
         actorId: currentUser.id,
-        advertiserId: content.advertiserId,
-        adContentId: content.id,
-        actionType: 'CONTENT_REVIEWED_BY_MEMBER',
+        advertiserId: campaign.advertiserId,
+        campaignId: campaign.id,
+        actionType:
+          action === 'APPROVE'
+            ? 'CAMPAIGN_APPROVED_BY_MEMBER'
+            : 'CAMPAIGN_CHANGES_REQUESTED_BY_MEMBER',
         message:
-          status === 'APPROVED'
-            ? '광고주 멤버가 광고 콘텐츠를 승인했습니다.'
-            : '광고주 멤버가 광고 콘텐츠 수정을 요청했습니다.',
+          action === 'APPROVE'
+            ? '광고주 멤버가 캠페인을 승인했습니다.'
+            : '광고주 멤버가 캠페인 수정을 요청했습니다.',
         metadata: {
-          from: content.status,
-          to: status,
+          from: campaign.status,
+          to: 'DRAFT',
           reviewNotes,
         },
       },
     });
   });
 
-  revalidatePath(ADVERTISER_MEMBER_CONTENTS_PATH);
-  revalidatePath('/ads-manager/contents');
+  revalidatePath(ADVERTISER_MEMBER_CAMPAIGNS_PATH);
   revalidatePath('/ads-manager/campaigns');
 
-  redirectAdvertiserMemberTo(ADVERTISER_MEMBER_CONTENTS_PATH, {
-    success: status === 'APPROVED' ? '콘텐츠를 승인했습니다.' : '수정 요청을 전달했습니다.',
-    contentId,
+  redirectAdvertiserMemberTo(ADVERTISER_MEMBER_CAMPAIGNS_PATH, {
+    success:
+      action === 'APPROVE'
+        ? '캠페인을 승인했습니다. 광고 매니저가 집행을 진행합니다.'
+        : '수정 요청을 전달했습니다.',
+    campaignId,
   });
 }
+

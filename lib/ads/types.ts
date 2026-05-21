@@ -1,7 +1,7 @@
 export type AdLayout = 'TEXT' | 'THUMBNAIL' | 'IMAGE' | 'FEATURED';
 export type AdSize = 'S' | 'M' | 'L';
 export type AdPlacementType = 'TOP_FIXED' | 'FEED_INLINE';
-export type AdCampaignStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CANCELLED';
+export type AdCampaignStatus = 'DRAFT' | 'REVIEW' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CANCELLED';
 export type AdBillingStatus = 'DRAFT' | 'ESTIMATED' | 'INVOICED' | 'PAID' | 'WAIVED' | 'CANCELLED';
 export type AdBillingUnit = 'DAY' | 'WEEK' | 'MONTH' | 'IMPRESSION_1000';
 
@@ -25,6 +25,7 @@ export const AD_PLACEMENT_TYPE_LABELS: Record<AdPlacementType, string> = {
 
 export const AD_CAMPAIGN_STATUS_LABELS: Record<AdCampaignStatus, string> = {
   DRAFT: '초안',
+  REVIEW: '리뷰 대기',
   ACTIVE: '집행 중',
   PAUSED: '일시정지',
   ENDED: '종료',

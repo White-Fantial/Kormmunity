@@ -31,9 +31,7 @@ import {
   AD_PLACEMENT_TYPE_LABELS,
   AD_SIZE_LABELS,
 } from '@/lib/ads/types';
-import type { AdLayout, AdSize } from '@/lib/ads/types';
 import { AdContentCreateForm } from '@/components/ads/ad-content-form';
-import { AdContentFeedPreview } from '@/components/ads/ad-content-feed-preview';
 
 export const dynamic = 'force-dynamic';
 
@@ -119,6 +117,8 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
         billingStatus: true,
         landingUrl: true,
         notes: true,
+        reviewNotes: true,
+        reviewedAt: true,
         targetCountryId: true,
         targetCityId: true,
         postId: true,
@@ -233,12 +233,6 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
   const selectedContent = query.contentId
     ? adContents.find((content) => content.id === query.contentId)
     : null;
-  // Find the first campaign linked to this content to derive layout/size for the preview.
-  const selectedContentCampaign = selectedContent
-    ? adCampaigns.find((c) => c.adContentId === selectedContent.id)
-    : null;
-  const selectedContentPreviewLayout = (selectedContentCampaign?.adProduct?.layout ?? 'THUMBNAIL') as AdLayout;
-  const selectedContentPreviewSize = (selectedContentCampaign?.adProduct?.size ?? 'M') as AdSize;
 
   const selectedContentLogs = selectedContent
     ? await prisma.adAuditLog.findMany({
@@ -276,7 +270,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
     'w-full rounded-lg border border-[#e8e8e8] bg-white px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40';
   const submitClass =
     'rounded-xl bg-[#fee500] px-4 py-2 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00] disabled:cursor-not-allowed disabled:opacity-60';
-  const contentStatuses = ['DRAFT', 'REVIEW', 'REQUEST_CHANGES', 'APPROVED', 'REJECTED'] as const;
+  const contentStatuses = ['DRAFT', 'REVIEW', 'APPROVED', 'REJECTED'] as const;
 
   return (
     <section className="space-y-6">
@@ -465,7 +459,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                       </div>
 
                       <div className="flex flex-wrap gap-2">
-                        {(['DRAFT', 'ACTIVE', 'PAUSED', 'ENDED', 'CANCELLED'] as const).map((s) => (
+                        {(['DRAFT', 'REVIEW', 'ACTIVE', 'PAUSED', 'ENDED', 'CANCELLED'] as const).map((s) => (
                           campaign.status !== s && (
                             <form key={s} action={updateAdCampaignStatusAction}>
                               <input type="hidden" name="id" value={campaign.id} />
@@ -485,6 +479,14 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                         >
                           상세 보기
                         </Link>
+                        <Link
+                          href={`/ads/preview/campaign/${campaign.id}`}
+                          className="rounded-lg border border-[#e8e8e8] px-2 py-1 text-xs hover:bg-[#f9f9f9]"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          미리보기
+                        </Link>
                       </div>
                     </div>
                   </div>
@@ -497,7 +499,17 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
             <div className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-base font-semibold">캠페인 상세/수정</h2>
-                <span className="text-xs text-[#888]">ID: {selectedCampaign.id}</span>
+                <div className="flex items-center gap-3">
+                  <Link
+                    href={`/ads/preview/campaign/${selectedCampaign.id}`}
+                    className="text-xs underline text-[#666]"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    미리보기
+                  </Link>
+                  <span className="text-xs text-[#888]">ID: {selectedCampaign.id}</span>
+                </div>
               </div>
               <form action={updateAdCampaignAction} className="grid gap-3 sm:grid-cols-2">
                 <input type="hidden" name="id" value={selectedCampaign.id} />
@@ -602,6 +614,19 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                     className={inputClass}
                   />
                 </label>
+                {selectedCampaign.reviewNotes ? (
+                  <div className="space-y-1 text-sm sm:col-span-2">
+                    <span className="text-[#555]">광고주 수정 요청 메모</span>
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 whitespace-pre-wrap">
+                      {selectedCampaign.reviewNotes}
+                      {selectedCampaign.reviewedAt && (
+                        <p className="mt-1 text-amber-600">
+                          {new Date(selectedCampaign.reviewedAt).toLocaleString('ko-KR')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="sm:col-span-2">
                   <FormSubmitButton idleLabel="캠페인 수정 저장" pendingLabel="저장 중..." className={submitClass} />
                 </div>
@@ -921,7 +946,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                 </label>
                 <div className="sm:col-span-2">
                   <FormSubmitButton idleLabel="콘텐츠 저장" pendingLabel="저장 중..." className={submitClass} />
-                </div>
+               </div>
               </form>
               <form action={updateAdContentStatusAction} className="mt-3 flex flex-wrap gap-2">
                 <input type="hidden" name="id" value={selectedContent.id} />
@@ -934,34 +959,6 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                   상태 변경
                 </button>
               </form>
-              <div className="mt-2">
-                <p className="mb-1 text-xs text-[#666]">
-                  {selectedContent.landingUrl
-                    ? '랜딩 URL이 설정되어 실제 클릭 시 해당 URL로 이동해요. 아래 링크는 랜딩 URL이 없을 때의 광고 페이지를 확인할 수 있어요.'
-                    : '랜딩 URL이 없으면 아래 광고 페이지로 이동해요.'}
-                </p>
-                <Link
-                  href={`/ads/preview/${selectedContent.id}`}
-                  className="text-xs underline"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  광고 페이지 미리보기 열기
-                </Link>
-              </div>
-              <div className="mt-3">
-                <AdContentFeedPreview
-                  title={selectedContent.title}
-                  body={selectedContent.body}
-                  advertiserName={selectedContent.advertiser.name}
-                  displayName={selectedContent.displayName}
-                  categoryName={selectedContent.categoryName}
-                  cityName={selectedContent.cityName}
-                  thumbnailUrl={selectedContent.thumbnailUrl}
-                  layout={selectedContentPreviewLayout}
-                  size={selectedContentPreviewSize}
-                />
-              </div>
               <div className="mt-4 border-t border-[#f0f0f0] pt-4">
                 <h3 className="mb-2 text-sm font-semibold">콘텐츠 로그 (광고 매니저 전용)</h3>
                 {selectedContentLogs.length === 0 ? (
