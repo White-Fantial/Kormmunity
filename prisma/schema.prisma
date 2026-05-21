@@ -711,6 +711,7 @@ model AdCampaign {
   impressions     AdImpression[]
   clicks          AdClick[]
   dailyStats      AdDailyStat[]
+  auditLogs       AdAuditLog[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
@@ -815,6 +816,7 @@ model Advertiser {
   proposals      AdProposal[]
   adContents     AdContent[]
   adCampaigns    AdCampaign[]
+  auditLogs      AdAuditLog[]
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 }
@@ -854,6 +856,7 @@ model AdProposal {
   submittedByUser       User?            @relation("AdProposalSubmittedBy", fields: [submittedByUserId], references: [id], onDelete: SetNull)
   negotiatedByUser      User?            @relation("AdProposalNegotiatedBy", fields: [negotiatedByUserId], references: [id], onDelete: SetNull)
   adContent             AdContent?
+  auditLogs             AdAuditLog[]
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
 
@@ -883,6 +886,7 @@ model AdContent {
   createdByUser    User?           @relation("AdContentCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   reviewedByUser   User?           @relation("AdContentReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
   campaigns        AdCampaign[]
+  auditLogs        AdAuditLog[]
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
