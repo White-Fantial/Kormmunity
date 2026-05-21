@@ -7,6 +7,7 @@ import {
   advertiserMemberNavItems,
   ManagementSectionNav,
 } from '@/components/admin/management-section-nav';
+import { AdContentFeedPreview } from '@/components/ads/ad-content-feed-preview';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
@@ -103,6 +104,17 @@ export default async function AdvertiserMemberContentsPage({
                 </Link>
               </div>
               <p className="line-clamp-2 text-sm text-[#666]">{content.body}</p>
+              <div className="mt-3">
+                <AdContentFeedPreview
+                  title={content.title}
+                  body={content.body}
+                  advertiserName={content.advertiser.name}
+                  displayName={content.displayName}
+                  categoryName={content.categoryName}
+                  cityName={content.cityName}
+                  thumbnailUrl={content.thumbnailUrl}
+                />
+              </div>
               <div className="mt-2">
                 <Link
                   href={`/ads/preview/${content.id}`}
@@ -110,7 +122,7 @@ export default async function AdvertiserMemberContentsPage({
                   target="_blank"
                   rel="noreferrer"
                 >
-                  실제 노출 미리보기
+                  광고 페이지 미리보기 (랜딩 URL 미설정 시)
                 </Link>
               </div>
             </div>
@@ -195,15 +207,31 @@ export default async function AdvertiserMemberContentsPage({
             <div className="sm:col-span-2">
               <dt className="text-xs text-[#888]">실제 노출 미리보기</dt>
               <dd className="mt-0.5">
+                <p className="mb-1 text-xs text-[#666]">
+                  {selectedContent.landingUrl
+                    ? '랜딩 URL이 설정되어 실제 클릭 시 해당 URL로 이동해요. 아래는 랜딩 URL이 없을 때 보여줄 광고 페이지 미리보기예요.'
+                    : '랜딩 URL이 없으면 아래 광고 페이지로 이동해요.'}
+                </p>
                 <Link
                   href={`/ads/preview/${selectedContent.id}`}
                   className="text-xs underline"
                   target="_blank"
                   rel="noreferrer"
                 >
-                  새 탭에서 미리보기 열기
+                  광고 페이지 미리보기 열기
                 </Link>
               </dd>
+            </div>
+            <div className="sm:col-span-2">
+              <AdContentFeedPreview
+                title={selectedContent.title}
+                body={selectedContent.body}
+                advertiserName={selectedContent.advertiser.name}
+                displayName={selectedContent.displayName}
+                categoryName={selectedContent.categoryName}
+                cityName={selectedContent.cityName}
+                thumbnailUrl={selectedContent.thumbnailUrl}
+              />
             </div>
           </dl>
 
