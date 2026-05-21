@@ -29,7 +29,6 @@ import {
   AD_CAMPAIGN_STATUS_LABELS,
   AD_LAYOUT_LABELS,
   AD_PLACEMENT_TYPE_LABELS,
-  AD_PRICING_MODEL_LABELS,
   AD_SIZE_LABELS,
 } from '@/lib/ads/types';
 import { AdContentCreateForm } from '@/components/ads/ad-content-form';
@@ -95,7 +94,6 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
         placementType: true,
         size: true,
         layout: true,
-        pricingModel: true,
         billingUnit: true,
         currency: true,
         basePrice: true,
@@ -960,14 +958,6 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                   </select>
                 </label>
                 <label className="space-y-1 text-sm">
-                  <span className="text-[#555]">가격 모델</span>
-                  <select name="pricingModel" className={selectClass}>
-                    {Object.entries(AD_PRICING_MODEL_LABELS).map(([k, v]) => (
-                      <option key={k} value={k}>{v}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="space-y-1 text-sm">
                   <span className="text-[#555]">과금 단위</span>
                   <select name="billingUnit" className={selectClass}>
                     {Object.entries(AD_BILLING_UNIT_LABELS).map(([k, v]) => (
@@ -1042,7 +1032,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                       <td className="px-4 py-2">
                         {product.currency} {Number(product.basePrice).toFixed(2)}
                         <span className="ml-1 text-xs text-[#888]">
-                          ({product.pricingModel} / {AD_BILLING_UNIT_LABELS[product.billingUnit]})
+                          ({AD_BILLING_UNIT_LABELS[product.billingUnit]})
                         </span>
                       </td>
                       <td className="px-4 py-2">{product._count.campaigns}개</td>
@@ -1122,18 +1112,6 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                       <option key={k} value={k}>
                         {v}
                       </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="space-y-1 text-sm">
-                  <span className="text-[#555]">가격 모델</span>
-                  <select
-                    name="pricingModel"
-                    defaultValue={selectedProduct.pricingModel}
-                    className={selectClass}
-                  >
-                    {Object.entries(AD_PRICING_MODEL_LABELS).map(([k, v]) => (
-                      <option key={k} value={k}>{v}</option>
                     ))}
                   </select>
                 </label>

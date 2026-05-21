@@ -1,4 +1,4 @@
-import type { AdBillingUnit, AdPlacementType, AdPricingModel, Prisma } from '@prisma/client';
+import type { AdBillingUnit, AdPlacementType, Prisma } from '@prisma/client';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 export const PRICING_VERSION = 1;
@@ -27,10 +27,6 @@ type PricingQueryClient = Pick<
   'adGeoPricing' | 'adPlacementPricing'
 >;
 
-export function getBillingUnitForPricingModel(pricingModel: AdPricingModel): AdBillingUnit {
-  return pricingModel === 'CPM' ? 'IMPRESSION_1000' : 'DAY';
-}
-
 export function roundToCurrency(value: number): number {
   return Math.round(value * 100) / 100;
 }
@@ -48,41 +44,59 @@ export function calculateBillableDays(startAt: Date | null, endAt: Date | null):
   return Math.max(1, Math.ceil(diffMs / ONE_DAY_MS));
 }
 
+function resolveDurationUnitSizeDays(billingUnit: Exclude<AdBillingUnit, 'IMPRESSION_1000'>): number {
+  if (billingUnit === 'WEEK') {
+    return 7;
+  }
+
+  if (billingUnit === 'MONTH') {
+    return 30;
+  }
+
+  return 1;
+}
+
 export function calculateEstimatedAmount(input: {
-  pricingModel: AdPricingModel;
+  billingUnit: AdBillingUnit;
   basePrice: number;
   geoMultiplier: number;
   placementMultiplier: number;
   startAt: Date | null;
   endAt: Date | null;
   impressions: number;
-}): { amount: number; billableDays: number | null } {
+}): { amount: number; billableDays: number | null; billableQuantity: number } {
   const shared = input.basePrice * input.geoMultiplier * input.placementMultiplier;
 
-  if (input.pricingModel === 'FIXED') {
-    const billableDays = calculateBillableDays(input.startAt, input.endAt);
+  if (input.billingUnit === 'IMPRESSION_1000') {
+    const impressions = Math.max(0, input.impressions);
+    const billableQuantity = impressions / 1000;
     return {
-      amount: roundToCurrency(shared * billableDays),
-      billableDays,
+      amount: roundToCurrency(billableQuantity * shared),
+      billableDays: null,
+      billableQuantity,
     };
   }
 
-  const impressions = Math.max(0, input.impressions);
+  const billableDays = calculateBillableDays(input.startAt, input.endAt);
+  const unitDays = resolveDurationUnitSizeDays(input.billingUnit);
+  const billableQuantity = Math.max(1, Math.ceil(billableDays / unitDays));
+
   return {
-    amount: roundToCurrency((impressions / 1000) * shared),
-    billableDays: null,
+    amount: roundToCurrency(shared * billableQuantity),
+    billableDays,
+    billableQuantity,
   };
 }
 
 export function calculateFinalAmount(input: {
-  pricingModel: AdPricingModel;
+  billingUnit: AdBillingUnit;
   basePrice: number;
   geoMultiplier: number;
   placementMultiplier: number;
   startAt: Date | null;
   endAt: Date | null;
   impressions: number;
-}): { amount: number; billableDays: number | null } {
+}): { amount: number; billableDays: number | null; billableQuantity: number } {
   return calculateEstimatedAmount(input);
 }
 
@@ -178,7 +192,6 @@ export async function resolvePlacementMultiplier(
 }
 
 export function buildPricingSnapshot(input: {
-  pricingModel: AdPricingModel;
   billingUnit: AdBillingUnit;
   currency: string;
   basePrice: number;
@@ -189,10 +202,10 @@ export function buildPricingSnapshot(input: {
   maxImpressions: number | null;
   estimatedAmount: number;
   billableDays: number | null;
+  billableQuantity: number;
 }): Prisma.InputJsonValue {
   return {
     version: PRICING_VERSION,
-    pricingModel: input.pricingModel,
     billingUnit: input.billingUnit,
     currency: input.currency,
     basePrice: input.basePrice,
@@ -206,6 +219,7 @@ export function buildPricingSnapshot(input: {
     endAt: input.endAt?.toISOString() ?? null,
     maxImpressions: input.maxImpressions,
     billableDays: input.billableDays,
+    billableQuantity: input.billableQuantity,
     estimatedAmount: input.estimatedAmount,
     rounded: 'round(2)',
   };
