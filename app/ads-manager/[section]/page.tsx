@@ -842,17 +842,6 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                     </Link>
                   </div>
                   <p className="line-clamp-2 text-sm text-[#666]">{content.body}</p>
-                  <div className="mt-3">
-                    <AdContentFeedPreview
-                      title={content.title}
-                      body={content.body}
-                      advertiserName={content.advertiser.name}
-                      displayName={content.displayName}
-                      categoryName={content.categoryName}
-                      cityName={content.cityName}
-                      thumbnailUrl={content.thumbnailUrl}
-                    />
-                  </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {contentStatuses.map((status) => (
                       content.status !== status ? (
@@ -865,21 +854,6 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                         </form>
                       ) : null
                     ))}
-                  </div>
-                  <div className="mt-2">
-                    <p className="mb-1 text-xs text-[#666]">
-                      {content.landingUrl
-                        ? '랜딩 URL이 설정되어 실제 클릭 시 해당 URL로 이동해요.'
-                        : '랜딩 URL이 없으면 아래 광고 페이지로 이동해요.'}
-                    </p>
-                    <Link
-                      href={`/ads/preview/${content.id}`}
-                      className="text-xs underline"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      광고 페이지 미리보기 (랜딩 URL 미설정 시)
-                    </Link>
                   </div>
                 </div>
               ))
