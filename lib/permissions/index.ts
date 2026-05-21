@@ -111,6 +111,10 @@ function hasPartnerManagerAssignment(assignments: StaffAssignmentItem[]): boolea
   return assignments.some((a) => a.role === 'PARTNER_MANAGER' || a.role === 'ADMIN');
 }
 
+function hasAnyStaffAssignment(assignments: StaffAssignmentItem[]): boolean {
+  return assignments.length > 0;
+}
+
 /**
  * Returns true if the given assignment's scope covers the target location.
  * A null countryId/cityId on the assignment means "global" (matches any).
@@ -577,7 +581,7 @@ export function canAccessCoordinatorSection(user: PermissionUser | null | undefi
 }
 
 export function canAccessOperatorBoard(user: PermissionUser | null | undefined) {
-  return canCoordinate(user) || canModerate(user);
+  return hasAnyStaffAssignment(user?.staffAssignments ?? []);
 }
 
 export function canAccessAdsManagerSection(user: PermissionUser | null | undefined) {
