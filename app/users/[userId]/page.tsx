@@ -46,6 +46,11 @@ const getUserProfile = cache(async (userId: string) => {
         },
       },
       country: { select: { name: true } },
+      staffAssignments: {
+        where: { isActive: true },
+        select: { id: true },
+        take: 1,
+      },
       _count: {
         select: {
           posts: {
@@ -165,6 +170,11 @@ export default async function UserProfilePage({ params, searchParams }: UserProf
             {shouldShowOperatorBadge(user) ? (
               <p className="text-sm text-[#666]">
                 <span className="rounded bg-[#3c1e1e] px-1 py-0.5 text-[10px] font-bold text-white">운영자</span>
+              </p>
+            ) : null}
+            {user.staffAssignments.length > 0 ? (
+              <p className="text-sm text-[#666]">
+                <span className="rounded bg-blue-700 px-1 py-0.5 text-[10px] font-bold text-white">운영진</span>
               </p>
             ) : null}
             {shouldShowWarmth(user) ? (
