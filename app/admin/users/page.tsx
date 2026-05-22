@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import {
@@ -26,7 +27,7 @@ const MAX_REVIEW_REQUEST_LOOKUP = 200;
 const MAX_RECENT_USER_MODERATION_ACTIONS = 40;
 
 type AdminUsersPageProps = {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; q?: string }>;
 };
 
 export default async function AdminUsersPage({ searchParams }: AdminUsersPageProps) {
@@ -37,6 +38,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
   }
 
   const params = await searchParams;
+  const nameQuery = params.q?.trim() ?? '';
   const userQuerySelect = {
     id: true,
     displayName: true,
@@ -60,7 +62,10 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
 
   const usersPromise = prisma.user
     .findMany({
-      where: { isManagedAccount: false },
+      where: {
+        isManagedAccount: false,
+        ...(nameQuery ? { displayName: { contains: nameQuery, mode: 'insensitive' } } : {}),
+      },
       orderBy: { createdAt: 'desc' },
       select: {
         ...userQuerySelect,
@@ -83,7 +88,10 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
       }
 
       const usersWithoutAssignments = await prisma.user.findMany({
-        where: { isManagedAccount: false },
+        where: {
+          isManagedAccount: false,
+          ...(nameQuery ? { displayName: { contains: nameQuery, mode: 'insensitive' } } : {}),
+        },
         orderBy: { createdAt: 'desc' },
         select: userQuerySelect,
       });
@@ -244,6 +252,29 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
 
       <div className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
         <h2 className="mb-3 font-semibold">사용자 목록 ({users.length}명)</h2>
+        <form method="GET" className="mb-3 flex gap-2">
+          <input
+            type="text"
+            name="q"
+            defaultValue={nameQuery}
+            placeholder="사용자 이름 검색"
+            className="flex-1 rounded-lg border border-[#e8e8e8] px-3 py-1.5 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
+          />
+          <button
+            type="submit"
+            className="rounded-xl bg-[#fee500] px-3 py-1.5 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
+          >
+            검색
+          </button>
+          {nameQuery ? (
+            <Link
+              href="/admin/users"
+              className="rounded-xl border border-[#e8e8e8] px-3 py-1.5 text-sm hover:bg-[#f9f9f9]"
+            >
+              초기화
+            </Link>
+          ) : null}
+        </form>
         {users.length === 0 ? (
           <p className="text-sm text-[#888]">사용자가 없습니다.</p>
         ) : (
@@ -256,7 +287,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
               return (
                 <li key={u.id} className="space-y-2 rounded-xl border border-[#e8e8e8] p-3">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-medium">{u.displayName}</span>
+                    <Link href={`/users/${u.id}`} className="text-sm font-medium hover:underline">{u.displayName}</Link>
                     <span className="rounded-full bg-[#f5f5f5] px-2 py-0.5 text-xs text-[#555]">
                       {u.accountType}
                     </span>
