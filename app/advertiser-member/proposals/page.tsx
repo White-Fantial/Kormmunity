@@ -139,11 +139,11 @@ export default async function AdvertiserMemberProposalsPage({
             </label>
             <label className="space-y-1 text-sm">
               <span className="text-[#555]">희망 시작일</span>
-              <input type="datetime-local" name="requestedStartAt" className={inputClass} />
+              <input type="date" name="requestedStartAt" className={inputClass} />
             </label>
             <label className="space-y-1 text-sm">
               <span className="text-[#555]">희망 종료일</span>
-              <input type="datetime-local" name="requestedEndAt" className={inputClass} />
+              <input type="date" name="requestedEndAt" className={inputClass} />
             </label>
             <label className="space-y-1 text-sm">
               <span className="text-[#555]">예산 (NZD)</span>
@@ -212,13 +212,13 @@ export default async function AdvertiserMemberProposalsPage({
             {selectedProposal.requestedStartAt ? (
               <div>
                 <dt className="text-xs text-[#888]">희망 시작일</dt>
-                <dd className="mt-0.5">{new Date(selectedProposal.requestedStartAt).toLocaleString('ko-KR')}</dd>
+                <dd className="mt-0.5">{new Date(selectedProposal.requestedStartAt).toLocaleDateString('ko-KR')}</dd>
               </div>
             ) : null}
             {selectedProposal.requestedEndAt ? (
               <div>
                 <dt className="text-xs text-[#888]">희망 종료일</dt>
-                <dd className="mt-0.5">{new Date(selectedProposal.requestedEndAt).toLocaleString('ko-KR')}</dd>
+                <dd className="mt-0.5">{new Date(selectedProposal.requestedEndAt).toLocaleDateString('ko-KR')}</dd>
               </div>
             ) : null}
             {selectedProposal.requestedBudget != null ? (

@@ -70,6 +70,18 @@ function formatDateTimeLocal(value: Date | null): string {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
+function formatDateLocal(value: Date | null): string {
+  if (!value) {
+    return '';
+  }
+
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export default async function AdsManagerSectionPage({ params, searchParams }: AdminAdsPageProps) {
   const currentUser = await getCurrentUser();
   if (!currentUser || !canAccessAdsManagerSection(currentUser)) {
@@ -334,11 +346,11 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                 </label>
                 <label className="space-y-1 text-sm">
                   <span className="text-[#555]">집행 시작일</span>
-                  <input type="datetime-local" name="startAt" className={inputClass} />
+                  <input type="date" name="startAt" className={inputClass} />
                 </label>
                 <label className="space-y-1 text-sm">
                   <span className="text-[#555]">집행 종료일</span>
-                  <input type="datetime-local" name="endAt" className={inputClass} />
+                  <input type="date" name="endAt" className={inputClass} />
                 </label>
                 <label className="space-y-1 text-sm">
                   <span className="text-[#555]">타겟 국가</span>
@@ -548,18 +560,18 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                 <label className="space-y-1 text-sm">
                   <span className="text-[#555]">집행 시작일</span>
                   <input
-                    type="datetime-local"
+                    type="date"
                     name="startAt"
-                    defaultValue={formatDateTimeLocal(selectedCampaign.startAt)}
+                    defaultValue={formatDateLocal(selectedCampaign.startAt)}
                     className={inputClass}
                   />
                 </label>
                 <label className="space-y-1 text-sm">
                   <span className="text-[#555]">집행 종료일</span>
                   <input
-                    type="datetime-local"
+                    type="date"
                     name="endAt"
-                    defaultValue={formatDateTimeLocal(selectedCampaign.endAt)}
+                    defaultValue={formatDateLocal(selectedCampaign.endAt)}
                     className={inputClass}
                   />
                 </label>
@@ -690,11 +702,11 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                 </label>
                 <label className="space-y-1 text-sm">
                   <span className="text-[#555]">희망 시작일</span>
-                  <input type="datetime-local" name="requestedStartAt" className={inputClass} />
+                  <input type="date" name="requestedStartAt" className={inputClass} />
                 </label>
                 <label className="space-y-1 text-sm">
                   <span className="text-[#555]">희망 종료일</span>
-                  <input type="datetime-local" name="requestedEndAt" className={inputClass} />
+                  <input type="date" name="requestedEndAt" className={inputClass} />
                 </label>
                 <label className="space-y-1 text-sm">
                   <span className="text-[#555]">예산 (NZD)</span>
@@ -784,18 +796,18 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                 <label className="space-y-1 text-sm">
                   <span className="text-[#555]">희망 시작일</span>
                   <input
-                    type="datetime-local"
+                    type="date"
                     name="requestedStartAt"
-                    defaultValue={formatDateTimeLocal(selectedProposal.requestedStartAt)}
+                    defaultValue={formatDateLocal(selectedProposal.requestedStartAt)}
                     className={inputClass}
                   />
                 </label>
                 <label className="space-y-1 text-sm">
                   <span className="text-[#555]">희망 종료일</span>
                   <input
-                    type="datetime-local"
+                    type="date"
                     name="requestedEndAt"
-                    defaultValue={formatDateTimeLocal(selectedProposal.requestedEndAt)}
+                    defaultValue={formatDateLocal(selectedProposal.requestedEndAt)}
                     className={inputClass}
                   />
                 </label>

@@ -43,13 +43,27 @@ async function requireAdvertiserMemberUser() {
   return user;
 }
 
-function parseNullableDateTime(value: string | null): Date | null {
+function parseNullableLocalDateStartOfDay(value: string | null): Date | null {
   if (!value) {
     return null;
   }
 
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
+  const normalized = value.trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(normalized);
+  if (match) {
+    const year = Number(match[1]);
+    const month = Number(match[2]) - 1;
+    const day = Number(match[3]);
+    const date = new Date(year, month, day, 0, 0, 0, 0);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  const fallback = new Date(normalized);
+  if (Number.isNaN(fallback.getTime())) {
+    return null;
+  }
+
+  return new Date(fallback.getFullYear(), fallback.getMonth(), fallback.getDate(), 0, 0, 0, 0);
 }
 
 export async function createAdvertiserMemberProposalAction(formData: FormData) {
@@ -58,8 +72,12 @@ export async function createAdvertiserMemberProposalAction(formData: FormData) {
   const advertiserId = normalizeText(formData.get('advertiserId'));
   const title = normalizeText(formData.get('title'));
   const body = normalizeText(formData.get('body'));
-  const requestedStartAt = parseNullableDateTime(normalizeText(formData.get('requestedStartAt')) || null);
-  const requestedEndAt = parseNullableDateTime(normalizeText(formData.get('requestedEndAt')) || null);
+  const requestedStartAt = parseNullableLocalDateStartOfDay(
+    normalizeText(formData.get('requestedStartAt')) || null,
+  );
+  const requestedEndAt = parseNullableLocalDateStartOfDay(
+    normalizeText(formData.get('requestedEndAt')) || null,
+  );
   const requestedBudgetRaw = normalizeText(formData.get('requestedBudget'));
   const requestedLandingUrl = normalizeText(formData.get('requestedLandingUrl')) || null;
   const advertisedProductCode = normalizeText(formData.get('advertisedProductCode')) || null;
