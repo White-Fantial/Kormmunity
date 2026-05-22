@@ -79,6 +79,28 @@ export function HeaderProfileMenuClient({ displayName, profileImageUrl, menuItem
               <div className="my-1 border-t border-[#f1f1f1]" />
             </>
           )}
+          <Link
+            href="/legal/terms"
+            className="block rounded-lg px-3 py-2 text-xs text-[#888] hover:bg-[#f9f9f9]"
+            onClick={() => setIsOpen(false)}
+          >
+            이용약관
+          </Link>
+          <Link
+            href="/legal/privacy"
+            className="block rounded-lg px-3 py-2 text-xs text-[#888] hover:bg-[#f9f9f9]"
+            onClick={() => setIsOpen(false)}
+          >
+            개인정보처리방침
+          </Link>
+          <Link
+            href="/legal/community-guidelines"
+            className="block rounded-lg px-3 py-2 text-xs text-[#888] hover:bg-[#f9f9f9]"
+            onClick={() => setIsOpen(false)}
+          >
+            운영정책
+          </Link>
+          <div className="my-1 border-t border-[#f1f1f1]" />
           <button
             type="submit"
             className="block w-full rounded-lg px-3 py-2 text-left text-sm text-[#333] hover:bg-[#f9f9f9]"
