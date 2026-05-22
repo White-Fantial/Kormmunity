@@ -49,23 +49,34 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       ) : null}
 
       {kakaoConfigured ? (
-        <a
-          href="/api/auth/kakao"
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#fee500] px-4 py-3.5 text-base font-bold text-[#3c1e1e] shadow-sm hover:bg-[#f5db00] active:scale-[0.98]"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-            className="h-5 w-5"
+        <div className="space-y-3">
+          <a
+            href="/api/auth/kakao"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#fee500] px-4 py-3.5 text-base font-bold text-[#3c1e1e] shadow-sm hover:bg-[#f5db00] active:scale-[0.98]"
           >
-            <path
-              fill="currentColor"
-              d="M12 3C6.477 3 2 6.477 2 10.8c0 2.7 1.62 5.085 4.073 6.525L5.1 21l4.89-2.925c.65.09 1.32.135 2.01.135 5.523 0 10-3.477 10-7.8S17.523 3 12 3z"
-            />
-          </svg>
-          카카오 계정으로 로그인
-        </a>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              className="h-5 w-5"
+            >
+              <path
+                fill="currentColor"
+                d="M12 3C6.477 3 2 6.477 2 10.8c0 2.7 1.62 5.085 4.073 6.525L5.1 21l4.89-2.925c.65.09 1.32.135 2.01.135 5.523 0 10-3.477 10-7.8S17.523 3 12 3z"
+              />
+            </svg>
+            카카오 계정으로 로그인
+          </a>
+          <p className="text-center text-xs text-[#aaa]">
+            로그인 또는 가입 시{' '}
+            <Link href="/legal/terms" className="underline hover:text-[#555]">이용약관</Link>
+            ,{' '}
+            <Link href="/legal/privacy" className="underline hover:text-[#555]">개인정보처리방침</Link>
+            ,{' '}
+            <Link href="/legal/community-guidelines" className="underline hover:text-[#555]">운영정책</Link>
+            에 동의한 것으로 간주됩니다.
+          </p>
+        </div>
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-[#888]">
@@ -86,6 +97,15 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               </form>
             ))}
           </div>
+          <p className="text-center text-xs text-[#aaa]">
+            로그인 또는 가입 시{' '}
+            <Link href="/legal/terms" className="underline hover:text-[#555]">이용약관</Link>
+            ,{' '}
+            <Link href="/legal/privacy" className="underline hover:text-[#555]">개인정보처리방침</Link>
+            ,{' '}
+            <Link href="/legal/community-guidelines" className="underline hover:text-[#555]">운영정책</Link>
+            에 동의한 것으로 간주됩니다.
+          </p>
         </div>
       )}
 
