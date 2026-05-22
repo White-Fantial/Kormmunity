@@ -33,7 +33,7 @@ const CATEGORY_TYPE_LABELS: Record<CategoryType, string> = {
   SERVICE: '서비스',
   EVENT: '이벤트',
   COLUMN: '전문가 칼럼',
-  ADVERTISEMENT: '광고',
+  ADVERTISEMENT: '업체홍보',
   NOTICE: '공지',
 };
 
