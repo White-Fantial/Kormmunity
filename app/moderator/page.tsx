@@ -12,6 +12,10 @@ import {
   ManagementSectionHeader,
 } from '@/components/admin/management-section-nav';
 import { getCurrentUser } from '@/lib/auth/session';
+import {
+  isMissingStaffAssignmentTableError,
+  toLegacyStaffAssignments,
+} from '@/lib/auth/staff-assignments';
 import { prisma } from '@/lib/db/prisma';
 import { canModerate } from '@/lib/permissions';
 import { DateTimeText } from '@/components/ui/date-time-text';
@@ -22,7 +26,7 @@ import { truncatePostBody } from '@/lib/posts/constants';
 export const dynamic = 'force-dynamic';
 
 type CoordinatorPageProps = {
-  searchParams: Promise<{ status?: string; error?: string }>;
+  searchParams: Promise<{ status?: string; error?: string; uq?: string }>;
 };
 
 export default async function CoordinatorPage({ searchParams }: CoordinatorPageProps) {
@@ -34,6 +38,61 @@ export default async function CoordinatorPage({ searchParams }: CoordinatorPageP
 
   const params = await searchParams;
   const statusFilter = params.status ?? 'HELD';
+  const userNameQuery = params.uq?.trim() ?? '';
+  const recentUsersPromise = prisma.user
+    .findMany({
+      where: {
+        isManagedAccount: false,
+        ...(userNameQuery ? { displayName: { contains: userNameQuery, mode: 'insensitive' } } : {}),
+        NOT: {
+          staffAssignments: {
+            some: { isActive: true, role: 'ADMIN' },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: {
+        id: true,
+        displayName: true,
+        status: true,
+        role: true,
+        createdAt: true,
+        staffAssignments: {
+          where: { isActive: true },
+          select: { role: true },
+        },
+      },
+    })
+    .catch(async (error) => {
+      if (!isMissingStaffAssignmentTableError(error)) {
+        throw error;
+      }
+
+      const usersWithoutAssignments = await prisma.user.findMany({
+        where: {
+          isManagedAccount: false,
+          role: { not: 'ADMIN' },
+          ...(userNameQuery ? { displayName: { contains: userNameQuery, mode: 'insensitive' } } : {}),
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+        select: {
+          id: true,
+          displayName: true,
+          status: true,
+          role: true,
+          createdAt: true,
+        },
+      });
+
+      return usersWithoutAssignments.map((user) => ({
+        ...user,
+        staffAssignments: toLegacyStaffAssignments(user.role, null, null).map((assignment) => ({
+          role: assignment.role,
+        })),
+      }));
+    });
 
   const [posts, recentUsers, unresolvedPostReportCount, unresolvedCommentReportCount] = await Promise.all([
     prisma.post.findMany({
@@ -57,18 +116,7 @@ export default async function CoordinatorPage({ searchParams }: CoordinatorPageP
         _count: { select: { reports: true } },
       },
     }),
-    prisma.user.findMany({
-      where: { role: { in: ['USER', 'MODERATOR', 'COORDINATOR'] } },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-      select: {
-        id: true,
-        displayName: true,
-        role: true,
-        status: true,
-        createdAt: true,
-      },
-    }),
+    recentUsersPromise,
     prisma.postReport.count({
       where: { reviewStatus: ReportReviewStatus.PENDING },
     }),
@@ -210,6 +258,32 @@ export default async function CoordinatorPage({ searchParams }: CoordinatorPageP
         <p className="mb-3 text-sm text-[#888]">
           문제가 있는 사용자를 관리자 검토 대상으로 표시할 수 있습니다.
         </p>
+        <form method="GET" className="mb-3 flex gap-2">
+          {params.status ? (
+            <input type="hidden" name="status" value={params.status} />
+          ) : null}
+          <input
+            type="text"
+            name="uq"
+            defaultValue={userNameQuery}
+            placeholder="닉네임 검색"
+            className="flex-1 rounded-lg border border-[#e8e8e8] px-3 py-1.5 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
+          />
+          <button
+            type="submit"
+            className="rounded-xl bg-[#fee500] px-3 py-1.5 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
+          >
+            검색
+          </button>
+          {userNameQuery ? (
+            <Link
+              href={params.status ? `/moderator?status=${params.status}` : '/moderator'}
+              className="rounded-xl border border-[#e8e8e8] px-3 py-1.5 text-sm hover:bg-[#f9f9f9]"
+            >
+              초기화
+            </Link>
+          ) : null}
+        </form>
 
         {recentUsers.length === 0 ? (
           <p className="text-sm text-[#888]">사용자가 없습니다.</p>
@@ -218,11 +292,11 @@ export default async function CoordinatorPage({ searchParams }: CoordinatorPageP
             {recentUsers.map((u) => (
               <li key={u.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-[#e8e8e8] p-3">
                 <span className="flex-1 text-sm">
-                  {u.displayName}
+                  <Link href={`/users/${u.id}`} className="font-medium hover:underline">{u.displayName}</Link>
                   <span className="ml-2 text-xs text-[#aaa]">
-                    {u.role === 'MODERATOR'
+                    {u.staffAssignments.some((a) => a.role === 'MODERATOR')
                       ? '모더레이터'
-                      : u.role === 'COORDINATOR'
+                      : u.staffAssignments.some((a) => a.role === 'COORDINATOR')
                         ? '운영'
                         : '일반'}{' '}
                     ·{' '}

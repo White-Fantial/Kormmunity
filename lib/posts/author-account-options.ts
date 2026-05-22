@@ -1,6 +1,7 @@
-import type { AccountType, UserRole, UserStatus } from '@prisma/client';
+import type { AccountType, UserStatus } from '@prisma/client';
 
 import { prisma } from '@/lib/db/prisma';
+import type { StaffAssignmentItem } from '@/lib/auth/types';
 
 export type AuthorAccountKind = 'PERSONA' | 'OPERATOR';
 
@@ -17,9 +18,12 @@ export type AuthorScope = {
   cityId: string | null;
 };
 
+type UserWithStaffAssignments = {
+  staffAssignments: StaffAssignmentItem[];
+};
+
 export type AuthorSelectionCandidate = {
   id: string;
-  role: UserRole;
   accountType: AccountType;
   isManagedAccount: boolean;
   isActive: boolean;
@@ -51,12 +55,12 @@ function toAuthorAccountKind(candidate: AuthorSelectionCandidate): AuthorAccount
   return null;
 }
 
-export function canSelectAuthorAccount(role: UserRole) {
-  return role === 'ADMIN';
+export function canSelectAuthorAccount(user: UserWithStaffAssignments) {
+  return user.staffAssignments.some((a) => a.role === 'ADMIN');
 }
 
 export function canActorUseAuthorForScope(
-  actorRole: UserRole,
+  actor: UserWithStaffAssignments,
   candidate: AuthorSelectionCandidate,
   _scope: AuthorScope,
 ) {
@@ -66,7 +70,7 @@ export function canActorUseAuthorForScope(
     return false;
   }
 
-  if (actorRole === 'ADMIN') {
+  if (actor.staffAssignments.some((a) => a.role === 'ADMIN')) {
     return true;
   }
 
@@ -74,11 +78,11 @@ export function canActorUseAuthorForScope(
 }
 
 export async function getAuthorAccountOptionsForActor(
-  actorRole: UserRole,
+  actor: UserWithStaffAssignments,
   _allowedScopes: AuthorScope[],
 ): Promise<AuthorAccountOption[]> {
   void _allowedScopes;
-  if (!canSelectAuthorAccount(actorRole)) {
+  if (!canSelectAuthorAccount(actor)) {
     return [];
   }
 
@@ -92,7 +96,6 @@ export async function getAuthorAccountOptionsForActor(
     select: {
       id: true,
       displayName: true,
-      role: true,
       accountType: true,
       isManagedAccount: true,
       isActive: true,

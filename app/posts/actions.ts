@@ -21,6 +21,7 @@ import {
   canEditPost,
   isPostScopeValid,
   canReportPost,
+  isAdmin,
 } from '@/lib/permissions';
 import { canActorUseAuthorForScope } from '@/lib/posts/author-account-options';
 import {
@@ -226,7 +227,7 @@ async function resolvePostAuthorUser(
     return fallbackAuthor;
   }
 
-  if (actor.role !== 'ADMIN') {
+  if (!isAdmin(actor)) {
     redirect(`${errorRedirectPath}?error=${encodeURIComponent('작성 계정을 변경할 권한이 없습니다.')}`);
   }
 
@@ -235,7 +236,6 @@ async function resolvePostAuthorUser(
     select: {
       id: true,
       displayName: true,
-      role: true,
       accountType: true,
       isManagedAccount: true,
       isActive: true,
@@ -252,7 +252,7 @@ async function resolvePostAuthorUser(
 
   if (
     !targetAuthor ||
-    !canActorUseAuthorForScope(actor.role, targetAuthor, {
+    !canActorUseAuthorForScope(actor, targetAuthor, {
       countryId: scopeCountryId,
       cityId: scopeCityId,
     })

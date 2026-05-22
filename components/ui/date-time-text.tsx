@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 
 import {
   formatKoreanDate,
@@ -19,11 +19,12 @@ type DateTimeTextProps = {
 };
 
 export function DateTimeText({ value, mode = 'datetime', timeZone, className }: DateTimeTextProps) {
-  const [localTimeZone, setLocalTimeZone] = useState<string | null>(null);
-
-  useEffect(() => {
-    setLocalTimeZone(timeZone ?? resolveBrowserTimeZone());
-  }, [timeZone]);
+  const browserTimeZone = useSyncExternalStore(
+    () => () => {},
+    resolveBrowserTimeZone,
+    () => null,
+  );
+  const localTimeZone = timeZone ?? browserTimeZone;
 
   const date = useMemo(() => parseDateInput(value), [value]);
 

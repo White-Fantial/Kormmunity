@@ -12,10 +12,11 @@ import {
 } from '@prisma/client';
 
 import { requireUser, invalidateSessionCache } from '@/lib/auth/session';
+import { isMissingStaffAssignmentTableError } from '@/lib/auth/staff-assignments';
 import { prisma } from '@/lib/db/prisma';
-import { canMakeFinalUserDecision, USER_ROLES } from '@/lib/permissions';
+import { canMakeFinalUserDecision, STAFF_ROLES, USER_ROLES } from '@/lib/permissions';
 import type { SessionUser } from '@/lib/auth/types';
-import type { UserRole, UserStatus } from '@prisma/client';
+import type { StaffRole, UserStatus } from '@prisma/client';
 import {
   applyCommunityScoreChange,
 } from '@/lib/community-score';
@@ -43,6 +44,15 @@ function normalizeHexColor(value: string) {
 
 function normalizeText(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeAdminReturnTo(value: FormDataEntryValue | null, fallbackPath: `/${string}`): string {
+  const candidate = normalizeText(value);
+  if (!candidate || !candidate.startsWith('/admin')) {
+    return fallbackPath;
+  }
+
+  return candidate;
 }
 
 function parseBoolean(value: FormDataEntryValue | null) {
@@ -96,6 +106,12 @@ function requireAdmin(user: SessionUser | null) {
   }
 }
 
+function redirectIfStaffAssignmentTableMissing(error: unknown): never | void {
+  if (isMissingStaffAssignmentTableError(error)) {
+    redirect('/admin/users?error=스태프 권한 테이블이 아직 준비되지 않았습니다. 마이그레이션 후 다시 시도해 주세요.');
+  }
+}
+
 async function logModerationAction(
   actorId: string,
   targetType: string,
@@ -127,6 +143,7 @@ async function revalidateUserSessions(userId: string) {
 async function resolveManagedAccountLocation(
   rawCountryId: string,
   rawCityId: string,
+  errorRedirectPath: string,
 ): Promise<{ countryId: string | null; cityId: string | null }> {
   const countryId = rawCountryId || null;
   const cityId = rawCityId || null;
@@ -147,15 +164,15 @@ async function resolveManagedAccountLocation(
   ]);
 
   if (countryId && !country) {
-    redirect(`${MANAGED_ACCOUNTS_PATH}?error=${encodeURIComponent('유효하지 않은 국가입니다.')}`);
+    redirectWithQuery(errorRedirectPath, { error: '유효하지 않은 국가입니다.' });
   }
 
   if (cityId && !city) {
-    redirect(`${MANAGED_ACCOUNTS_PATH}?error=${encodeURIComponent('유효하지 않은 도시입니다.')}`);
+    redirectWithQuery(errorRedirectPath, { error: '유효하지 않은 도시입니다.' });
   }
 
   if (city && countryId && city.countryId !== countryId) {
-    redirect(`${MANAGED_ACCOUNTS_PATH}?error=${encodeURIComponent('도시와 국가가 일치하지 않습니다.')}`);
+    redirectWithQuery(errorRedirectPath, { error: '도시와 국가가 일치하지 않습니다.' });
   }
 
   return {
@@ -164,19 +181,202 @@ async function resolveManagedAccountLocation(
   };
 }
 
+export async function addStaffAssignmentAction(formData: FormData) {
+  const user = await requireUser();
+  requireAdmin(user);
+
+  const targetUserId = normalizeText(formData.get('targetUserId'));
+  const role = normalizeText(formData.get('role')) as StaffRole;
+  const countryId = normalizeText(formData.get('countryId')) || null;
+  const cityId = normalizeText(formData.get('cityId')) || null;
+
+  if (!targetUserId || !role) {
+    redirect('/admin/users?error=잘못된 요청입니다.');
+  }
+
+  if (!(STAFF_ROLES as readonly string[]).includes(role)) {
+    redirect('/admin/users?error=유효하지 않은 스태프 역할입니다.');
+  }
+
+  const targetUser = await prisma.user.findUnique({
+    where: { id: targetUserId },
+    select: { id: true },
+  });
+
+  if (!targetUser) {
+    redirect('/admin/users?error=사용자를 찾을 수 없습니다.');
+  }
+
+  let assignment: { id: string };
+  try {
+    // Check for existing active assignment with same scope
+    const existingAssignment = await prisma.staffAssignment.findFirst({
+      where: {
+        userId: targetUserId,
+        role,
+        countryId: countryId ?? null,
+        cityId: cityId ?? null,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+
+    if (existingAssignment) {
+      redirect(`/admin/users?error=${encodeURIComponent('이미 동일한 스태프 권한이 존재합니다.')}`);
+    }
+
+    assignment = await prisma.staffAssignment.create({
+      data: {
+        userId: targetUserId,
+        role,
+        countryId,
+        cityId,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+  } catch (error) {
+    redirectIfStaffAssignmentTableMissing(error);
+    throw error;
+  }
+
+  await logModerationAction(
+    user.id,
+    'USER',
+    targetUserId,
+    `STAFF_ASSIGNMENT_ADDED_${role}`,
+    JSON.stringify({ assignmentId: assignment.id, role, countryId, cityId }),
+  );
+
+  revalidatePath('/admin/users');
+  await revalidateUserSessions(targetUserId);
+  redirect('/admin/users');
+}
+
+export async function deactivateStaffAssignmentAction(formData: FormData) {
+  const user = await requireUser();
+  requireAdmin(user);
+
+  const assignmentId = normalizeText(formData.get('assignmentId'));
+
+  if (!assignmentId) {
+    redirect('/admin/users?error=잘못된 요청입니다.');
+  }
+
+  let assignment:
+    | {
+        id: string;
+        userId: string;
+        role: StaffRole;
+        isActive: boolean;
+      }
+    | null = null;
+  try {
+    assignment = await prisma.staffAssignment.findUnique({
+      where: { id: assignmentId },
+      select: { id: true, userId: true, role: true, isActive: true },
+    });
+  } catch (error) {
+    redirectIfStaffAssignmentTableMissing(error);
+    throw error;
+  }
+
+  if (!assignment) {
+    redirect('/admin/users?error=스태프 권한을 찾을 수 없습니다.');
+  }
+
+  if (!assignment.isActive) {
+    redirect(`/admin/users?error=${encodeURIComponent('이미 비활성화된 스태프 권한입니다.')}`);
+  }
+
+  try {
+    await prisma.staffAssignment.update({
+      where: { id: assignmentId },
+      data: { isActive: false },
+    });
+  } catch (error) {
+    redirectIfStaffAssignmentTableMissing(error);
+    throw error;
+  }
+
+  await logModerationAction(
+    user.id,
+    'USER',
+    assignment.userId,
+    `STAFF_ASSIGNMENT_DEACTIVATED_${assignment.role}`,
+    JSON.stringify({ assignmentId }),
+  );
+
+  revalidatePath('/admin/users');
+  await revalidateUserSessions(assignment.userId);
+  redirect('/admin/users');
+}
+
+export async function deleteStaffAssignmentAction(formData: FormData) {
+  const user = await requireUser();
+  requireAdmin(user);
+
+  const assignmentId = normalizeText(formData.get('assignmentId'));
+
+  if (!assignmentId) {
+    redirect('/admin/users?error=잘못된 요청입니다.');
+  }
+
+  let assignment:
+    | {
+        id: string;
+        userId: string;
+        role: StaffRole;
+      }
+    | null = null;
+  try {
+    assignment = await prisma.staffAssignment.findUnique({
+      where: { id: assignmentId },
+      select: { id: true, userId: true, role: true },
+    });
+  } catch (error) {
+    redirectIfStaffAssignmentTableMissing(error);
+    throw error;
+  }
+
+  if (!assignment) {
+    redirect('/admin/users?error=스태프 권한을 찾을 수 없습니다.');
+  }
+
+  try {
+    await prisma.staffAssignment.delete({ where: { id: assignmentId } });
+  } catch (error) {
+    redirectIfStaffAssignmentTableMissing(error);
+    throw error;
+  }
+
+  await logModerationAction(
+    user.id,
+    'USER',
+    assignment.userId,
+    `STAFF_ASSIGNMENT_DELETED_${assignment.role}`,
+    JSON.stringify({ assignmentId }),
+  );
+
+  revalidatePath('/admin/users');
+  await revalidateUserSessions(assignment.userId);
+  redirect('/admin/users');
+}
+
 export async function changeUserRoleAction(formData: FormData) {
   const user = await requireUser();
   requireAdmin(user);
 
   const targetUserId = normalizeText(formData.get('targetUserId'));
-  const newRole = normalizeText(formData.get('role')) as UserRole;
+  const newRole = normalizeText(formData.get('role'));
   const reason = normalizeText(formData.get('reason'));
 
   if (!targetUserId || !newRole) {
     redirect('/admin/users?error=잘못된 요청입니다.');
   }
 
-  if (!USER_ROLES.includes(newRole)) {
+  const ALL_ROLES = ['USER', 'MODERATOR', 'COORDINATOR', 'ADMIN'];
+  if (!ALL_ROLES.includes(newRole)) {
     redirect('/admin/users?error=유효하지 않은 역할입니다.');
   }
 
@@ -192,7 +392,7 @@ export async function changeUserRoleAction(formData: FormData) {
   await prisma.$transaction(async (tx) => {
     await tx.user.update({
       where: { id: targetUserId },
-      data: { role: newRole },
+      data: { role: newRole as 'USER' | 'MODERATOR' | 'COORDINATOR' | 'ADMIN' },
     });
 
     await tx.moderationAction.create({
@@ -332,12 +532,15 @@ export async function createManagedAccountAction(formData: FormData) {
   const personaNotes = normalizeText(formData.get('personaNotes')) || null;
   const toneNotes = normalizeText(formData.get('toneNotes')) || null;
   const activityNotes = normalizeText(formData.get('activityNotes')) || null;
+  const returnTo = normalizeAdminReturnTo(formData.get('returnTo'), MANAGED_ACCOUNTS_PATH);
 
   if (!displayName || !accountType) {
-    redirect(`${MANAGED_ACCOUNTS_PATH}?error=${encodeURIComponent('닉네임과 계정 타입(PERSONA/OPERATOR)을 입력해 주세요.')}`);
+    redirectWithQuery(returnTo, {
+      error: '닉네임과 계정 타입(PERSONA/OPERATOR)을 입력해 주세요.',
+    });
   }
 
-  const { countryId, cityId } = await resolveManagedAccountLocation(rawCountryId, rawCityId);
+  const { countryId, cityId } = await resolveManagedAccountLocation(rawCountryId, rawCityId, returnTo);
 
   const created = await prisma.user.create({
     data: {
@@ -382,7 +585,7 @@ export async function createManagedAccountAction(formData: FormData) {
 
   revalidatePath(MANAGED_ACCOUNTS_PATH);
   revalidatePath('/posts/new');
-  redirect(MANAGED_ACCOUNTS_PATH);
+  redirect(returnTo);
 }
 
 export async function updateManagedAccountAction(formData: FormData) {
@@ -404,12 +607,13 @@ export async function updateManagedAccountAction(formData: FormData) {
   const personaNotes = normalizeText(formData.get('personaNotes')) || null;
   const toneNotes = normalizeText(formData.get('toneNotes')) || null;
   const activityNotes = normalizeText(formData.get('activityNotes')) || null;
+  const returnTo = normalizeAdminReturnTo(formData.get('returnTo'), MANAGED_ACCOUNTS_PATH);
 
   if (!targetUserId || !displayName || !accountType || isActive === null) {
-    redirect(`${MANAGED_ACCOUNTS_PATH}?error=${encodeURIComponent('운영 계정 수정 요청 값이 올바르지 않습니다.')}`);
+    redirectWithQuery(returnTo, { error: '운영 계정 수정 요청 값이 올바르지 않습니다.' });
   }
 
-  const { countryId, cityId } = await resolveManagedAccountLocation(rawCountryId, rawCityId);
+  const { countryId, cityId } = await resolveManagedAccountLocation(rawCountryId, rawCityId, returnTo);
 
   const existing = await prisma.user.findUnique({
     where: { id: targetUserId },
@@ -434,7 +638,7 @@ export async function updateManagedAccountAction(formData: FormData) {
     !existing.isManagedAccount ||
     (existing.accountType !== 'PERSONA' && existing.accountType !== 'OPERATOR')
   ) {
-    redirect(`${MANAGED_ACCOUNTS_PATH}?error=${encodeURIComponent('수정 가능한 운영 계정을 찾을 수 없습니다.')}`);
+    redirectWithQuery(returnTo, { error: '수정 가능한 운영 계정을 찾을 수 없습니다.' });
   }
 
   const updated = await prisma.user.update({
@@ -487,7 +691,7 @@ export async function updateManagedAccountAction(formData: FormData) {
 
   revalidatePath(MANAGED_ACCOUNTS_PATH);
   revalidatePath('/posts/new');
-  redirect(MANAGED_ACCOUNTS_PATH);
+  redirect(returnTo);
 }
 
 export async function adminDeletePostAction(formData: FormData) {
@@ -1099,21 +1303,22 @@ export async function createPostPermissionAction(formData: FormData) {
   const countryId = normalizeText(formData.get('countryId')) || null;
   const cityId = normalizeText(formData.get('cityId')) || null;
   const categoryId = normalizeText(formData.get('categoryId')) || null;
+  const returnTo = normalizeAdminReturnTo(formData.get('returnTo'), '/admin/post-permissions');
 
   if (!Object.values(PermissionSubjectType).includes(subjectType)) {
-    redirect('/admin/post-permissions?error=유효하지 않은 권한 주체입니다.');
+    redirectWithQuery(returnTo, { error: '유효하지 않은 권한 주체입니다.' });
   }
 
   if (subjectType === 'USER' && !userId) {
-    redirect('/admin/post-permissions?error=사용자를 선택해 주세요.');
+    redirectWithQuery(returnTo, { error: '사용자를 선택해 주세요.' });
   }
 
   if (subjectType === 'ROLE' && !role) {
-    redirect('/admin/post-permissions?error=유효하지 않은 역할입니다.');
+    redirectWithQuery(returnTo, { error: '유효하지 않은 역할입니다.' });
   }
 
   if (cityId && !countryId) {
-    redirect('/admin/post-permissions?error=도시를 지정하려면 국가를 함께 선택해 주세요.');
+    redirectWithQuery(returnTo, { error: '도시를 지정하려면 국가를 함께 선택해 주세요.' });
   }
 
   const [targetUser, country, city, category, existingPermission] = await Promise.all([
@@ -1155,23 +1360,23 @@ export async function createPostPermissionAction(formData: FormData) {
   ]);
 
   if (subjectType === 'USER' && !targetUser) {
-    redirect('/admin/post-permissions?error=사용자를 찾을 수 없습니다.');
+    redirectWithQuery(returnTo, { error: '사용자를 찾을 수 없습니다.' });
   }
 
   if (countryId && !country) {
-    redirect('/admin/post-permissions?error=국가를 찾을 수 없습니다.');
+    redirectWithQuery(returnTo, { error: '국가를 찾을 수 없습니다.' });
   }
 
   if (cityId && (!city || city.countryId !== countryId)) {
-    redirect('/admin/post-permissions?error=도시를 올바르게 선택해 주세요.');
+    redirectWithQuery(returnTo, { error: '도시를 올바르게 선택해 주세요.' });
   }
 
   if (categoryId && !category) {
-    redirect('/admin/post-permissions?error=카테고리를 찾을 수 없습니다.');
+    redirectWithQuery(returnTo, { error: '카테고리를 찾을 수 없습니다.' });
   }
 
   if (existingPermission) {
-    redirect('/admin/post-permissions?error=동일한 권한이 이미 존재합니다.');
+    redirectWithQuery(returnTo, { error: '동일한 권한이 이미 존재합니다.' });
   }
 
   await prisma.postPermission.create({
@@ -1189,7 +1394,7 @@ export async function createPostPermissionAction(formData: FormData) {
 
   revalidatePath('/admin/post-permissions');
   revalidatePath('/posts/new');
-  redirect('/admin/post-permissions');
+  redirect(returnTo);
 }
 
 export async function deletePostPermissionAction(formData: FormData) {
@@ -1197,9 +1402,10 @@ export async function deletePostPermissionAction(formData: FormData) {
   requireAdmin(user);
 
   const permissionId = normalizeText(formData.get('permissionId'));
+  const returnTo = normalizeAdminReturnTo(formData.get('returnTo'), '/admin/post-permissions');
 
   if (!permissionId) {
-    redirect('/admin/post-permissions?error=권한 ID가 없습니다.');
+    redirectWithQuery(returnTo, { error: '권한 ID가 없습니다.' });
   }
 
   const permission = await prisma.postPermission.findUnique({
@@ -1213,7 +1419,7 @@ export async function deletePostPermissionAction(formData: FormData) {
   });
 
   if (!permission) {
-    redirect('/admin/post-permissions?error=권한을 찾을 수 없습니다.');
+    redirectWithQuery(returnTo, { error: '권한을 찾을 수 없습니다.' });
   }
 
   await prisma.postPermission.delete({
@@ -1229,7 +1435,7 @@ export async function deletePostPermissionAction(formData: FormData) {
 
   revalidatePath('/admin/post-permissions');
   revalidatePath('/posts/new');
-  redirect('/admin/post-permissions');
+  redirect(returnTo);
 }
 
 export async function createCityAction(formData: FormData) {
@@ -1296,9 +1502,10 @@ export async function createReportOptionAction(formData: FormData) {
   requireAdmin(user);
 
   const label = normalizeText(formData.get('label'));
+  const returnTo = normalizeAdminReturnTo(formData.get('returnTo'), '/admin/report-options');
 
   if (!label) {
-    redirect('/admin/report-options?error=신고 옵션 이름을 입력해 주세요.');
+    redirectWithQuery(returnTo, { error: '신고 옵션 이름을 입력해 주세요.' });
   }
 
   const exists = await prisma.reportOption.findFirst({
@@ -1307,7 +1514,7 @@ export async function createReportOptionAction(formData: FormData) {
   });
 
   if (exists) {
-    redirect('/admin/report-options?error=이미 존재하는 신고 옵션입니다.');
+    redirectWithQuery(returnTo, { error: '이미 존재하는 신고 옵션입니다.' });
   }
 
   const sortOrder = await prisma.reportOption.count();
@@ -1323,7 +1530,7 @@ export async function createReportOptionAction(formData: FormData) {
   await logModerationAction(user.id, 'REPORT_OPTION', option.id, 'CREATE', label);
 
   revalidatePath('/admin/report-options');
-  redirect('/admin/report-options');
+  redirect(returnTo);
 }
 
 export async function toggleReportOptionActiveAction(formData: FormData) {
@@ -1332,9 +1539,10 @@ export async function toggleReportOptionActiveAction(formData: FormData) {
 
   const optionId = normalizeText(formData.get('optionId'));
   const isActive = formData.get('isActive') === 'true';
+  const returnTo = normalizeAdminReturnTo(formData.get('returnTo'), '/admin/report-options');
 
   if (!optionId) {
-    redirect('/admin/report-options?error=신고 옵션 ID가 없습니다.');
+    redirectWithQuery(returnTo, { error: '신고 옵션 ID가 없습니다.' });
   }
 
   await prisma.reportOption.update({
@@ -1350,7 +1558,7 @@ export async function toggleReportOptionActiveAction(formData: FormData) {
   );
 
   revalidatePath('/admin/report-options');
-  redirect('/admin/report-options');
+  redirect(returnTo);
 }
 
 export async function createCountryAction(formData: FormData) {

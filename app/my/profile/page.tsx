@@ -14,6 +14,7 @@ import { ProfileLocationSelects } from '@/components/my/profile-location-selects
 import {
   deleteSearchAlertAction,
 } from '@/app/posts/search-alert-actions';
+import { isAdmin } from '@/lib/permissions';
 
 
 export const dynamic = 'force-dynamic';
@@ -31,7 +32,7 @@ type MyProfilePageProps = {
 export default async function MyProfilePage({ searchParams }: MyProfilePageProps) {
   const user = await requireUser();
   const params = await searchParams;
-  const isAdmin = user.role === 'ADMIN';
+  const isAdminUser = isAdmin(user);
 
   const { since: cooldownSince } = getLocationCooldownWindow(LOCATION_COOLDOWN_DAYS);
 
@@ -66,7 +67,7 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
         query: true,
       },
     }),
-    !isAdmin
+    !isAdminUser
       ? prisma.locationChangeLog.findFirst({
           where: { userId: user.id, changeType: 'CITY_CHANGED', createdAt: { gt: cooldownSince } },
           orderBy: { createdAt: 'desc' },
@@ -78,7 +79,7 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
   const nextLocationChangeAt = lastLocationChange
     ? new Date(lastLocationChange.createdAt.getTime() + LOCATION_COOLDOWN_DAYS * 24 * 60 * 60 * 1000)
     : null;
-  const isLocationCooldown = !isAdmin && nextLocationChangeAt != null;
+  const isLocationCooldown = !isAdminUser && nextLocationChangeAt != null;
 
   return (
     <section className="space-y-4 rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
@@ -95,7 +96,6 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
       <p className="text-sm text-[#666]">
         <NeighbourWarmthLabel warmth={dbUser?.neighbourWarmth ?? NEIGHBOUR_WARMTH_DEFAULT} />
       </p>
-      <p className="text-sm text-[#888]">역할: {user.role}</p>
       <p className="text-sm text-[#888]">상태: {user.status}</p>
 
       {params.success ? (
@@ -134,7 +134,7 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
           defaultCountryId={dbUser?.countryId ?? null}
           defaultCityId={dbUser?.cityId ?? null}
           disabled={isLocationCooldown}
-          showCooldownNote={!isAdmin}
+          showCooldownNote={!isAdminUser}
         />
         <div className="space-y-1">
           <label htmlFor="openChatUrl" className="text-sm font-medium">

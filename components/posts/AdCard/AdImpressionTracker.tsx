@@ -4,7 +4,8 @@ import { useEffect, useRef } from 'react';
 
 type AdImpressionTrackerProps = {
   campaignId: string;
-  postId: string;
+  postId?: string | null;
+  adContentId?: string | null;
   placementType: string;
   positionIndex?: number;
 };
@@ -12,6 +13,7 @@ type AdImpressionTrackerProps = {
 export function AdImpressionTracker({
   campaignId,
   postId,
+  adContentId,
   placementType,
   positionIndex = 0,
 }: AdImpressionTrackerProps) {
@@ -35,7 +37,7 @@ export function AdImpressionTracker({
           void fetch('/api/ads/impression', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ campaignId, postId, placementType, positionIndex }),
+            body: JSON.stringify({ campaignId, postId, adContentId, placementType, positionIndex }),
             keepalive: true,
           });
         }
@@ -45,7 +47,7 @@ export function AdImpressionTracker({
 
     observer.observe(container);
     return () => observer.disconnect();
-  }, [campaignId, postId, placementType, positionIndex]);
+  }, [adContentId, campaignId, postId, placementType, positionIndex]);
 
   return <span ref={markerRef} aria-hidden="true" />;
 }

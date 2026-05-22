@@ -18,61 +18,98 @@ function AdBadge() {
   );
 }
 
-function getCardClass(layout: AdLayout, size: AdSize): string {
-  if (layout === 'FEATURED' || (layout === 'IMAGE' && size === 'L')) {
-    return 'overflow-hidden rounded-xl border border-amber-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ring-1 ring-amber-100';
+// Layout determines the card template; size determines dimensions within that template.
+function getCardClass(layout: AdLayout): string {
+  if (layout === 'FEATURED') {
+    return 'overflow-hidden rounded-xl border border-amber-300 bg-amber-50/30 shadow-md transition hover:-translate-y-0.5 hover:shadow-lg ring-2 ring-amber-200';
   }
 
-  if (layout === 'IMAGE' || size === 'L') {
+  if (layout === 'IMAGE') {
     return 'overflow-hidden rounded-xl border border-amber-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md';
   }
 
+  // TEXT and THUMBNAIL: horizontal row card
   return 'rounded-xl border border-amber-200 bg-white p-3 shadow-sm transition hover:bg-amber-50/40';
 }
 
 function getImageHeight(layout: AdLayout, size: AdSize): string {
-  if (layout === 'FEATURED' || size === 'L') {
-    return 'h-52 sm:h-64';
+  if (layout === 'FEATURED') {
+    if (size === 'S') return 'h-36 sm:h-44';
+    if (size === 'L') return 'h-60 sm:h-72';
+    return 'h-48 sm:h-56';
   }
-
+  // IMAGE
+  if (size === 'S') return 'h-28 sm:h-36';
+  if (size === 'L') return 'h-52 sm:h-64';
   return 'h-40 sm:h-48';
+}
+
+function getThumbnailDimClass(size: AdSize): string {
+  if (size === 'S') return 'h-12 w-12 sm:h-14 sm:w-14';
+  if (size === 'L') return 'h-20 w-20 sm:h-[88px] sm:w-[88px]';
+  return 'h-16 w-16 sm:h-[72px] sm:w-[72px]';
+}
+
+function getThumbnailSizesAttr(size: AdSize): string {
+  if (size === 'S') return '(max-width: 640px) 48px, 56px';
+  if (size === 'L') return '(max-width: 640px) 80px, 88px';
+  return '(max-width: 640px) 64px, 72px';
+}
+
+function getBodyLineClamp(size: AdSize): string {
+  if (size === 'S') return 'line-clamp-1';
+  if (size === 'L') return 'line-clamp-3';
+  return 'line-clamp-2';
 }
 
 export function AdCard({ ad }: AdCardProps) {
   const layout = ad.adLayout;
   const size = ad.adSize;
+
+  // Layout exclusively determines the template:
+  //   TEXT / THUMBNAIL → horizontal inline row
+  //   IMAGE / FEATURED → vertical card with full-width image area
   const isInline = layout === 'TEXT' || layout === 'THUMBNAIL';
-  const hasThumbnail = Boolean(ad.thumbnailUrl) && layout !== 'TEXT';
+
+  // For THUMBNAIL rows, show the thumbnail if available.
+  // For TEXT, always hide image regardless of thumbnailUrl.
+  const showThumbnailInRow = isInline && layout === 'THUMBNAIL' && Boolean(ad.thumbnailUrl);
+
+  // For vertical cards, show image if thumbnailUrl is present.
+  const showImageInCard = !isInline && Boolean(ad.thumbnailUrl);
 
   function handleClick() {
     void fetch('/api/ads/click', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ campaignId: ad.adCampaignId, postId: ad.adPostId }),
+      body: JSON.stringify({
+        campaignId: ad.adCampaignId,
+        postId: ad.adPostId,
+        adContentId: ad.adContentId,
+      }),
       keepalive: true,
     });
   }
 
-  if (isInline || size === 'S') {
+  if (isInline) {
     return (
-      <article className={getCardClass(layout, size)}>
+      <article className={getCardClass(layout)}>
         <AdImpressionTracker
           campaignId={ad.adCampaignId}
           postId={ad.adPostId}
+          adContentId={ad.adContentId}
           placementType={ad.adPlacementType}
         />
-        <Link
-          href={ad.href}
-          className="flex items-start gap-3"
-          onClick={handleClick}
-        >
-          {hasThumbnail && ad.thumbnailUrl ? (
-            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-amber-200 sm:h-[72px] sm:w-[72px]">
+        <Link href={ad.href} className="flex items-start gap-3" onClick={handleClick}>
+          {showThumbnailInRow && ad.thumbnailUrl ? (
+            <div
+              className={`relative ${getThumbnailDimClass(size)} shrink-0 overflow-hidden rounded-lg border border-amber-200`}
+            >
               <Image
                 src={ad.thumbnailUrl}
                 alt={ad.title?.trim() ? `광고: ${ad.title.trim()}` : '광고'}
                 fill
-                sizes="(max-width: 640px) 64px, 72px"
+                sizes={getThumbnailSizesAttr(size)}
                 quality={60}
                 className="object-cover"
               />
@@ -101,15 +138,22 @@ export function AdCard({ ad }: AdCardProps) {
     );
   }
 
+  // IMAGE or FEATURED: vertical card
+  const titleClass =
+    layout === 'FEATURED'
+      ? 'text-lg font-bold sm:text-xl'
+      : 'text-base font-semibold sm:text-lg';
+
   return (
-    <article className={getCardClass(layout, size)}>
+    <article className={getCardClass(layout)}>
       <AdImpressionTracker
         campaignId={ad.adCampaignId}
         postId={ad.adPostId}
+        adContentId={ad.adContentId}
         placementType={ad.adPlacementType}
       />
       <Link href={ad.href} className="block space-y-3 p-3 sm:p-4" onClick={handleClick}>
-        {hasThumbnail && ad.thumbnailUrl ? (
+        {showImageInCard && ad.thumbnailUrl ? (
           <div className={`relative overflow-hidden rounded-lg ${getImageHeight(layout, size)}`}>
             <Image
               src={ad.thumbnailUrl}
@@ -137,15 +181,13 @@ export function AdCard({ ad }: AdCardProps) {
         </div>
 
         <div className="space-y-2">
-          {ad.title?.trim() ? (
-            <h2 className="text-base font-semibold sm:text-lg">{ad.title.trim()}</h2>
-          ) : null}
-          <p className="line-clamp-2 text-sm text-[#555] sm:text-[15px]">{ad.bodyPreview}</p>
+          {ad.title?.trim() ? <h2 className={titleClass}>{ad.title.trim()}</h2> : null}
+          <p className={`text-sm text-[#555] sm:text-[15px] ${getBodyLineClamp(size)}`}>
+            {ad.bodyPreview}
+          </p>
         </div>
 
-        {ad.author ? (
-          <p className="text-sm text-[#666]">{ad.author.displayName}</p>
-        ) : null}
+        {ad.author ? <p className="text-sm text-[#666]">{ad.author.displayName}</p> : null}
       </Link>
     </article>
   );

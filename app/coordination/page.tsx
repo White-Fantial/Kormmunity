@@ -49,7 +49,8 @@ export default async function CoordinationPage() {
     );
   }
 
-  const now = Date.now();
+  const nowDate = new Date();
+  const now = nowDate.getTime();
   const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
 
   const [

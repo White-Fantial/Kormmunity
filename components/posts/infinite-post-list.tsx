@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useMemo, useEffect, useRef, useState } from 'react';
 
 import { PostCard } from '@/components/posts/post-card';
 import { AdCard } from '@/components/posts/AdCard';
@@ -34,7 +34,8 @@ export type InfinitePostItem = {
   // Ad-specific fields (only present when isAd: true)
   isAd?: boolean;
   adCampaignId?: string;
-  adPostId?: string;
+  adContentId?: string | null;
+  adPostId?: string | null;
   adLayout?: string;
   adSize?: string;
   adPlacementType?: string;
@@ -133,24 +134,23 @@ export function InfinitePostList({
   const [posts, setPosts] = useState<FeedItem[]>(initialPosts);
   const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor);
 
-  useEffect(() => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(Boolean(initialNextCursor));
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const isLoadingRef = useRef(false);
+
+  const synchronizedPosts = useMemo(() => {
     const freshMap = new Map(
       initialPosts
         .filter((p): p is InfinitePostItem => !('isAd' in p && p.isAd))
         .map((p) => [p.id, p]),
     );
-    setPosts((prev) =>
-      prev.map((item) => {
-        if ('isAd' in item && item.isAd) return item;
-        const post = item as InfinitePostItem;
-        return freshMap.get(post.id) ?? post;
-      }),
-    );
-  }, [initialPosts]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(Boolean(initialNextCursor));
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  const isLoadingRef = useRef(false);
+    return posts.map((item) => {
+      if ('isAd' in item && item.isAd) return item;
+      const post = item as InfinitePostItem;
+      return freshMap.get(post.id) ?? post;
+    });
+  }, [initialPosts, posts]);
 
   const loadMore = useCallback(async () => {
     if (isLoadingRef.current || !nextCursor) return;
@@ -203,7 +203,7 @@ export function InfinitePostList({
 
   return (
     <div className="space-y-3">
-      {posts.map((post, index) => {
+      {synchronizedPosts.map((post, index) => {
         const key = 'isAd' in post && post.isAd
           ? `ad-${(post as AdFeedItem).adCampaignId}-${index}`
           : (post as InfinitePostItem).id;

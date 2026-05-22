@@ -37,10 +37,10 @@ export default async function NewPostPage({ searchParams }: NewPostPageProps) {
   const params = await searchParams;
   const formOptions = await getPostCreationFormOptions(user);
   const canGenerateDraft = canUseAutoContentGeneration(user);
-  const canOverrideAuthor = canSelectAuthorAccount(user.role);
+  const canOverrideAuthor = canSelectAuthorAccount(user);
   const authorAccountOptions = canOverrideAuthor
     ? await getAuthorAccountOptionsForActor(
-        user.role,
+        user,
         formOptions.allowedTargets.map((target) => ({
           countryId: target.countryId,
           cityId: target.cityId,

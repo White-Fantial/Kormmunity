@@ -1,5 +1,11 @@
-import { CategoryVisibilityMode, UserRole } from '@prisma/client';
-import type { CategoryType, PostStatus, UserStatus } from '@prisma/client';
+import { CategoryVisibilityMode } from '@prisma/client';
+import type {
+  AdProposalStatus,
+  CategoryType,
+  PostStatus,
+  StaffRole,
+  UserStatus,
+} from '@prisma/client';
 
 import { prisma } from '@/lib/db/prisma';
 import {
@@ -8,12 +14,18 @@ import {
   getActivePostTagOptions,
 } from '@/lib/posts/reference-data';
 
+type StaffAssignmentItem = {
+  role: StaffRole;
+  countryId: string | null;
+  cityId: string | null;
+};
+
 type PermissionUser = {
   id: string;
-  role: UserRole;
   status: UserStatus;
   countryId: string | null;
   cityId: string | null;
+  staffAssignments: StaffAssignmentItem[];
 };
 
 type PermissionPost = {
@@ -67,16 +79,88 @@ export type PostCreationFormOptions = {
   defaultCityId: string | null;
 };
 
-const ROLE_RANK: Record<UserRole, number> = {
-  USER: 0,
-  MODERATOR: 1,
-  COORDINATOR: 2,
-  ADMIN: 3,
-};
+export const USER_ROLES = ['USER', 'MODERATOR', 'COORDINATOR', 'ADMIN'] as const;
+export const STAFF_ROLES = [
+  'MODERATOR',
+  'COORDINATOR',
+  'AD_MANAGER',
+  'PARTNER_MANAGER',
+  'ADMIN',
+] as const;
+export type StaffRoleValue = (typeof STAFF_ROLES)[number];
 
-export { ROLE_RANK };
-export const USER_ROLES = Object.values(UserRole) as UserRole[];
-export const AUTO_CONTENT_GENERATION_ROLES: UserRole[] = ['ADMIN'];
+// ─── Core staff assignment helpers ────────────────────────────────────────────
+
+function hasAdminAssignment(assignments: StaffAssignmentItem[]): boolean {
+  return assignments.some((a) => a.role === 'ADMIN');
+}
+
+function hasModeratorAssignment(assignments: StaffAssignmentItem[]): boolean {
+  return assignments.some((a) => a.role === 'MODERATOR' || a.role === 'ADMIN');
+}
+
+function hasCoordinatorAssignment(assignments: StaffAssignmentItem[]): boolean {
+  return assignments.some((a) => a.role === 'COORDINATOR' || a.role === 'ADMIN');
+}
+
+function hasAdManagerAssignment(assignments: StaffAssignmentItem[]): boolean {
+  return assignments.some((a) => a.role === 'AD_MANAGER' || a.role === 'ADMIN');
+}
+
+function hasPartnerManagerAssignment(assignments: StaffAssignmentItem[]): boolean {
+  return assignments.some((a) => a.role === 'PARTNER_MANAGER' || a.role === 'ADMIN');
+}
+
+function hasAnyStaffAssignment(assignments: StaffAssignmentItem[]): boolean {
+  return assignments.length > 0;
+}
+
+/**
+ * Returns true if the given assignment's scope covers the target location.
+ * A null countryId/cityId on the assignment means "global" (matches any).
+ */
+function assignmentCoversLocation(
+  assignment: StaffAssignmentItem,
+  targetCountryId: string | null,
+  targetCityId: string | null,
+): boolean {
+  const countryMatch =
+    assignment.countryId === null || assignment.countryId === targetCountryId;
+  const cityMatch = assignment.cityId === null || assignment.cityId === targetCityId;
+  return countryMatch && cityMatch;
+}
+
+/**
+ * Returns the highest effective staff role for a user at a given location.
+ * Used to determine default write visibility modes for post creation.
+ */
+function getEffectiveLocalRole(
+  assignments: StaffAssignmentItem[],
+  countryId: string | null,
+  cityId: string | null,
+): 'ADMIN' | 'MODERATOR' | 'COORDINATOR' | 'USER' {
+  if (hasAdminAssignment(assignments)) {
+    return 'ADMIN';
+  }
+
+  if (
+    assignments.some(
+      (a) => a.role === 'MODERATOR' && assignmentCoversLocation(a, countryId, cityId),
+    )
+  ) {
+    return 'MODERATOR';
+  }
+
+  if (
+    assignments.some(
+      (a) => a.role === 'COORDINATOR' && assignmentCoversLocation(a, countryId, cityId),
+    )
+  ) {
+    return 'COORDINATOR';
+  }
+
+  return 'USER';
+}
 
 export function canUseAutoContentGeneration(
   user: PermissionUser | null | undefined,
@@ -85,31 +169,29 @@ export function canUseAutoContentGeneration(
     return false;
   }
 
-  return AUTO_CONTENT_GENERATION_ROLES.includes(user.role);
+  return hasAdminAssignment(user.staffAssignments);
 }
 
-export function isAdmin(role: UserRole | null | undefined) {
-  return role === 'ADMIN';
+export function isAdmin(user: PermissionUser | null | undefined): boolean {
+  return hasAdminAssignment(user?.staffAssignments ?? []);
 }
 
-export function isModerator(role: UserRole | null | undefined) {
-  return role === 'MODERATOR' || isAdmin(role);
+export function isModerator(user: PermissionUser | null | undefined): boolean {
+  return hasModeratorAssignment(user?.staffAssignments ?? []);
 }
 
-export function isCoordinator(role: UserRole | null | undefined) {
-  return role === 'COORDINATOR' || isAdmin(role);
+export function isCoordinator(user: PermissionUser | null | undefined): boolean {
+  return hasCoordinatorAssignment(user?.staffAssignments ?? []);
 }
 
 function isActiveWriter(user: PermissionUser | null | undefined) {
   return user?.status === 'ACTIVE';
 }
 
-function hasDefaultCategoryWriteAccess(role: UserRole) {
-  return role === 'USER' || role === 'MODERATOR' || role === 'COORDINATOR';
-}
-
-function getDefaultWriteVisibilityModes(role: UserRole): CategoryVisibilityMode[] {
-  if (role === 'MODERATOR') {
+function getDefaultWriteVisibilityModes(
+  effectiveRole: 'MODERATOR' | 'COORDINATOR' | 'USER',
+): CategoryVisibilityMode[] {
+  if (effectiveRole === 'MODERATOR') {
     return [
       CategoryVisibilityMode.NORMAL,
       CategoryVisibilityMode.OPERATOR_BOARD,
@@ -117,15 +199,11 @@ function getDefaultWriteVisibilityModes(role: UserRole): CategoryVisibilityMode[
     ];
   }
 
-  if (role === 'COORDINATOR') {
+  if (effectiveRole === 'COORDINATOR') {
     return [CategoryVisibilityMode.NORMAL, CategoryVisibilityMode.OPERATOR_BOARD];
   }
 
-  if (role === 'USER') {
-    return [CategoryVisibilityMode.NORMAL];
-  }
-
-  return [];
+  return [CategoryVisibilityMode.NORMAL];
 }
 
 export function isPostScopeValid(
@@ -168,34 +246,41 @@ export async function canCreatePost(
     visibilityMode = category.visibilityMode;
   }
 
-  if (user.role === 'ADMIN') {
+  if (hasAdminAssignment(user.staffAssignments)) {
     return true;
   }
 
-  const defaultWriteVisibilityModes = getDefaultWriteVisibilityModes(user.role);
-  if (
-    hasDefaultCategoryWriteAccess(user.role) &&
-    targetCountryId !== null &&
-    targetCityId !== null &&
-    targetCountryId === user.countryId &&
-    targetCityId === user.cityId &&
-    defaultWriteVisibilityModes.includes(visibilityMode)
-  ) {
-    return true;
+  if (targetCountryId !== null && targetCityId !== null) {
+    const effectiveRole = getEffectiveLocalRole(
+      user.staffAssignments,
+      targetCountryId,
+      targetCityId,
+    );
+    if (
+      effectiveRole !== 'USER' ||
+      visibilityMode === CategoryVisibilityMode.NORMAL
+    ) {
+      if (
+        targetCountryId === user.countryId &&
+        targetCityId === user.cityId &&
+        getDefaultWriteVisibilityModes(
+          effectiveRole === 'ADMIN' ? 'MODERATOR' : effectiveRole,
+        ).includes(visibilityMode)
+      ) {
+        return true;
+      }
+    }
+  }
+
+  const userStaffRoles = user.staffAssignments.map((a) => a.role);
+  const permissionOrConditions: object[] = [{ subjectType: 'USER', userId: user.id }];
+  if (userStaffRoles.length > 0) {
+    permissionOrConditions.push({ subjectType: 'ROLE', role: { in: userStaffRoles } });
   }
 
   const matchingPermission = await prisma.postPermission.findFirst({
     where: {
-      OR: [
-        {
-          subjectType: 'USER',
-          userId: user.id,
-        },
-        {
-          subjectType: 'ROLE',
-          role: user.role,
-        },
-      ],
+      OR: permissionOrConditions,
       AND: [
         {
           OR:
@@ -234,6 +319,13 @@ export async function getPostCreationFormOptions(
     };
   }
 
+  const isAdminUser = hasAdminAssignment(user.staffAssignments);
+  const userStaffRoles = user.staffAssignments.map((a) => a.role);
+  const permissionOrConditions: object[] = [{ subjectType: 'USER', userId: user.id }];
+  if (userStaffRoles.length > 0) {
+    permissionOrConditions.push({ subjectType: 'ROLE', role: { in: userStaffRoles } });
+  }
+
   const [countries, cities, categories, tagOptions, permissions] = await Promise.all([
     prisma.country.findMany({
       where: { isActive: true },
@@ -243,21 +335,10 @@ export async function getPostCreationFormOptions(
     getActiveCities(),
     getActiveCategories(),
     getActivePostTagOptions(),
-    user.role === 'ADMIN'
+    isAdminUser
       ? Promise.resolve([])
       : prisma.postPermission.findMany({
-          where: {
-            OR: [
-              {
-                subjectType: 'USER',
-                userId: user.id,
-              },
-              {
-                subjectType: 'ROLE',
-                role: user.role,
-              },
-            ],
-          },
+          where: { OR: permissionOrConditions },
           select: { countryId: true, cityId: true, categoryId: true },
         }),
   ]);
@@ -329,7 +410,7 @@ export async function getPostCreationFormOptions(
     targets.set(buildTargetKey(target), target);
   };
 
-  if (user.role === 'ADMIN') {
+  if (isAdminUser) {
     for (const category of categories) {
       addTarget(null, null, category.id);
       for (const country of countries) {
@@ -340,8 +421,15 @@ export async function getPostCreationFormOptions(
       }
     }
   } else {
-    if (hasDefaultCategoryWriteAccess(user.role) && user.countryId && user.cityId) {
-      const defaultWriteVisibilityModes = new Set(getDefaultWriteVisibilityModes(user.role));
+    if (user.countryId && user.cityId) {
+      const effectiveRole = getEffectiveLocalRole(
+        user.staffAssignments,
+        user.countryId,
+        user.cityId,
+      );
+      const localRole: 'MODERATOR' | 'COORDINATOR' | 'USER' =
+        effectiveRole === 'ADMIN' ? 'MODERATOR' : effectiveRole;
+      const defaultWriteVisibilityModes = new Set(getDefaultWriteVisibilityModes(localRole));
       for (const category of categories) {
         if (defaultWriteVisibilityModes.has(category.visibilityMode)) {
           addTarget(user.countryId, user.cityId, category.id);
@@ -443,7 +531,7 @@ export function canEditPost(
     return false;
   }
 
-  if (user.role === 'ADMIN') {
+  if (isAdmin(user)) {
     return true;
   }
 
@@ -481,19 +569,154 @@ export function canDeleteComment(
 }
 
 export function canModerate(user: PermissionUser | null | undefined) {
-  return isModerator(user?.role);
+  return hasModeratorAssignment(user?.staffAssignments ?? []);
 }
 
 export function canCoordinate(user: PermissionUser | null | undefined) {
-  return isCoordinator(user?.role);
+  return hasCoordinatorAssignment(user?.staffAssignments ?? []);
 }
 
 export function canAccessCoordinatorSection(user: PermissionUser | null | undefined) {
-  return isCoordinator(user?.role);
+  return isCoordinator(user);
 }
 
 export function canAccessOperatorBoard(user: PermissionUser | null | undefined) {
-  return canCoordinate(user) || canModerate(user);
+  return hasAnyStaffAssignment(user?.staffAssignments ?? []);
+}
+
+export function canAccessAdsManagerSection(user: PermissionUser | null | undefined) {
+  return hasAdManagerAssignment(user?.staffAssignments ?? []);
+}
+
+export function canAccessPartnerManagerSection(user: PermissionUser | null | undefined) {
+  return hasPartnerManagerAssignment(user?.staffAssignments ?? []);
+}
+
+export function canManagePartnerManagerScope(
+  user: PermissionUser | null | undefined,
+  targetCountryId: string | null,
+  targetCityId: string | null,
+) {
+  if (!user || user.status === 'SUSPENDED' || user.status === 'DELETED') {
+    return false;
+  }
+
+  if (!isPostScopeValid(targetCountryId, targetCityId)) {
+    return false;
+  }
+
+  const assignments = user.staffAssignments ?? [];
+  if (hasAdminAssignment(assignments)) {
+    return true;
+  }
+
+  return assignments.some(
+    (assignment) =>
+      assignment.role === 'PARTNER_MANAGER' &&
+      assignmentCoversLocation(assignment, targetCountryId, targetCityId),
+  );
+}
+
+export async function canAccessAdvertiserMemberSection(
+  user: PermissionUser | null | undefined,
+) {
+  if (!user || user.status === 'SUSPENDED' || user.status === 'DELETED') {
+    return false;
+  }
+
+  const membership = await prisma.advertiserMember.findFirst({
+    where: { userId: user.id, isActive: true },
+    select: { id: true },
+  });
+
+  return Boolean(membership);
+}
+
+type PermissionAdProposal = {
+  id: string;
+  advertiserId: string;
+  status: AdProposalStatus;
+  submittedByUserId: string | null;
+};
+
+const EDITABLE_AD_PROPOSAL_STATUSES: AdProposalStatus[] = ['SUBMITTED', 'IN_NEGOTIATION'];
+
+export async function canCreateAdProposal(
+  user: PermissionUser | null | undefined,
+  advertiserId: string,
+) {
+  if (!user || !advertiserId || user.status === 'SUSPENDED' || user.status === 'DELETED') {
+    return false;
+  }
+
+  const assignments = user.staffAssignments ?? [];
+  if (hasAdManagerAssignment(assignments)) {
+    return true;
+  }
+
+  if (hasPartnerManagerAssignment(assignments)) {
+    const advertiser = await prisma.advertiser.findUnique({
+      where: { id: advertiserId },
+      select: { countryId: true, cityId: true },
+    });
+    if (!advertiser) {
+      return false;
+    }
+
+    return canManagePartnerManagerScope(user, advertiser.countryId, advertiser.cityId);
+  }
+
+  const membership = await prisma.advertiserMember.findFirst({
+    where: { advertiserId, userId: user.id, isActive: true },
+    select: { id: true },
+  });
+
+  return Boolean(membership);
+}
+
+export async function canEditAdProposal(
+  user: PermissionUser | null | undefined,
+  proposal: PermissionAdProposal,
+) {
+  if (!user || user.status === 'SUSPENDED' || user.status === 'DELETED') {
+    return false;
+  }
+
+  if (!EDITABLE_AD_PROPOSAL_STATUSES.includes(proposal.status)) {
+    return false;
+  }
+
+  const assignments = user.staffAssignments ?? [];
+  if (hasAdManagerAssignment(assignments)) {
+    return true;
+  }
+
+  if (hasPartnerManagerAssignment(assignments)) {
+    const advertiser = await prisma.advertiser.findUnique({
+      where: { id: proposal.advertiserId },
+      select: { countryId: true, cityId: true },
+    });
+    if (!advertiser) {
+      return false;
+    }
+
+    return canManagePartnerManagerScope(user, advertiser.countryId, advertiser.cityId);
+  }
+
+  const membership = await prisma.advertiserMember.findFirst({
+    where: { advertiserId: proposal.advertiserId, userId: user.id, isActive: true },
+    select: { id: true },
+  });
+
+  return Boolean(membership);
+}
+
+export function canManageAdContent(user: PermissionUser | null | undefined) {
+  return hasAdManagerAssignment(user?.staffAssignments ?? []);
+}
+
+export function canLinkAdCampaignToContent(user: PermissionUser | null | undefined) {
+  return hasAdManagerAssignment(user?.staffAssignments ?? []);
 }
 
 export function canHoldPost(user: PermissionUser | null | undefined) {
@@ -511,7 +734,7 @@ export function canModerateUser(user: PermissionUser | null | undefined) {
 export function canMakeFinalUserDecision(
   user: PermissionUser | null | undefined,
 ) {
-  return isAdmin(user?.role);
+  return isAdmin(user);
 }
 
 export function canUseContactFeature(user: PermissionUser | null | undefined) {

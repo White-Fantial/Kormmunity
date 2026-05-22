@@ -1,0 +1,7 @@
+DO $$
+BEGIN
+  ALTER TYPE "AdContentStatus" ADD VALUE 'REQUEST_CHANGES';
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;

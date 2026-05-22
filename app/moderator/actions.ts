@@ -5,6 +5,10 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { requireUser } from '@/lib/auth/session';
+import {
+  isMissingStaffAssignmentTableError,
+  toLegacyStaffAssignments,
+} from '@/lib/auth/staff-assignments';
 import { prisma } from '@/lib/db/prisma';
 import { retryKakaoMessageDelivery } from '@/lib/kakao/message';
 import {
@@ -12,6 +16,7 @@ import {
   canRestorePost,
   canDeleteComment,
   canModerateUser,
+  canMakeFinalUserDecision,
 } from '@/lib/permissions';
 import {
   applyCommunityScoreChange,
@@ -539,16 +544,56 @@ export async function requestUserReviewAction(formData: FormData) {
     redirect('/moderator?error=검토 사유를 입력해 주세요.');
   }
 
-  const targetUser = await prisma.user.findUnique({
-    where: { id: targetUserId },
-    select: { id: true, status: true, role: true },
-  });
+  const targetUser = await prisma.user
+    .findUnique({
+      where: { id: targetUserId },
+      select: {
+        id: true,
+        status: true,
+        role: true,
+        countryId: true,
+        cityId: true,
+        staffAssignments: {
+          where: { isActive: true },
+          select: { id: true, role: true, countryId: true, cityId: true },
+        },
+      },
+    })
+    .catch(async (error) => {
+      if (!isMissingStaffAssignmentTableError(error)) {
+        throw error;
+      }
+
+      const legacyTargetUser = await prisma.user.findUnique({
+        where: { id: targetUserId },
+        select: {
+          id: true,
+          status: true,
+          role: true,
+          countryId: true,
+          cityId: true,
+        },
+      });
+
+      if (!legacyTargetUser) {
+        return null;
+      }
+
+      return {
+        ...legacyTargetUser,
+        staffAssignments: toLegacyStaffAssignments(
+          legacyTargetUser.role,
+          legacyTargetUser.countryId,
+          legacyTargetUser.cityId,
+        ),
+      };
+    });
 
   if (!targetUser) {
     redirect('/moderator?error=사용자를 찾을 수 없습니다.');
   }
 
-  if (targetUser.role === 'ADMIN') {
+  if (canMakeFinalUserDecision(targetUser)) {
     redirect('/moderator?error=관리자에 대한 검토 요청은 불가합니다.');
   }
 

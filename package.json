@@ -12,7 +12,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
-    "db:reset": "bash scripts/reset-db.sh"
+    "db:reset": "bash scripts/reset-db.sh",
+    "ads:backfill-content": "node scripts/backfill-ad-content.mjs"
   },
   "prisma": {
     "seed": "node prisma/seed.mjs"

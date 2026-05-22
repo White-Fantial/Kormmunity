@@ -17,6 +17,7 @@ import {
 } from '@/lib/posts/profile-city';
 import { LOCATION_COOLDOWN_DAYS } from '@/lib/location-cooldown';
 import { formatKoreanDate as formatDateKorean } from '@/lib/date-time';
+import { isAdmin } from '@/lib/permissions';
 
 function normalizeText(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value.trim() : '';
@@ -68,7 +69,7 @@ export async function updateProfileAction(formData: FormData) {
 
   const isCountryChanged = targetCountryId !== user.countryId;
   const isCityChanged = cityId !== user.cityId;
-  const isAdmin = user.role === 'ADMIN';
+  const isAdminUser = isAdmin(user);
 
   if (cityId) {
     const city = await prisma.city.findFirst({
@@ -88,7 +89,7 @@ export async function updateProfileAction(formData: FormData) {
   const isLocationChanged = isCityChanged || isCountryChanged;
 
   // Cooldown check for non-admin users (any location changes)
-  if (isLocationChanged && !isAdmin) {
+  if (isLocationChanged && !isAdminUser) {
     const cooldownSince = new Date(Date.now() - LOCATION_COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
     const recentChange = await prisma.locationChangeLog.findFirst({
       where: {
@@ -126,7 +127,7 @@ export async function updateProfileAction(formData: FormData) {
         data: {
           userId: user.id,
           actorId: user.id,
-          changeType: isAdmin ? 'ADMIN_OVERRIDE' : 'COUNTRY_CHANGED_CITY_RESET',
+          changeType: isAdminUser ? 'ADMIN_OVERRIDE' : 'COUNTRY_CHANGED_CITY_RESET',
           beforeCountryId: user.countryId ?? null,
           afterCountryId: targetCountryId,
           beforeCityId: user.cityId ?? null,
@@ -168,7 +169,7 @@ export async function updateProfileAction(formData: FormData) {
         data: {
           userId: user.id,
           actorId: user.id,
-          changeType: isAdmin ? 'ADMIN_OVERRIDE' : 'CITY_CHANGED',
+          changeType: isAdminUser ? 'ADMIN_OVERRIDE' : 'CITY_CHANGED',
           beforeCountryId: user.countryId ?? null,
           afterCountryId: targetCountryId,
           beforeCityId: user.cityId ?? null,
@@ -181,7 +182,7 @@ export async function updateProfileAction(formData: FormData) {
   if (sessionToken) invalidateSessionCache(sessionToken);
   revalidatePath('/my/profile');
 
-  if (isCityChanged && !isAdmin) {
+  if (isCityChanged && !isAdminUser) {
     const nextAllowedAt = new Date(Date.now() + LOCATION_COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
     redirect(
       (returnTo ?? '/my/profile') +

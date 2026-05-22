@@ -73,10 +73,10 @@ export default async function EditPostPage({
   }
 
   const canGenerateDraft = canUseAutoContentGeneration(user);
-  const canOverrideAuthor = canSelectAuthorAccount(user.role);
+  const canOverrideAuthor = canSelectAuthorAccount(user);
   const authorAccountOptions = canOverrideAuthor
     ? await getAuthorAccountOptionsForActor(
-        user.role,
+        user,
         formOptions.allowedTargets.map((target) => ({
           countryId: target.countryId,
           cityId: target.cityId,
