@@ -13,6 +13,7 @@ import { canMakeFinalUserDecision } from '@/lib/permissions';
 import { decodeCursor, encodeCursor } from '@/lib/posts/cursor';
 import { buildPinnedPostCursorWhere, PINNED_POST_ORDER_ASC, PINNED_POST_ORDER_DESC } from '@/lib/posts/pinned-order';
 import { getActiveCategories, getActiveCities, getActiveCitiesByCountry } from '@/lib/posts/reference-data';
+import { getCategoryDisplayName } from '@/lib/posts/category-display';
 import { measureServerTiming } from '@/lib/performance/server';
 import { shouldShowOperatorBadge } from '@/lib/account-type';
 import {
@@ -478,7 +479,10 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
 
             <div className="mt-3 hidden grid-cols-1 gap-4 group-open:grid sm:grid-cols-2">
               <CategoryFilterFieldset
-                categories={filterCategories}
+                categories={filterCategories.map((category) => ({
+                  id: category.id,
+                  name: getCategoryDisplayName(category),
+                }))}
                 selectedIds={selectedFilterCategoryIds}
               />
 
