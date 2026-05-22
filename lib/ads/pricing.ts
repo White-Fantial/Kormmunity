@@ -36,12 +36,31 @@ export function calculateBillableDays(startAt: Date | null, endAt: Date | null):
     return 1;
   }
 
-  const diffMs = endAt.getTime() - startAt.getTime();
-  if (diffMs <= 0) {
+  const startLocalDay = new Date(
+    startAt.getFullYear(),
+    startAt.getMonth(),
+    startAt.getDate(),
+    0,
+    0,
+    0,
+    0,
+  );
+  const endLocalDay = new Date(
+    endAt.getFullYear(),
+    endAt.getMonth(),
+    endAt.getDate(),
+    0,
+    0,
+    0,
+    0,
+  );
+
+  const diffMs = endLocalDay.getTime() - startLocalDay.getTime();
+  if (diffMs < 0) {
     return 1;
   }
 
-  return Math.max(1, Math.ceil(diffMs / ONE_DAY_MS));
+  return Math.max(1, Math.floor(diffMs / ONE_DAY_MS) + 1);
 }
 
 function resolveDurationUnitSizeDays(billingUnit: Exclude<AdBillingUnit, 'IMPRESSION_1000'>): number {

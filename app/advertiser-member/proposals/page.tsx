@@ -247,7 +247,7 @@ export default async function AdvertiserMemberProposalsPage({
             ) : null}
             <div>
               <dt className="text-xs text-[#888]">등록일</dt>
-              <dd className="mt-0.5">{new Date(selectedProposal.createdAt).toLocaleString('ko-KR')}</dd>
+              <dd className="mt-0.5">{new Date(selectedProposal.createdAt).toLocaleDateString('ko-KR')}</dd>
             </div>
           </dl>
         </div>
