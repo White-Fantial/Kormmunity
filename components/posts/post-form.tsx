@@ -242,6 +242,9 @@ export function PostForm({
   );
   const [authorUserIdOverride, setAuthorUserIdOverride] = useState(defaultAuthorUserIdOverride ?? '');
   const [titleValue, setTitleValue] = useState(defaultValues?.title ?? '');
+  const [titleSectionExpanded, setTitleSectionExpanded] = useState(
+    !!(defaultValues?.postId && defaultValues?.title),
+  );
   const [bodyValue, setBodyValue] = useState(defaultValues?.body ?? '');
   const [draftStatusMessage, setDraftStatusMessage] = useState<string | null>(null);
   const [draftErrorMessage, setDraftErrorMessage] = useState<string | null>(null);
@@ -601,19 +604,31 @@ export function PostForm({
         </div>
       ) : null}
 
-      <div className="space-y-1">
-        <label htmlFor="title" className="text-sm font-medium text-[#555]">
-          제목 (선택)
-        </label>
-        <input
-          id="title"
-          name="title"
-          value={titleValue}
-          onChange={(event) => setTitleValue(event.target.value)}
-          placeholder="짧은 제목을 추가할 수 있어요"
-          className={`${FIELD_CLASS} py-2`}
-          maxLength={100}
-        />
+      <div className="space-y-2 rounded-xl border border-[#e8e8e8] p-4">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold">제목 (선택)</p>
+          <button
+            type="button"
+            onClick={() => setTitleSectionExpanded((prev) => !prev)}
+            className="text-xs font-medium text-[#666] hover:text-[#222]"
+          >
+            {titleSectionExpanded ? '▲ 접기' : '▼ 펼치기'}
+          </button>
+        </div>
+        {!titleSectionExpanded ? (
+          <p className="text-xs text-[#888]">제목이 필요하면 펼쳐서 추가할 수 있어요.</p>
+        ) : null}
+        <div className={titleSectionExpanded ? 'pt-1' : 'hidden'}>
+          <input
+            id="title"
+            name="title"
+            value={titleValue}
+            onChange={(event) => setTitleValue(event.target.value)}
+            placeholder="짧은 제목을 추가할 수 있어요"
+            className={`${FIELD_CLASS} py-2`}
+            maxLength={100}
+          />
+        </div>
       </div>
 
       <div className="space-y-1">
