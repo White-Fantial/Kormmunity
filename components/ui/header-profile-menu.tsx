@@ -42,6 +42,7 @@ export async function HeaderProfileMenu() {
       displayName={currentUser.displayName}
       profileImageUrl={dbUser?.profileImageUrl ?? null}
       menuItems={menuItems}
+      contactEmail="hello.kormmunity@gmail.com"
     />
   );
 }
