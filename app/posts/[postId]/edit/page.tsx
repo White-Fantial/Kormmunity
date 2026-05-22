@@ -14,6 +14,7 @@ import {
   canSelectAuthorAccount,
   getAuthorAccountOptionsForActor,
 } from '@/lib/posts/author-account-options';
+import { getCategoryDisplayName } from '@/lib/posts/category-display';
 
 
 
@@ -109,7 +110,7 @@ export default async function EditPostPage({
           }))}
           categories={formOptions.categories.map((category) => ({
             id: category.id,
-            label: category.name,
+            label: getCategoryDisplayName(category),
             type: category.type,
             visibilityMode: category.visibilityMode,
             requireCommentBeforeContactDefault: category.requireCommentBeforeContactDefault,

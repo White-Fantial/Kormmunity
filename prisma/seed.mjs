@@ -364,7 +364,7 @@ const categories = [
     quickCommentTemplates: ['공유해 주셔서 감사합니다.', '이 글 계속 보고 있어요.', '도움이 많이 됐어요.'],
   },
   {
-    name: '광고',
+    name: '업체홍보',
     slug: 'advertisement',
     type: CategoryType.ADVERTISEMENT,
     visibilityMode: CategoryVisibilityMode.ALWAYS_INCLUDED,

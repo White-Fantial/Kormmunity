@@ -7,6 +7,7 @@ import { HeaderNavLink } from '@/components/ui/header-nav-link';
 import { GlobalHotNavLink } from '@/components/ui/global-hot-nav-link';
 import { NotificationBell } from '@/components/ui/notification-bell';
 import { HeaderProfileMenu } from '@/components/ui/header-profile-menu';
+import { GlobalFooter } from '@/components/ui/global-footer';
 
 function getMetadataBaseUrl() {
   const normalizeSiteUrl = (value: string) => {
@@ -109,6 +110,7 @@ export default async function RootLayout({
             </nav>
           </header>
           <main className="flex-1 p-4">{children}</main>
+          <GlobalFooter />
         </div>
       </body>
     </html>

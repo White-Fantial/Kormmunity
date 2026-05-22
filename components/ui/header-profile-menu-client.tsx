@@ -10,9 +10,10 @@ type HeaderProfileMenuClientProps = {
   displayName: string;
   profileImageUrl: string | null;
   menuItems: { href: string; label: string }[];
+  contactEmail?: string;
 };
 
-export function HeaderProfileMenuClient({ displayName, profileImageUrl, menuItems }: HeaderProfileMenuClientProps) {
+export function HeaderProfileMenuClient({ displayName, profileImageUrl, menuItems, contactEmail }: HeaderProfileMenuClientProps) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -65,7 +66,40 @@ export function HeaderProfileMenuClient({ displayName, profileImageUrl, menuItem
             {item.label}
           </Link>
         ))}
+        {contactEmail && (
+          <div className="mt-1 border-t border-[#f1f1f1] pt-1">
+            <a
+              href={`mailto:${contactEmail}?subject=문의/제안 (Kormmunity)`}
+              className="block rounded-lg px-3 py-2 text-sm text-[#333] hover:bg-[#f9f9f9]"
+              onClick={() => setIsOpen(false)}
+            >
+              연락하기
+            </a>
+          </div>
+        )}
         <form action={logoutAction} className="mt-1 border-t border-[#f1f1f1] pt-1">
+          <Link
+            href="/legal/terms"
+            className="block rounded-lg px-3 py-2 text-xs text-[#888] hover:bg-[#f9f9f9]"
+            onClick={() => setIsOpen(false)}
+          >
+            이용약관
+          </Link>
+          <Link
+            href="/legal/privacy"
+            className="block rounded-lg px-3 py-2 text-xs text-[#888] hover:bg-[#f9f9f9]"
+            onClick={() => setIsOpen(false)}
+          >
+            개인정보처리방침
+          </Link>
+          <Link
+            href="/legal/community-guidelines"
+            className="block rounded-lg px-3 py-2 text-xs text-[#888] hover:bg-[#f9f9f9]"
+            onClick={() => setIsOpen(false)}
+          >
+            운영정책
+          </Link>
+          <div className="my-1 border-t border-[#f1f1f1]" />
           <button
             type="submit"
             className="block w-full rounded-lg px-3 py-2 text-left text-sm text-[#333] hover:bg-[#f9f9f9]"
