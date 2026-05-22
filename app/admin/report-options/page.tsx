@@ -1,8 +1,7 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import {
-
-  createReportOptionAction,
   toggleReportOptionActiveAction,
 } from '@/app/admin/actions';
 import { adminManagementNavItems, ManagementSectionNav } from '@/components/admin/management-section-nav';
@@ -50,25 +49,15 @@ export default async function AdminReportOptionsPage({
       ) : null}
 
       <div className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
-        <h2 className="mb-3 font-semibold">신고 옵션 추가</h2>
-        <form action={createReportOptionAction} className="flex flex-wrap gap-2">
-          <input
-            type="text"
-            name="label"
-            required
-            placeholder="예: 거래 사기 의심"
-            className="min-w-[240px] flex-1 rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#fee500] focus:outline-none focus:ring-2 focus:ring-[#fee500]/40"
-          />
-          <FormSubmitButton
-            idleLabel="추가"
-            pendingLabel="처리 중..."
-            className="rounded-xl bg-[#fee500] px-4 py-2 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
-          />
-        </form>
-      </div>
-
-      <div className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
-        <h2 className="mb-3 font-semibold">신고 옵션 목록</h2>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="font-semibold">신고 옵션 목록</h2>
+          <Link
+            href="/admin/report-options/new"
+            className="rounded-xl bg-[#fee500] px-3 py-1.5 text-xs font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
+          >
+            신규 추가
+          </Link>
+        </div>
         {options.length === 0 ? (
           <p className="text-sm text-[#888]">등록된 신고 옵션이 없습니다.</p>
         ) : (
@@ -94,12 +83,19 @@ export default async function AdminReportOptionsPage({
                 <form action={toggleReportOptionActiveAction}>
                   <input type="hidden" name="optionId" value={option.id} />
                   <input type="hidden" name="isActive" value={String(option.isActive)} />
+                  <input type="hidden" name="returnTo" value="/admin/report-options" />
                   <FormSubmitButton
                     idleLabel={option.isActive ? '비활성화' : '활성화'}
                     pendingLabel="처리 중..."
                     className="rounded-xl border border-[#e8e8e8] px-2 py-1 text-xs font-medium hover:bg-[#f9f9f9]"
                   />
                 </form>
+                <Link
+                  href={`/admin/report-options/${option.id}`}
+                  className="rounded-xl border border-[#e8e8e8] px-2 py-1 text-xs font-medium hover:bg-[#f9f9f9]"
+                >
+                  상세
+                </Link>
               </li>
             ))}
           </ul>

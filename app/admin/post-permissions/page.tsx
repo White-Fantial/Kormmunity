@@ -1,17 +1,15 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import {
-
-  createPostPermissionAction,
   deletePostPermissionAction,
 } from '@/app/admin/actions';
 import { adminManagementNavItems, ManagementSectionNav } from '@/components/admin/management-section-nav';
-import { PostPermissionForm } from '@/components/admin/post-permission-form';
 import { DateTimeText } from '@/components/ui/date-time-text';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
-import { canMakeFinalUserDecision, USER_ROLES } from '@/lib/permissions';
+import { canMakeFinalUserDecision } from '@/lib/permissions';
 
 
 export const dynamic = 'force-dynamic';
@@ -40,27 +38,8 @@ export default async function AdminPostPermissionsPage({
     redirect('/posts');
   }
 
-  const params = await searchParams;
-  const [users, countries, cities, categories, permissions] = await Promise.all([
-    prisma.user.findMany({
-      orderBy: { displayName: 'asc' },
-      select: { id: true, displayName: true },
-    }),
-    prisma.country.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: 'asc' },
-      select: { id: true, name: true },
-    }),
-    prisma.city.findMany({
-      where: { isActive: true },
-      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-      select: { id: true, name: true, countryId: true, country: { select: { name: true } } },
-    }),
-    prisma.category.findMany({
-      where: { isActive: true },
-      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-      select: { id: true, name: true, visibilityMode: true },
-    }),
+  const [params, permissions] = await Promise.all([
+    searchParams,
     prisma.postPermission.findMany({
       orderBy: { createdAt: 'desc' },
       select: {
@@ -88,26 +67,15 @@ export default async function AdminPostPermissionsPage({
       ) : null}
 
       <div className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
-        <h2 className="mb-3 font-semibold">권한 추가</h2>
-        <PostPermissionForm
-          action={createPostPermissionAction}
-          users={users}
-          roles={USER_ROLES.map((role) => ({
-            value: role,
-            label: `${ROLE_LABELS[role]} (${role})`,
-          }))}
-          countries={countries}
-          cities={cities.map((city) => ({
-            id: city.id,
-            name: city.country ? `${city.country.name} · ${city.name}` : city.name,
-            countryId: city.countryId,
-          }))}
-          categories={categories}
-        />
-      </div>
-
-      <div className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
-        <h2 className="mb-3 font-semibold">등록된 권한</h2>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="font-semibold">등록된 권한</h2>
+          <Link
+            href="/admin/post-permissions/new"
+            className="rounded-xl bg-[#fee500] px-3 py-1.5 text-xs font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
+          >
+            권한 추가
+          </Link>
+        </div>
         {permissions.length === 0 ? (
           <p className="text-sm text-[#888]">등록된 게시글 작성 권한이 없습니다.</p>
         ) : (
@@ -135,12 +103,19 @@ export default async function AdminPostPermissionsPage({
                 </p>
                 <form action={deletePostPermissionAction}>
                   <input type="hidden" name="permissionId" value={permission.id} />
+                  <input type="hidden" name="returnTo" value="/admin/post-permissions" />
                   <FormSubmitButton
                     idleLabel="권한 삭제"
                     pendingLabel="삭제 중..."
                     className="rounded-xl border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
                   />
                 </form>
+                <Link
+                  href={`/admin/post-permissions/${permission.id}`}
+                  className="inline-block rounded-xl border border-[#e8e8e8] px-3 py-1.5 text-xs font-medium hover:bg-[#f9f9f9]"
+                >
+                  상세
+                </Link>
               </li>
             ))}
           </ul>
