@@ -84,7 +84,7 @@ export function validateGeneratedPostDraft(
     throw new Error('반복 표현이 과도해 자동 초안을 사용할 수 없어요.');
   }
 
-  assertNoSpamText(`${title}\n${body}`, '광고/도배로 보이는 자동 초안은 사용할 수 없어요.');
+  assertNoSpamText(`${title}\n${body}`);
 
   return { title, body };
 }
@@ -103,6 +103,6 @@ export function validateGeneratedCommentBody(value: unknown) {
     throw new Error('반복 표현이 과도한 댓글은 사용할 수 없어요.');
   }
 
-  assertNoSpamText(body, '광고/도배로 보이는 댓글 자동 초안은 사용할 수 없어요.');
+  assertNoSpamText(body);
   return body;
 }

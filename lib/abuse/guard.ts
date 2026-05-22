@@ -54,7 +54,7 @@ const URL_REGEX = /https?:\/\/(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s]*)?/gi;
 const MAX_REPEATED_CHAR_COUNT = 8;
 const REPEATED_CHAR_REGEX = new RegExp(`(.)\\1{${MAX_REPEATED_CHAR_COUNT},}`);
 
-export function assertNoSpamText(text: string, message: string) {
+export function assertNoSpamText(text: string) {
   const normalized = text.trim().toLowerCase();
 
   if (normalized.length === 0) {
@@ -64,14 +64,14 @@ export function assertNoSpamText(text: string, message: string) {
   const urlMatches = normalized.match(URL_REGEX);
 
   if (urlMatches && urlMatches.length >= 3) {
-    throw new Error(message);
+    throw new Error('링크가 너무 많아요. 링크 수를 줄이고 다시 시도해 주세요.');
   }
 
   if (REPEATED_CHAR_REGEX.test(normalized)) {
-    throw new Error(message);
+    throw new Error('같은 문자를 너무 많이 반복했어요. 내용을 수정하고 다시 시도해 주세요.');
   }
 
   if (SPAM_KEYWORDS.some((keyword) => normalized.includes(keyword))) {
-    throw new Error(message);
+    throw new Error('검토가 필요한 표현이 포함됐어요. 내용을 수정하고 다시 시도해 주세요.');
   }
 }

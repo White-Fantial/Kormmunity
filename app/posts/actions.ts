@@ -296,17 +296,18 @@ export async function createPostAction(formData: FormData) {
   );
 
   try {
-    enforceRateLimit({
-      key: `create-post:${user.id}`,
-      limit: CREATE_POST_RATE_LIMIT.limit,
-      windowMs: CREATE_POST_RATE_LIMIT.windowMs,
-      message: '요청이 너무 빨라요. 잠시 후 다시 시도해 주세요.',
-    });
+    if (!isAdmin(user)) {
+      enforceRateLimit({
+        key: `create-post:${user.id}`,
+        limit: CREATE_POST_RATE_LIMIT.limit,
+        windowMs: CREATE_POST_RATE_LIMIT.windowMs,
+        message: '요청이 너무 빨라요. 잠시 후 다시 시도해 주세요.',
+      });
 
-    assertNoSpamText(
-      [title, body, contactUrl].filter(Boolean).join(' '),
-      '광고/도배로 보이는 내용은 등록할 수 없어요.',
-    );
+      assertNoSpamText(
+        [title, body, contactUrl].filter(Boolean).join(' '),
+      );
+    }
   } catch (error) {
     const message =
       error instanceof Error
