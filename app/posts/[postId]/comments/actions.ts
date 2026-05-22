@@ -83,14 +83,16 @@ async function createComment(
   }
 
   try {
-    enforceRateLimit({
-      key: `create-comment:${user.id}`,
-      limit: CREATE_COMMENT_RATE_LIMIT.limit,
-      windowMs: CREATE_COMMENT_RATE_LIMIT.windowMs,
-      message: '댓글 작성이 너무 빨라요. 잠시 후 다시 시도해 주세요.',
-    });
+    if (!isAdmin(user)) {
+      enforceRateLimit({
+        key: `create-comment:${user.id}`,
+        limit: CREATE_COMMENT_RATE_LIMIT.limit,
+        windowMs: CREATE_COMMENT_RATE_LIMIT.windowMs,
+        message: '댓글 작성이 너무 빨라요. 잠시 후 다시 시도해 주세요.',
+      });
 
-    assertNoSpamText(body, '광고/도배로 보이는 댓글은 등록할 수 없어요.');
+      assertNoSpamText(body);
+    }
   } catch (error) {
     return {
       ok: false as const,
