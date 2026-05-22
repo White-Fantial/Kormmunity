@@ -68,6 +68,29 @@ function parseNullableDateTime(value: string | null): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function parseNullableLocalDateStartOfDay(value: string | null): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(normalized);
+  if (match) {
+    const year = Number(match[1]);
+    const month = Number(match[2]) - 1;
+    const day = Number(match[3]);
+    const date = new Date(year, month, day, 0, 0, 0, 0);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  const fallback = new Date(normalized);
+  if (Number.isNaN(fallback.getTime())) {
+    return null;
+  }
+
+  return new Date(fallback.getFullYear(), fallback.getMonth(), fallback.getDate(), 0, 0, 0, 0);
+}
+
 function parseNullableInt(value: string): number | null {
   if (!value) {
     return null;
@@ -217,8 +240,12 @@ export async function createAdProposalAction(formData: FormData) {
   const advertiserId = normalizeText(formData.get('advertiserId'));
   const title = normalizeText(formData.get('title'));
   const body = normalizeText(formData.get('body'));
-  const requestedStartAt = parseNullableDateTime(normalizeText(formData.get('requestedStartAt')) || null);
-  const requestedEndAt = parseNullableDateTime(normalizeText(formData.get('requestedEndAt')) || null);
+  const requestedStartAt = parseNullableLocalDateStartOfDay(
+    normalizeText(formData.get('requestedStartAt')) || null,
+  );
+  const requestedEndAt = parseNullableLocalDateStartOfDay(
+    normalizeText(formData.get('requestedEndAt')) || null,
+  );
   const requestedBudgetRaw = normalizeText(formData.get('requestedBudget'));
   const requestedLandingUrl = normalizeText(formData.get('requestedLandingUrl')) || null;
   const advertisedProductCode = normalizeText(formData.get('advertisedProductCode')) || null;
@@ -342,8 +369,12 @@ export async function updateAdProposalContentAction(formData: FormData) {
   const id = normalizeText(formData.get('id'));
   const title = normalizeText(formData.get('title'));
   const body = normalizeText(formData.get('body'));
-  const requestedStartAt = parseNullableDateTime(normalizeText(formData.get('requestedStartAt')) || null);
-  const requestedEndAt = parseNullableDateTime(normalizeText(formData.get('requestedEndAt')) || null);
+  const requestedStartAt = parseNullableLocalDateStartOfDay(
+    normalizeText(formData.get('requestedStartAt')) || null,
+  );
+  const requestedEndAt = parseNullableLocalDateStartOfDay(
+    normalizeText(formData.get('requestedEndAt')) || null,
+  );
   const requestedBudgetRaw = normalizeText(formData.get('requestedBudget'));
   const requestedLandingUrl = normalizeText(formData.get('requestedLandingUrl')) || null;
   const advertisedProductCode = normalizeText(formData.get('advertisedProductCode')) || null;
@@ -596,8 +627,8 @@ export async function createAdCampaignAction(formData: FormData) {
   const legacyPostId = normalizeText(formData.get('postId')) || null;
   const adProductId = normalizeText(formData.get('adProductId'));
   const priority = parseInt(normalizeText(formData.get('priority')) || '0', 10);
-  const startAt = parseNullableDateTime(normalizeText(formData.get('startAt')) || null);
-  const endAt = parseNullableDateTime(normalizeText(formData.get('endAt')) || null);
+  const startAt = parseNullableLocalDateStartOfDay(normalizeText(formData.get('startAt')) || null);
+  const endAt = parseNullableLocalDateStartOfDay(normalizeText(formData.get('endAt')) || null);
   const maxImpressions = normalizeText(formData.get('maxImpressions'));
   const maxImpressionsValue = parseNullableInt(maxImpressions);
   const targetCountryId = normalizeText(formData.get('targetCountryId')) || null;
@@ -799,8 +830,8 @@ export async function updateAdCampaignAction(formData: FormData) {
 
   const id = normalizeText(formData.get('id'));
   const priority = parseInt(normalizeText(formData.get('priority')) || '0', 10);
-  const startAt = parseNullableDateTime(normalizeText(formData.get('startAt')) || null);
-  const endAt = parseNullableDateTime(normalizeText(formData.get('endAt')) || null);
+  const startAt = parseNullableLocalDateStartOfDay(normalizeText(formData.get('startAt')) || null);
+  const endAt = parseNullableLocalDateStartOfDay(normalizeText(formData.get('endAt')) || null);
   const maxImpressions = normalizeText(formData.get('maxImpressions'));
   const maxImpressionsValue = parseNullableInt(maxImpressions);
   const targetCountryId = normalizeText(formData.get('targetCountryId')) || null;
