@@ -91,7 +91,14 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
           className="h-14 w-14"
           sizes="56px"
         />
-        <p className="text-sm font-medium">{user.displayName}</p>
+        <div>
+          <p className="text-sm font-medium">{user.displayName}</p>
+          {user.staffAssignments.length > 0 ? (
+            <p className="mt-0.5">
+              <span className="rounded bg-blue-700 px-1 py-0.5 text-[10px] font-bold text-white">운영진</span>
+            </p>
+          ) : null}
+        </div>
       </div>
       <p className="text-sm text-[#666]">
         <NeighbourWarmthLabel warmth={dbUser?.neighbourWarmth ?? NEIGHBOUR_WARMTH_DEFAULT} />
