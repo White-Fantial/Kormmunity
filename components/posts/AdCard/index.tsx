@@ -5,6 +5,7 @@ import Image from 'next/image';
 
 import { AdImpressionTracker } from './AdImpressionTracker';
 import type { AdFeedItem, AdLayout, AdSize } from '@/lib/ads/types';
+import { getCategoryDisplayName } from '@/lib/posts/category-display';
 
 type AdCardProps = {
   ad: AdFeedItem;
@@ -121,7 +122,7 @@ export function AdCard({ ad }: AdCardProps) {
               <AdBadge />
               {ad.category ? (
                 <span className="inline-flex items-center rounded-full border border-[#f1e0a5] bg-[#fff7d1] px-2 py-0.5 text-xs font-medium text-[#7a6000]">
-                  {ad.category.name}
+                  {getCategoryDisplayName(ad.category)}
                 </span>
               ) : null}
             </div>
@@ -170,7 +171,7 @@ export function AdCard({ ad }: AdCardProps) {
           <AdBadge />
           {ad.category ? (
             <span className="inline-flex items-center rounded-full border border-[#f1e0a5] bg-[#fff7d1] px-2 py-0.5 text-xs font-medium text-[#7a6000]">
-              {ad.category.name}
+              {getCategoryDisplayName(ad.category)}
             </span>
           ) : null}
           {ad.city ? (

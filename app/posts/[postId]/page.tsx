@@ -68,6 +68,7 @@ import {
   getActivePostTagOptions,
 } from '@/lib/posts/reference-data';
 import { truncatePostBody } from '@/lib/posts/constants';
+import { getCategoryDisplayName } from '@/lib/posts/category-display';
 import { decodeCursor, encodeCursor } from '@/lib/posts/cursor';
 import { buildPinnedPostCursorWhere, PINNED_POST_ORDER_ASC, PINNED_POST_ORDER_DESC } from '@/lib/posts/pinned-order';
 import { measureServerTiming } from '@/lib/performance/server';
@@ -266,7 +267,7 @@ export async function generateMetadata({
 
   const title = post.title ?? post.body.slice(0, TITLE_PREVIEW_LENGTH);
   const socialTitle = `${title} | ${COMMUNITY_NAME}`;
-  const description = `${post.category.name} · ${post.city?.name ?? '전 지역'} · ${post.body.slice(0, DESCRIPTION_PREVIEW_LENGTH)}`;
+  const description = `${getCategoryDisplayName(post.category)} · ${post.city?.name ?? '전 지역'} · ${post.body.slice(0, DESCRIPTION_PREVIEW_LENGTH)}`;
   const primaryImageUrl = post.images?.[0]?.url;
   const twitterCard = primaryImageUrl ? TWITTER_CARD_LARGE_IMAGE : TWITTER_CARD_SUMMARY;
 
@@ -592,7 +593,7 @@ export default async function PostDetailPage({
           </svg>
           {post.city?.name ?? '전 지역'}
         </span>
-        <span className="rounded-full bg-[#fffde7] px-2 py-1 font-medium text-[#7a6000]">{post.category.name}</span>
+        <span className="rounded-full bg-[#fffde7] px-2 py-1 font-medium text-[#7a6000]">{getCategoryDisplayName(post.category)}</span>
         {post.tags.map((tag) => (
           <PostTagBadge
             key={tag.postTagOption.id}

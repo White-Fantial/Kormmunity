@@ -1,4 +1,5 @@
 import { Badge } from '@/components/posts/post-badge';
+import { getCategoryDisplayName } from '@/lib/posts/category-display';
 import type { PostCardEntity } from './types';
 
 type PostCardBadgesProps = {
@@ -24,7 +25,9 @@ export function PostCardBadges({ post, compact = false }: PostCardBadgesProps) {
         <LocationPinIcon />
         {cityLabel}
       </Badge>
-      {post.category ? <Badge variant="category">{post.category.name}</Badge> : null}
+      {post.category ? (
+        <Badge variant="category">{getCategoryDisplayName(post.category)}</Badge>
+      ) : null}
       {shouldShowSalePrice ? <Badge variant="status">NZD {post.price}</Badge> : null}
       {(post.tags ?? []).slice(0, compact ? 1 : 4).map((tag) => (
         <Badge key={tag.id} variant="tag" accentColor={post.category?.color}>
