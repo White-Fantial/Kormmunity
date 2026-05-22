@@ -258,7 +258,7 @@ export default async function AdvertiserMemberCampaignsPage({
             <div>
               <dt className="text-xs text-[#888]">최종 수정일</dt>
               <dd className="mt-0.5">
-                {new Date(selectedCampaign.updatedAt).toLocaleString('ko-KR')}
+                {new Date(selectedCampaign.updatedAt).toLocaleDateString('ko-KR')}
               </dd>
             </div>
             {selectedCampaign.notes ? (

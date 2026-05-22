@@ -647,7 +647,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                       {selectedCampaign.reviewNotes}
                       {selectedCampaign.reviewedAt && (
                         <p className="mt-1 text-amber-600">
-                          {new Date(selectedCampaign.reviewedAt).toLocaleString('ko-KR')}
+                          {new Date(selectedCampaign.reviewedAt).toLocaleDateString('ko-KR')}
                         </p>
                       )}
                     </div>
