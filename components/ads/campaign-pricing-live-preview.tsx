@@ -23,20 +23,10 @@ type GeoPricing = {
   effectiveTo: string | null;
 };
 
-type PlacementPricing = {
-  id: string;
-  placementType: 'TOP_FIXED' | 'FEED_INLINE';
-  multiplier: number;
-  isActive: boolean;
-  effectiveFrom: string | null;
-  effectiveTo: string | null;
-};
-
 type CampaignPricingLivePreviewProps = {
   formId: string;
   adProducts: Product[];
   adGeoPricings: GeoPricing[];
-  adPlacementPricings: PlacementPricing[];
   savedEstimatedAmount?: number | null;
   savedProposedAmount?: number | null;
 };
@@ -49,13 +39,6 @@ type PreviewState = {
   basePrice: number;
   geoMultiplier: number;
   geoSource: 'city' | 'country' | 'default';
-  placementMultiplier: number;
-  placementSource: 'placement' | 'default';
-};
-
-const DEFAULT_PLACEMENT_MULTIPLIER: Record<'TOP_FIXED' | 'FEED_INLINE', number> = {
-  TOP_FIXED: 1.5,
-  FEED_INLINE: 1,
 };
 
 function roundToCurrency(value: number): number {
@@ -126,7 +109,6 @@ function calculatePreview(input: {
   targetCityId: string | null;
   impressions: number;
   adGeoPricings: GeoPricing[];
-  adPlacementPricings: PlacementPricing[];
 }): PreviewState {
   const at = input.startAt ?? new Date();
 
@@ -152,18 +134,7 @@ function calculatePreview(input: {
     }
   }
 
-  const activePlacement = input.adPlacementPricings.filter(
-    (entry) =>
-      entry.isActive &&
-      entry.placementType === input.product.placementType &&
-      isEffective(at, entry.effectiveFrom, entry.effectiveTo),
-  );
-  const selectedPlacement = pickLatest(activePlacement);
-  const placementMultiplier =
-    selectedPlacement?.multiplier ?? DEFAULT_PLACEMENT_MULTIPLIER[input.product.placementType];
-  const placementSource: 'placement' | 'default' = selectedPlacement ? 'placement' : 'default';
-
-  const shared = input.product.basePrice * geoMultiplier * placementMultiplier;
+  const shared = input.product.basePrice * geoMultiplier;
 
   if (input.product.billingUnit === 'IMPRESSION_1000') {
     const billableQuantity = Math.max(0, input.impressions) / 1000;
@@ -175,8 +146,6 @@ function calculatePreview(input: {
       basePrice: input.product.basePrice,
       geoMultiplier,
       geoSource,
-      placementMultiplier,
-      placementSource,
     };
   }
 
@@ -192,8 +161,6 @@ function calculatePreview(input: {
     basePrice: input.product.basePrice,
     geoMultiplier,
     geoSource,
-    placementMultiplier,
-    placementSource,
   };
 }
 
@@ -201,7 +168,6 @@ export function CampaignPricingLivePreview({
   formId,
   adProducts,
   adGeoPricings,
-  adPlacementPricings,
   savedEstimatedAmount = null,
   savedProposedAmount = null,
 }: CampaignPricingLivePreviewProps) {
@@ -264,9 +230,8 @@ export function CampaignPricingLivePreview({
       targetCityId: formState.targetCityId || null,
       impressions,
       adGeoPricings,
-      adPlacementPricings,
     });
-  }, [adGeoPricings, adPlacementPricings, adProducts, formState]);
+  }, [adGeoPricings, adProducts, formState]);
 
   const proposedAmount = Number.isNaN(Number(formState.proposedAmount))
     ? null
@@ -284,7 +249,7 @@ export function CampaignPricingLivePreview({
             총액: {preview.currency} {preview.amount.toFixed(2)}
           </p>
           <p>
-            기준가: {preview.currency} {preview.basePrice.toFixed(2)} · 지역계수 {preview.geoMultiplier.toFixed(4)} ({preview.geoSource}) · 지면계수 {preview.placementMultiplier.toFixed(4)} ({preview.placementSource})
+            기준가: {preview.currency} {preview.basePrice.toFixed(2)} · 지역계수 {preview.geoMultiplier.toFixed(4)} ({preview.geoSource})
           </p>
           <p>
             과금 수량: {preview.billableQuantity.toFixed(4)}

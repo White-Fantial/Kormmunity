@@ -16,7 +16,6 @@ import {
   updateAdProposalContentAction,
   updateAdProposalStatusAction,
   upsertAdGeoPricingAction,
-  upsertAdPlacementPricingAction,
   upsertAdPlacementRuleAction,
 } from '@/app/admin/ads/actions';
 import { adsManagerNavItems, ManagementSectionNav } from '@/components/admin/management-section-nav';
@@ -47,7 +46,6 @@ type AdminAdsPageProps = {
     proposalId?: string;
     contentId?: string;
     geoPricingId?: string;
-    placementPricingId?: string;
   }>;
 };
 
@@ -98,7 +96,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
 
   const activeSection = routeParams.section;
 
-  const [adProducts, adCampaigns, placementRules, countries, advertisers, adProposals, adContents, adGeoPricings, adPlacementPricings] = await Promise.all([
+  const [adProducts, adCampaigns, placementRules, countries, advertisers, adProposals, adContents, adGeoPricings] = await Promise.all([
     prisma.adProduct.findMany({
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
       select: {
@@ -227,18 +225,6 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
         city: { select: { name: true } },
       },
     }),
-    prisma.adPlacementPricing.findMany({
-      orderBy: [{ updatedAt: 'desc' }],
-      select: {
-        id: true,
-        placementType: true,
-        multiplier: true,
-        isActive: true,
-        effectiveFrom: true,
-        effectiveTo: true,
-        updatedAt: true,
-      },
-    }),
   ]);
 
   const inlineRule = placementRules.find((r) => r.placementType === 'FEED_INLINE');
@@ -274,9 +260,6 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
     : [];
   const selectedGeoPricing = query.geoPricingId
     ? adGeoPricings.find((pricing) => pricing.id === query.geoPricingId)
-    : null;
-  const selectedPlacementPricing = query.placementPricingId
-    ? adPlacementPricings.find((pricing) => pricing.id === query.placementPricingId)
     : null;
 
   const negotiatedProposals = adProposals
@@ -416,14 +399,6 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                     id: pricing.id,
                     cityId: pricing.cityId,
                     countryId: pricing.countryId,
-                    multiplier: Number(pricing.multiplier),
-                    isActive: pricing.isActive,
-                    effectiveFrom: pricing.effectiveFrom?.toISOString() ?? null,
-                    effectiveTo: pricing.effectiveTo?.toISOString() ?? null,
-                  }))}
-                  adPlacementPricings={adPlacementPricings.map((pricing) => ({
-                    id: pricing.id,
-                    placementType: pricing.placementType,
                     multiplier: Number(pricing.multiplier),
                     isActive: pricing.isActive,
                     effectiveFrom: pricing.effectiveFrom?.toISOString() ?? null,
@@ -734,14 +709,6 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                     id: pricing.id,
                     cityId: pricing.cityId,
                     countryId: pricing.countryId,
-                    multiplier: Number(pricing.multiplier),
-                    isActive: pricing.isActive,
-                    effectiveFrom: pricing.effectiveFrom?.toISOString() ?? null,
-                    effectiveTo: pricing.effectiveTo?.toISOString() ?? null,
-                  }))}
-                  adPlacementPricings={adPlacementPricings.map((pricing) => ({
-                    id: pricing.id,
-                    placementType: pricing.placementType,
                     multiplier: Number(pricing.multiplier),
                     isActive: pricing.isActive,
                     effectiveFrom: pricing.effectiveFrom?.toISOString() ?? null,
@@ -1624,126 +1591,6 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                       <td className="px-4 py-2">
                         <Link
                           href={`/ads-manager/rules?geoPricingId=${pricing.id}`}
-                          className="rounded-lg border border-[#e8e8e8] px-2 py-1 text-xs hover:bg-[#f9f9f9]"
-                        >
-                          상세/수정
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : null}
-
-          <div className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-semibold">노출 위치 가중치 설정 (AdPlacementPricing)</h2>
-              {selectedPlacementPricing ? (
-                <Link href="/ads-manager/rules" className="text-xs text-[#666] underline-offset-2 hover:underline">
-                  새 항목 등록으로 전환
-                </Link>
-              ) : null}
-            </div>
-            <form action={upsertAdPlacementPricingAction} className="grid gap-3 sm:grid-cols-2">
-              {selectedPlacementPricing ? (
-                <input type="hidden" name="id" value={selectedPlacementPricing.id} />
-              ) : null}
-              <label className="space-y-1 text-sm">
-                <span className="text-[#555]">노출 위치 <span className="text-red-500">*</span></span>
-                <select
-                  name="placementType"
-                  defaultValue={selectedPlacementPricing?.placementType ?? 'FEED_INLINE'}
-                  className={selectClass}
-                >
-                  <option value="TOP_FIXED">상단 고정</option>
-                  <option value="FEED_INLINE">피드 중간 삽입</option>
-                </select>
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-[#555]">가중치(multiplier) <span className="text-red-500">*</span></span>
-                <input
-                  type="number"
-                  name="multiplier"
-                  step="0.0001"
-                  min="0.0001"
-                  required
-                  defaultValue={selectedPlacementPricing ? Number(selectedPlacementPricing.multiplier) : 1}
-                  className={inputClass}
-                />
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-[#555]">활성 여부</span>
-                <div className="flex h-[38px] items-center">
-                  <input
-                    type="checkbox"
-                    name="isActive"
-                    defaultChecked={selectedPlacementPricing ? selectedPlacementPricing.isActive : true}
-                    className="h-4 w-4 rounded border-[#d0d0d0]"
-                  />
-                </div>
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-[#555]">적용 시작</span>
-                <input
-                  type="datetime-local"
-                  name="effectiveFrom"
-                  defaultValue={formatDateTimeLocal(selectedPlacementPricing?.effectiveFrom ?? null)}
-                  className={inputClass}
-                />
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-[#555]">적용 종료</span>
-                <input
-                  type="datetime-local"
-                  name="effectiveTo"
-                  defaultValue={formatDateTimeLocal(selectedPlacementPricing?.effectiveTo ?? null)}
-                  className={inputClass}
-                />
-              </label>
-              <div className="sm:col-span-2">
-                <FormSubmitButton
-                  idleLabel={selectedPlacementPricing ? '위치 가중치 수정 저장' : '위치 가중치 등록'}
-                  pendingLabel="저장 중..."
-                  className={submitClass}
-                />
-              </div>
-            </form>
-          </div>
-
-          {adPlacementPricings.length > 0 ? (
-            <div className="overflow-x-auto rounded-xl border border-[#e8e8e8] bg-white shadow-sm">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[#f0f0f0] text-left text-[#888]">
-                    <th className="px-4 py-3">노출 위치</th>
-                    <th className="px-4 py-3">가중치</th>
-                    <th className="px-4 py-3">적용 기간</th>
-                    <th className="px-4 py-3">상태</th>
-                    <th className="px-4 py-3">관리</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {adPlacementPricings.map((pricing) => (
-                    <tr key={pricing.id} className="border-b border-[#f9f9f9] last:border-b-0">
-                      <td className="px-4 py-2">{AD_PLACEMENT_TYPE_LABELS[pricing.placementType]}</td>
-                      <td className="px-4 py-2">{Number(pricing.multiplier).toFixed(4)}</td>
-                      <td className="px-4 py-2 text-xs text-[#666]">
-                        {pricing.effectiveFrom ? new Date(pricing.effectiveFrom).toLocaleString('ko-KR') : '즉시'} ~{' '}
-                        {pricing.effectiveTo ? new Date(pricing.effectiveTo).toLocaleString('ko-KR') : '무기한'}
-                      </td>
-                      <td className="px-4 py-2">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                            pricing.isActive ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-500'
-                          }`}
-                        >
-                          {pricing.isActive ? '활성' : '비활성'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2">
-                        <Link
-                          href={`/ads-manager/rules?placementPricingId=${pricing.id}`}
                           className="rounded-lg border border-[#e8e8e8] px-2 py-1 text-xs hover:bg-[#f9f9f9]"
                         >
                           상세/수정
