@@ -7,6 +7,10 @@ import type { AdProposalStatus } from '@prisma/client';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import {
+  dispatchAdCampaignReviewedByMemberNotification,
+  dispatchAdProposalSubmittedNotification,
+} from '@/lib/notifications/dispatcher';
+import {
   canAccessAdvertiserMemberSection,
   canCreateAdProposal,
   canEditAdProposal,
@@ -116,6 +120,14 @@ export async function createAdvertiserMemberProposalAction(formData: FormData) {
       actionType: 'PROPOSAL_SUBMITTED_BY_MEMBER',
       message: '광고주 멤버가 광고 제안을 등록했습니다.',
     },
+  });
+
+  void dispatchAdProposalSubmittedNotification({
+    proposalId: proposal.id,
+    advertiserId,
+    actorId: currentUser.id,
+  }).catch((error) => {
+    console.error('[createAdvertiserMemberProposalAction] notification dispatch failed', error);
   });
 
   revalidatePath(ADVERTISER_MEMBER_PROPOSALS_PATH);
@@ -294,6 +306,15 @@ export async function reviewAdvertiserMemberCampaignAction(formData: FormData) {
         },
       },
     });
+  });
+
+  void dispatchAdCampaignReviewedByMemberNotification({
+    campaignId,
+    advertiserId: campaign.advertiserId,
+    actorId: currentUser.id,
+    action: action === 'APPROVE' ? 'APPROVE' : 'REQUEST_CHANGES',
+  }).catch((error) => {
+    console.error('[reviewAdvertiserMemberCampaignAction] notification dispatch failed', error);
   });
 
   revalidatePath(ADVERTISER_MEMBER_CAMPAIGNS_PATH);

@@ -36,9 +36,17 @@ export async function openNotificationAction(formData: FormData) {
   }
 
   const user = await requireUser();
-  const href = await openNotification(notificationId, user.id);
+  const result = await openNotification(notificationId, user.id);
   revalidatePath('/my/notifications');
-  redirect(href ?? '/my/notifications');
+  if (result.href) {
+    redirect(result.href);
+  }
+
+  if (result.error) {
+    redirect(`/my/notifications?error=${encodeURIComponent(result.error)}`);
+  }
+
+  redirect('/my/notifications');
 }
 
 export async function archiveNotificationAction(formData: FormData) {
