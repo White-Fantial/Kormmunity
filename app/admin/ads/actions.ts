@@ -14,6 +14,7 @@ import type {
 
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
+import { dispatchAdCampaignReviewRequestedNotification } from '@/lib/notifications/dispatcher';
 import {
   buildPricingSnapshot,
   calculateEstimatedAmount,
@@ -770,6 +771,16 @@ export async function createAdCampaignAction(formData: FormData) {
     },
   });
 
+  if (status === 'REVIEW' && existing.status !== 'REVIEW' && existing.advertiserId) {
+    void dispatchAdCampaignReviewRequestedNotification({
+      campaignId: id,
+      advertiserId: existing.advertiserId,
+      actorId: currentUser.id,
+    }).catch((error) => {
+      console.error('[updateAdCampaignStatusAction] notification dispatch failed', error);
+    });
+  }
+
   revalidatePath(ADS_MANAGER_SECTION_PATH.campaigns);
   redirectAdsManager('campaigns');
 }
@@ -820,6 +831,16 @@ export async function updateAdCampaignStatusAction(formData: FormData) {
       metadata: { from: existing.status, to: status },
     });
   });
+
+  if (existing.status === 'REQUEST_CHANGES' && existing.advertiserId) {
+    void dispatchAdCampaignReviewRequestedNotification({
+      campaignId: id,
+      advertiserId: existing.advertiserId,
+      actorId: currentUser.id,
+    }).catch((error) => {
+      console.error('[updateAdCampaignAction] notification dispatch failed', error);
+    });
+  }
 
   revalidatePath(ADS_MANAGER_SECTION_PATH.campaigns);
   redirectAdsManager('campaigns');

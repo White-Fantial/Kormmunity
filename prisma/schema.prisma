@@ -80,6 +80,18 @@ enum NotificationType {
   BEST_COMMENT_SELECTED
   POST_HELD
   COMMENT_HELD
+  AD_PROPOSAL_SUBMITTED
+  AD_CAMPAIGN_REVIEW_REQUESTED
+  AD_CAMPAIGN_APPROVED
+  AD_CAMPAIGN_CHANGES_REQUESTED
+}
+
+enum NotificationTargetType {
+  POST
+  COMMENT
+  AD_PROPOSAL
+  AD_CAMPAIGN
+  SYSTEM
 }
 
 enum KakaoMessageDeliveryStatus {
@@ -637,15 +649,19 @@ model CommunityScoreEvent {
 }
 
 model Notification {
-  id              String           @id @default(cuid())
-  recipientId     String
-  type            NotificationType
-  isRead          Boolean          @default(false)
-  relatedPostId   String?
+  id               String                 @id @default(cuid())
+  recipientId      String
+  type             NotificationType
+  isRead           Boolean                @default(false)
+  relatedPostId    String?
   relatedCommentId String?
-  actorId         String?
-  createdAt       DateTime         @default(now())
-  recipient       User             @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  targetType       NotificationTargetType @default(SYSTEM)
+  targetId         String?
+  targetUrl        String?
+  metadata         Json?
+  actorId          String?
+  createdAt        DateTime               @default(now())
+  recipient        User                   @relation(fields: [recipientId], references: [id], onDelete: Cascade)
 
   @@index([recipientId, isRead, createdAt(sort: Desc)])
   @@index([recipientId, createdAt(sort: Desc)])
