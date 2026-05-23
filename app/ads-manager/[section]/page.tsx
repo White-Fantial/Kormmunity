@@ -128,6 +128,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
         endAt: true,
         maxImpressions: true,
         estimatedAmount: true,
+        proposedAmount: true,
         finalAmount: true,
         pricingConfirmationSnapshot: true,
         billingStatus: true,
@@ -356,6 +357,10 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                   <input type="number" name="maxImpressions" className={inputClass} />
                 </label>
                 <label className="space-y-1 text-sm">
+                  <span className="text-[#555]">광고주 제안 금액 (NZD, 선택)</span>
+                  <input type="number" step="0.01" min="0" name="proposedAmount" className={inputClass} />
+                </label>
+                <label className="space-y-1 text-sm">
                   <span className="text-[#555]">집행 시작일</span>
                   <input type="date" name="startAt" className={inputClass} />
                 </label>
@@ -458,6 +463,10 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                   campaign.estimatedAmount != null
                     ? `NZD ${Number(campaign.estimatedAmount).toFixed(2)}`
                     : '-';
+                const proposedAmountText =
+                  campaign.proposedAmount != null
+                    ? `NZD ${Number(campaign.proposedAmount).toFixed(2)}`
+                    : '-';
                 const finalAmountText =
                   campaign.finalAmount != null
                     ? `NZD ${Number(campaign.finalAmount).toFixed(2)}`
@@ -498,7 +507,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                           {campaign.advertiser ? ` · ${campaign.advertiser.name}` : ''}
                         </p>
                         <p className="text-xs text-[#888]">
-                          과금 상태 {AD_BILLING_STATUS_LABELS[campaign.billingStatus]} · 견적 {estimatedAmountText} · 확정 {finalAmountText}
+                          과금 상태 {AD_BILLING_STATUS_LABELS[campaign.billingStatus]} · 자동 계산 {estimatedAmountText} · 제안 {proposedAmountText} · 확정 {finalAmountText}
                         </p>
                         <p className="text-xs text-[#888]">
                           content: {campaign.adContentId ?? '-'} / legacy post: {campaign.postId ?? '-'}
@@ -599,6 +608,17 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                   />
                 </label>
                 <label className="space-y-1 text-sm">
+                  <span className="text-[#555]">광고주 제안 금액 (NZD, 선택)</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    name="proposedAmount"
+                    defaultValue={selectedCampaign.proposedAmount != null ? Number(selectedCampaign.proposedAmount).toString() : ''}
+                    className={inputClass}
+                  />
+                </label>
+                <label className="space-y-1 text-sm">
                   <span className="text-[#555]">집행 시작일</span>
                   <input
                     type="date"
@@ -656,6 +676,10 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                     상태: {AD_BILLING_STATUS_LABELS[selectedCampaign.billingStatus]} · 견적:{' '}
                     {selectedCampaign.estimatedAmount != null
                       ? `NZD ${Number(selectedCampaign.estimatedAmount).toFixed(2)}`
+                      : '-'}{' '}
+                    · 제안:{' '}
+                    {selectedCampaign.proposedAmount != null
+                      ? `NZD ${Number(selectedCampaign.proposedAmount).toFixed(2)}`
                       : '-'}{' '}
                     · 확정:{' '}
                     {selectedCampaign.finalAmount != null
@@ -724,6 +748,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                     effectiveTo: pricing.effectiveTo?.toISOString() ?? null,
                   }))}
                   savedEstimatedAmount={selectedCampaign.estimatedAmount != null ? Number(selectedCampaign.estimatedAmount) : null}
+                  savedProposedAmount={selectedCampaign.proposedAmount != null ? Number(selectedCampaign.proposedAmount) : null}
                 />
                 <div className="sm:col-span-2">
                   <FormSubmitButton idleLabel="캠페인 수정 저장" pendingLabel="저장 중..." className={submitClass} />

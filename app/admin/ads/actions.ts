@@ -661,6 +661,8 @@ export async function createAdCampaignAction(formData: FormData) {
   const endAt = parseNullableLocalDateStartOfDay(normalizeText(formData.get('endAt')) || null);
   const maxImpressions = normalizeText(formData.get('maxImpressions'));
   const maxImpressionsValue = parseNullableInt(maxImpressions);
+  const proposedAmountRaw = normalizeText(formData.get('proposedAmount'));
+  const proposedAmountValue = parseNullableDecimal(proposedAmountRaw);
   const targetCountryId = normalizeText(formData.get('targetCountryId')) || null;
   const targetCityId = normalizeText(formData.get('targetCityId')) || null;
   const landingUrl = normalizeText(formData.get('landingUrl')) || null;
@@ -668,6 +670,9 @@ export async function createAdCampaignAction(formData: FormData) {
 
   if (!adProductId || (!adContentId && !legacyPostId)) {
     redirectAdsManager('campaigns', { error: '광고 콘텐츠 ID(또는 legacy 게시글 ID)와 광고 상품은 필수입니다.' });
+  }
+  if (proposedAmountRaw && (proposedAmountValue == null || proposedAmountValue < 0)) {
+    redirectAdsManager('campaigns', { error: '제안 금액은 0 이상 숫자로 입력해 주세요.' });
   }
 
   const adProduct = await prisma.adProduct.findUnique({
@@ -770,6 +775,7 @@ export async function createAdCampaignAction(formData: FormData) {
       targetCountryId,
       targetCityId,
       estimatedAmount: estimated.amount,
+      proposedAmount: proposedAmountValue,
       billingStatus: 'ESTIMATED',
       pricingSnapshot,
       landingUrl,
@@ -796,6 +802,7 @@ export async function createAdCampaignAction(formData: FormData) {
         billableDays: estimated.billableDays,
         billableQuantity: estimated.billableQuantity,
         estimatedAmount: estimated.amount,
+        proposedAmount: proposedAmountValue,
       },
     },
   });
@@ -887,6 +894,8 @@ export async function updateAdCampaignAction(formData: FormData) {
   const endAt = parseNullableLocalDateStartOfDay(normalizeText(formData.get('endAt')) || null);
   const maxImpressions = normalizeText(formData.get('maxImpressions'));
   const maxImpressionsValue = parseNullableInt(maxImpressions);
+  const proposedAmountRaw = normalizeText(formData.get('proposedAmount'));
+  const proposedAmountValue = parseNullableDecimal(proposedAmountRaw);
   const targetCountryId = normalizeText(formData.get('targetCountryId')) || null;
   const targetCityId = normalizeText(formData.get('targetCityId')) || null;
   const landingUrl = normalizeText(formData.get('landingUrl')) || null;
@@ -894,6 +903,9 @@ export async function updateAdCampaignAction(formData: FormData) {
 
   if (!id) {
     redirectAdsManager('campaigns', { error: '캠페인 ID가 없습니다.' });
+  }
+  if (proposedAmountRaw && (proposedAmountValue == null || proposedAmountValue < 0)) {
+    redirectAdsManager('campaigns', { error: '제안 금액은 0 이상 숫자로 입력해 주세요.', campaignId: id });
   }
 
   const existing = await prisma.adCampaign.findUnique({
@@ -982,6 +994,7 @@ export async function updateAdCampaignAction(formData: FormData) {
         targetCountryId,
         targetCityId,
         estimatedAmount: estimated.amount,
+        proposedAmount: proposedAmountValue,
         billingStatus: nextBillingStatusAfterUpdate,
         pricingSnapshot,
         ...(requiresReconfirmation
@@ -1015,6 +1028,7 @@ export async function updateAdCampaignAction(formData: FormData) {
         billableDays: estimated.billableDays,
         billableQuantity: estimated.billableQuantity,
         estimatedAmount: estimated.amount,
+        proposedAmount: proposedAmountValue,
         pricingInputsChanged,
         requiresReconfirmation,
         campaignStatusTransition:

@@ -738,6 +738,7 @@ model AdCampaign {
   targetCountryId String?
   targetCityId    String?
   estimatedAmount Decimal?          @db.Decimal(10, 2)
+  proposedAmount  Decimal?          @db.Decimal(10, 2)
   finalAmount     Decimal?          @db.Decimal(10, 2)
   billingStatus   AdBillingStatus   @default(DRAFT)
   pricingSnapshot Json?

@@ -56,6 +56,7 @@ export default async function AdvertiserMemberCampaignsPage({
           endAt: true,
           maxImpressions: true,
           estimatedAmount: true,
+          proposedAmount: true,
           finalAmount: true,
           notes: true,
           reviewNotes: true,
@@ -151,10 +152,14 @@ export default async function AdvertiserMemberCampaignsPage({
                       과금 상태 {AD_BILLING_STATUS_LABELS[campaign.billingStatus]}
                     </p>
                     <p className="text-xs text-[#888]">
-                      견적{' '}
+                      자동 계산{' '}
                       {campaign.estimatedAmount != null
                         ? `NZD ${Number(campaign.estimatedAmount).toFixed(2)}`
                         : '-'}{' '}
+                      · 제안{' '}
+                      {campaign.proposedAmount != null
+                        ? `NZD ${Number(campaign.proposedAmount).toFixed(2)}`
+                        : '미제안'}{' '}
                       · 확정{' '}
                       {campaign.finalAmount != null
                         ? `NZD ${Number(campaign.finalAmount).toFixed(2)}`
@@ -251,6 +256,14 @@ export default async function AdvertiserMemberCampaignsPage({
                 {selectedCampaign.estimatedAmount != null
                   ? `NZD ${Number(selectedCampaign.estimatedAmount).toFixed(2)}`
                   : '-'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-[#888]">제안 금액</dt>
+              <dd className="mt-0.5">
+                {selectedCampaign.proposedAmount != null
+                  ? `NZD ${Number(selectedCampaign.proposedAmount).toFixed(2)}`
+                  : '미제안'}
               </dd>
             </div>
             <div>

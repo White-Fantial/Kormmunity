@@ -38,6 +38,7 @@ type CampaignPricingLivePreviewProps = {
   adGeoPricings: GeoPricing[];
   adPlacementPricings: PlacementPricing[];
   savedEstimatedAmount?: number | null;
+  savedProposedAmount?: number | null;
 };
 
 type PreviewState = {
@@ -202,12 +203,14 @@ export function CampaignPricingLivePreview({
   adGeoPricings,
   adPlacementPricings,
   savedEstimatedAmount = null,
+  savedProposedAmount = null,
 }: CampaignPricingLivePreviewProps) {
   const [formState, setFormState] = useState({
     adProductId: '',
     startAt: '',
     endAt: '',
     maxImpressions: '',
+    proposedAmount: '',
     targetCountryId: '',
     targetCityId: '',
   });
@@ -225,6 +228,7 @@ export function CampaignPricingLivePreview({
         startAt: String(data.get('startAt') ?? ''),
         endAt: String(data.get('endAt') ?? ''),
         maxImpressions: String(data.get('maxImpressions') ?? ''),
+        proposedAmount: String(data.get('proposedAmount') ?? ''),
         targetCountryId: String(data.get('targetCountryId') ?? ''),
         targetCityId: String(data.get('targetCityId') ?? ''),
       });
@@ -264,6 +268,13 @@ export function CampaignPricingLivePreview({
     });
   }, [adGeoPricings, adPlacementPricings, adProducts, formState]);
 
+  const proposedAmount = Number.isNaN(Number(formState.proposedAmount))
+    ? null
+    : formState.proposedAmount.trim() === ''
+      ? null
+      : Number(formState.proposedAmount);
+  const proposalDelta = preview && proposedAmount != null ? proposedAmount - preview.amount : null;
+
   return (
     <div className="space-y-2 rounded-lg border border-[#e8e8e8] bg-[#fafafa] px-3 py-3 text-xs text-[#666] sm:col-span-2">
       <p className="font-semibold text-[#444]">예상 견적 미리보기</p>
@@ -282,6 +293,15 @@ export function CampaignPricingLivePreview({
           <p>
             저장된 이전 견적:{' '}
             {savedEstimatedAmount != null ? `${preview.currency} ${savedEstimatedAmount.toFixed(2)}` : '-'}
+          </p>
+          <p>
+            현재 입력 제안 금액:{' '}
+            {proposedAmount != null ? `${preview.currency} ${proposedAmount.toFixed(2)}` : '-'}
+            {proposalDelta != null ? ` · 자동 계산 대비 ${proposalDelta.toFixed(2)}` : ''}
+          </p>
+          <p>
+            저장된 이전 제안 금액:{' '}
+            {savedProposedAmount != null ? `${preview.currency} ${savedProposedAmount.toFixed(2)}` : '-'}
           </p>
         </>
       ) : (
