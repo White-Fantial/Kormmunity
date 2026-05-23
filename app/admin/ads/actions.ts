@@ -22,7 +22,6 @@ import {
   calculateEstimatedAmount,
   calculateFinalAmount,
   resolveGeoMultiplier,
-  resolvePlacementMultiplier,
 } from '@/lib/ads/pricing';
 import {
   canAccessAdsManagerSection,
@@ -732,17 +731,12 @@ export async function createAdCampaignAction(formData: FormData) {
     targetCountryId,
     at: pricingAt,
   });
-  const placementMultiplier = await resolvePlacementMultiplier(prisma, {
-    placementType: adProduct.placementType,
-    at: pricingAt,
-  });
   const basePrice = Number(adProduct.basePrice);
   const billingUnit = adProduct.billingUnit;
   const estimated = calculateEstimatedAmount({
     billingUnit,
     basePrice,
     geoMultiplier: geoMultiplier.multiplier,
-    placementMultiplier: placementMultiplier.multiplier,
     startAt,
     endAt,
     impressions: maxImpressionsValue ?? 0,
@@ -752,7 +746,6 @@ export async function createAdCampaignAction(formData: FormData) {
     currency: adProduct.currency,
     basePrice,
     geoMultiplier,
-    placementMultiplier,
     startAt,
     endAt,
     maxImpressions: maxImpressionsValue,
@@ -798,7 +791,6 @@ export async function createAdCampaignAction(formData: FormData) {
         currency: adProduct.currency,
         basePrice,
         geoMultiplier: geoMultiplier.multiplier,
-        placementMultiplier: placementMultiplier.multiplier,
         billableDays: estimated.billableDays,
         billableQuantity: estimated.billableQuantity,
         estimatedAmount: estimated.amount,
@@ -942,17 +934,12 @@ export async function updateAdCampaignAction(formData: FormData) {
     targetCountryId,
     at: pricingAt,
   });
-  const placementMultiplier = await resolvePlacementMultiplier(prisma, {
-    placementType: existing.adProduct.placementType,
-    at: pricingAt,
-  });
   const basePrice = Number(existing.adProduct.basePrice);
   const billingUnit = existing.adProduct.billingUnit;
   const estimated = calculateEstimatedAmount({
     billingUnit,
     basePrice,
     geoMultiplier: geoMultiplier.multiplier,
-    placementMultiplier: placementMultiplier.multiplier,
     startAt,
     endAt,
     impressions: maxImpressionsValue ?? 0,
@@ -962,7 +949,6 @@ export async function updateAdCampaignAction(formData: FormData) {
     currency: existing.adProduct.currency,
     basePrice,
     geoMultiplier,
-    placementMultiplier,
     startAt,
     endAt,
     maxImpressions: maxImpressionsValue,
@@ -1024,7 +1010,6 @@ export async function updateAdCampaignAction(formData: FormData) {
         currency: existing.adProduct.currency,
         basePrice,
         geoMultiplier: geoMultiplier.multiplier,
-        placementMultiplier: placementMultiplier.multiplier,
         billableDays: estimated.billableDays,
         billableQuantity: estimated.billableQuantity,
         estimatedAmount: estimated.amount,
@@ -1119,8 +1104,6 @@ export async function confirmAdCampaignPricingAction(formData: FormData) {
     billingUnit: existing.adProduct.billingUnit,
     basePrice: Number(existing.adProduct.basePrice),
     geoMultiplier: readNumericFromJsonSnapshot(existing.pricingSnapshot, 'geoMultiplier') ?? 1,
-    placementMultiplier:
-      readNumericFromJsonSnapshot(existing.pricingSnapshot, 'placementMultiplier') ?? 1,
     startAt: existing.startAt,
     endAt: existing.endAt,
     impressions: existing.maxImpressions ?? 0,
@@ -1272,54 +1255,4 @@ export async function upsertAdGeoPricingAction(formData: FormData) {
 
   revalidatePath(ADS_MANAGER_SECTION_PATH.rules);
   redirectAdsManager('rules', { success: '지역 가중치 설정이 저장되었습니다.' });
-}
-
-export async function upsertAdPlacementPricingAction(formData: FormData) {
-  await requireAdsUser();
-
-  const id = normalizeText(formData.get('id'));
-  const placementType = normalizeText(formData.get('placementType')) as AdPlacementType;
-  const multiplierRaw = normalizeText(formData.get('multiplier'));
-  const effectiveFrom = parseNullableDateTime(normalizeText(formData.get('effectiveFrom')) || null);
-  const effectiveTo = parseNullableDateTime(normalizeText(formData.get('effectiveTo')) || null);
-  const isActive = parseCheckboxBoolean(formData.get('isActive'));
-
-  if (!placementType) {
-    redirectAdsManager('rules', { error: '노출 위치를 선택해 주세요.' });
-  }
-
-  const multiplier = Number(multiplierRaw);
-  if (!multiplierRaw || Number.isNaN(multiplier) || multiplier <= 0) {
-    redirectAdsManager('rules', { error: '유효한 노출 위치 가중치(multiplier)를 입력해 주세요.' });
-  }
-
-  if (effectiveFrom && effectiveTo && effectiveTo <= effectiveFrom) {
-    redirectAdsManager('rules', { error: '종료 시각은 시작 시각보다 늦어야 합니다.' });
-  }
-
-  if (id) {
-    await prisma.adPlacementPricing.update({
-      where: { id },
-      data: {
-        placementType,
-        multiplier,
-        effectiveFrom,
-        effectiveTo,
-        isActive,
-      },
-    });
-  } else {
-    await prisma.adPlacementPricing.create({
-      data: {
-        placementType,
-        multiplier,
-        effectiveFrom,
-        effectiveTo,
-        isActive,
-      },
-    });
-  }
-
-  revalidatePath(ADS_MANAGER_SECTION_PATH.rules);
-  redirectAdsManager('rules', { success: '노출 위치 가중치 설정이 저장되었습니다.' });
 }

@@ -853,18 +853,6 @@ model AdGeoPricing {
   @@index([countryId, isActive, effectiveFrom, effectiveTo])
 }
 
-model AdPlacementPricing {
-  id            String          @id @default(cuid())
-  placementType AdPlacementType
-  multiplier    Decimal         @db.Decimal(8, 4)
-  isActive      Boolean         @default(true)
-  effectiveFrom DateTime?
-  effectiveTo   DateTime?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-
-  @@index([placementType, isActive, effectiveFrom, effectiveTo])
-}
 
 model StaffAssignment {
   id        String    @id @default(cuid())

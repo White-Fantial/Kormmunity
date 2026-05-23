@@ -1,14 +1,10 @@
-import type { AdBillingUnit, AdPlacementType, Prisma } from '@prisma/client';
+import type { AdBillingUnit, Prisma } from '@prisma/client';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 export const PRICING_VERSION = 1;
 
 export const DEFAULT_COUNTRY_MULTIPLIER = 1;
 export const DEFAULT_CITY_MULTIPLIER = 1;
-export const DEFAULT_PLACEMENT_MULTIPLIERS: Record<AdPlacementType, number> = {
-  TOP_FIXED: 1.5,
-  FEED_INLINE: 1,
-};
 
 export type GeoMultiplierResult = {
   multiplier: number;
@@ -16,15 +12,9 @@ export type GeoMultiplierResult = {
   pricingId?: string;
 };
 
-export type PlacementMultiplierResult = {
-  multiplier: number;
-  source: 'placement' | 'default';
-  pricingId?: string;
-};
-
 type PricingQueryClient = Pick<
   Prisma.TransactionClient,
-  'adGeoPricing' | 'adPlacementPricing'
+  'adGeoPricing'
 >;
 
 export function roundToCurrency(value: number): number {
@@ -79,12 +69,11 @@ export function calculateEstimatedAmount(input: {
   billingUnit: AdBillingUnit;
   basePrice: number;
   geoMultiplier: number;
-  placementMultiplier: number;
   startAt: Date | null;
   endAt: Date | null;
   impressions: number;
 }): { amount: number; billableDays: number | null; billableQuantity: number } {
-  const shared = input.basePrice * input.geoMultiplier * input.placementMultiplier;
+  const shared = input.basePrice * input.geoMultiplier;
 
   if (input.billingUnit === 'IMPRESSION_1000') {
     const impressions = Math.max(0, input.impressions);
@@ -111,7 +100,6 @@ export function calculateFinalAmount(input: {
   billingUnit: AdBillingUnit;
   basePrice: number;
   geoMultiplier: number;
-  placementMultiplier: number;
   startAt: Date | null;
   endAt: Date | null;
   impressions: number;
@@ -178,44 +166,11 @@ export async function resolveGeoMultiplier(
   return { multiplier: 1, source: 'default' };
 }
 
-export async function resolvePlacementMultiplier(
-  client: PricingQueryClient,
-  input: {
-    placementType: AdPlacementType;
-    at: Date;
-  },
-): Promise<PlacementMultiplierResult> {
-  const placementPricing = await client.adPlacementPricing.findFirst({
-    where: {
-      placementType: input.placementType,
-      isActive: true,
-      OR: [{ effectiveFrom: null }, { effectiveFrom: { lte: input.at } }],
-      AND: [{ OR: [{ effectiveTo: null }, { effectiveTo: { gt: input.at } }] }],
-    },
-    orderBy: [{ effectiveFrom: 'desc' }, { createdAt: 'desc' }],
-    select: { id: true, multiplier: true },
-  });
-
-  if (placementPricing) {
-    return {
-      multiplier: Number(placementPricing.multiplier),
-      source: 'placement',
-      pricingId: placementPricing.id,
-    };
-  }
-
-  return {
-    multiplier: DEFAULT_PLACEMENT_MULTIPLIERS[input.placementType],
-    source: 'default',
-  };
-}
-
 export function buildPricingSnapshot(input: {
   billingUnit: AdBillingUnit;
   currency: string;
   basePrice: number;
   geoMultiplier: GeoMultiplierResult;
-  placementMultiplier: PlacementMultiplierResult;
   startAt: Date | null;
   endAt: Date | null;
   maxImpressions: number | null;
@@ -231,9 +186,6 @@ export function buildPricingSnapshot(input: {
     geoMultiplier: input.geoMultiplier.multiplier,
     geoMultiplierSource: input.geoMultiplier.source,
     geoPricingId: input.geoMultiplier.pricingId ?? null,
-    placementMultiplier: input.placementMultiplier.multiplier,
-    placementMultiplierSource: input.placementMultiplier.source,
-    placementPricingId: input.placementMultiplier.pricingId ?? null,
     startAt: input.startAt?.toISOString() ?? null,
     endAt: input.endAt?.toISOString() ?? null,
     maxImpressions: input.maxImpressions,
