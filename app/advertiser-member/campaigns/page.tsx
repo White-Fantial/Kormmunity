@@ -151,6 +151,21 @@ export default async function AdvertiserMemberCampaignsPage({
                       과금 상태 {AD_BILLING_STATUS_LABELS[campaign.billingStatus]}
                     </p>
                     <p className="text-xs text-[#888]">
+                      견적{' '}
+                      {campaign.estimatedAmount != null
+                        ? `NZD ${Number(campaign.estimatedAmount).toFixed(2)}`
+                        : '-'}{' '}
+                      · 확정{' '}
+                      {campaign.finalAmount != null
+                        ? `NZD ${Number(campaign.finalAmount).toFixed(2)}`
+                        : '미확정'}
+                    </p>
+                    {campaign.status === 'REVIEW' && campaign.finalAmount == null ? (
+                      <p className="text-xs font-medium text-amber-700">
+                        가격 미확정: 승인 전 협의 금액이 확정되지 않았습니다.
+                      </p>
+                    ) : null}
+                    <p className="text-xs text-[#888]">
                       노출 {campaign._count.impressions.toLocaleString()}회 · 클릭{' '}
                       {campaign._count.clicks.toLocaleString()}회 · CTR {ctr}%
                     </p>
@@ -243,9 +258,17 @@ export default async function AdvertiserMemberCampaignsPage({
               <dd className="mt-0.5">
                 {selectedCampaign.finalAmount != null
                   ? `NZD ${Number(selectedCampaign.finalAmount).toFixed(2)}`
-                  : '-'}
+                  : '미확정'}
               </dd>
             </div>
+            {selectedCampaign.finalAmount == null ? (
+              <div className="sm:col-span-2">
+                <dt className="text-xs text-[#888]">가격 확정 상태</dt>
+                <dd className="mt-0.5 text-amber-700">
+                  협의 확정 금액이 아직 입력되지 않았습니다.
+                </dd>
+              </div>
+            ) : null}
             <div>
               <dt className="text-xs text-[#888]">타겟 위치</dt>
               <dd className="mt-0.5">

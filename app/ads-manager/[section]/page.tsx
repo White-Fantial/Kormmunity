@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 
 import {
   createAdCampaignAction,
+  confirmAdCampaignPricingAction,
   createAdContentAction,
   createAdProductAction,
   createAdProposalAction,
@@ -32,6 +33,7 @@ import {
   AD_SIZE_LABELS,
 } from '@/lib/ads/types';
 import { AdContentCreateForm } from '@/components/ads/ad-content-form';
+import { CampaignPricingLivePreview } from '@/components/ads/campaign-pricing-live-preview';
 
 export const dynamic = 'force-dynamic';
 
@@ -119,6 +121,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
       orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
       select: {
         id: true,
+        advertiserId: true,
         status: true,
         priority: true,
         startAt: true,
@@ -126,7 +129,11 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
         maxImpressions: true,
         estimatedAmount: true,
         finalAmount: true,
+        pricingConfirmationSnapshot: true,
         billingStatus: true,
+        priceAdjustmentReason: true,
+        priceConfirmedAt: true,
+        priceConfirmedByUserId: true,
         landingUrl: true,
         notes: true,
         reviewNotes: true,
@@ -138,6 +145,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
         post: { select: { id: true, title: true, status: true } },
         adContent: { select: { id: true, title: true, status: true } },
         advertiser: { select: { name: true } },
+        priceConfirmedByUser: { select: { displayName: true } },
         adProduct: { select: { id: true, name: true, code: true, placementType: true, size: true, layout: true } },
         targetCountry: { select: { name: true } },
         targetCity: { select: { name: true } },
@@ -242,6 +250,9 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
   const selectedProposal = query.proposalId
     ? adProposals.find((proposal) => proposal.id === query.proposalId)
     : null;
+  const selectedProposalCampaigns = selectedProposal
+    ? adCampaigns.filter((campaign) => campaign.advertiserId === selectedProposal.advertiserId)
+    : [];
   const selectedContent = query.contentId
     ? adContents.find((content) => content.id === query.contentId)
     : null;
@@ -307,7 +318,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
               <span className="text-sm text-[#aaa] transition-transform group-open:rotate-180" aria-hidden="true">▼</span>
             </summary>
             <div className="border-t border-[#f0f0f0] px-4 pb-4 pt-3">
-              <form action={createAdCampaignAction} className="grid gap-3 sm:grid-cols-2">
+              <form id="campaign-create-form" action={createAdCampaignAction} className="grid gap-3 sm:grid-cols-2">
                 <label className="space-y-1 text-sm">
                   <span className="text-[#555]">광고 콘텐츠 (legacy 게시글 ID와 둘 중 하나 필수)</span>
                   <select name="adContentId" className={selectClass}>
@@ -384,6 +395,36 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                   <span className="text-[#555]">메모</span>
                   <textarea name="notes" rows={2} className={inputClass} />
                 </label>
+                <CampaignPricingLivePreview
+                  formId="campaign-create-form"
+                  adProducts={adProducts.map((product) => ({
+                    id: product.id,
+                    code: product.code,
+                    name: product.name,
+                    placementType: product.placementType,
+                    billingUnit: product.billingUnit,
+                    currency: product.currency,
+                    basePrice: Number(product.basePrice),
+                    isActive: product.isActive,
+                  }))}
+                  adGeoPricings={adGeoPricings.map((pricing) => ({
+                    id: pricing.id,
+                    cityId: pricing.cityId,
+                    countryId: pricing.countryId,
+                    multiplier: Number(pricing.multiplier),
+                    isActive: pricing.isActive,
+                    effectiveFrom: pricing.effectiveFrom?.toISOString() ?? null,
+                    effectiveTo: pricing.effectiveTo?.toISOString() ?? null,
+                  }))}
+                  adPlacementPricings={adPlacementPricings.map((pricing) => ({
+                    id: pricing.id,
+                    placementType: pricing.placementType,
+                    multiplier: Number(pricing.multiplier),
+                    isActive: pricing.isActive,
+                    effectiveFrom: pricing.effectiveFrom?.toISOString() ?? null,
+                    effectiveTo: pricing.effectiveTo?.toISOString() ?? null,
+                  }))}
+                />
                 <div className="sm:col-span-2">
                   <FormSubmitButton idleLabel="캠페인 등록" pendingLabel="등록 중..." className={submitClass} />
                 </div>
@@ -537,7 +578,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                   <span className="text-xs text-[#888]">ID: {selectedCampaign.id}</span>
                 </div>
               </div>
-              <form action={updateAdCampaignAction} className="grid gap-3 sm:grid-cols-2">
+              <form id="campaign-update-form" action={updateAdCampaignAction} className="grid gap-3 sm:grid-cols-2">
                 <input type="hidden" name="id" value={selectedCampaign.id} />
                 <label className="space-y-1 text-sm">
                   <span className="text-[#555]">우선순위 (높을수록 먼저)</span>
@@ -653,8 +694,87 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                     </div>
                   </div>
                 ) : null}
+                <CampaignPricingLivePreview
+                  formId="campaign-update-form"
+                  adProducts={adProducts.map((product) => ({
+                    id: product.id,
+                    code: product.code,
+                    name: product.name,
+                    placementType: product.placementType,
+                    billingUnit: product.billingUnit,
+                    currency: product.currency,
+                    basePrice: Number(product.basePrice),
+                    isActive: product.isActive,
+                  }))}
+                  adGeoPricings={adGeoPricings.map((pricing) => ({
+                    id: pricing.id,
+                    cityId: pricing.cityId,
+                    countryId: pricing.countryId,
+                    multiplier: Number(pricing.multiplier),
+                    isActive: pricing.isActive,
+                    effectiveFrom: pricing.effectiveFrom?.toISOString() ?? null,
+                    effectiveTo: pricing.effectiveTo?.toISOString() ?? null,
+                  }))}
+                  adPlacementPricings={adPlacementPricings.map((pricing) => ({
+                    id: pricing.id,
+                    placementType: pricing.placementType,
+                    multiplier: Number(pricing.multiplier),
+                    isActive: pricing.isActive,
+                    effectiveFrom: pricing.effectiveFrom?.toISOString() ?? null,
+                    effectiveTo: pricing.effectiveTo?.toISOString() ?? null,
+                  }))}
+                  savedEstimatedAmount={selectedCampaign.estimatedAmount != null ? Number(selectedCampaign.estimatedAmount) : null}
+                />
                 <div className="sm:col-span-2">
                   <FormSubmitButton idleLabel="캠페인 수정 저장" pendingLabel="저장 중..." className={submitClass} />
+                </div>
+              </form>
+              <div className="mt-3 rounded-lg border border-[#f0f0f0] bg-[#fafafa] p-3 text-xs text-[#666]">
+                <p>
+                  자동 견적 대비 조정:{' '}
+                  {selectedCampaign.estimatedAmount != null && selectedCampaign.finalAmount != null
+                    ? `NZD ${(Number(selectedCampaign.finalAmount) - Number(selectedCampaign.estimatedAmount)).toFixed(2)}`
+                    : '-'}
+                </p>
+                <p>
+                  확정자:{' '}
+                  {selectedCampaign.priceConfirmedByUser?.displayName ??
+                    selectedCampaign.priceConfirmedByUserId ??
+                    '-'}
+                </p>
+                <p>
+                  확정일:{' '}
+                  {selectedCampaign.priceConfirmedAt
+                    ? new Date(selectedCampaign.priceConfirmedAt).toLocaleDateString('ko-KR')
+                    : '-'}
+                </p>
+                <p>조정 사유: {selectedCampaign.priceAdjustmentReason ?? '-'}</p>
+              </div>
+              <form action={confirmAdCampaignPricingAction} className="mt-3 grid gap-3 sm:grid-cols-2 border-t border-[#f0f0f0] pt-4">
+                <input type="hidden" name="id" value={selectedCampaign.id} />
+                <label className="space-y-1 text-sm">
+                  <span className="text-[#555]">확정 금액 (NZD) <span className="text-red-500">*</span></span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    name="finalAmount"
+                    required
+                    defaultValue={selectedCampaign.finalAmount != null ? Number(selectedCampaign.finalAmount).toString() : ''}
+                    className={inputClass}
+                  />
+                </label>
+                <label className="space-y-1 text-sm sm:col-span-2">
+                  <span className="text-[#555]">가격 조정 사유</span>
+                  <textarea
+                    name="priceAdjustmentReason"
+                    rows={2}
+                    defaultValue={selectedCampaign.priceAdjustmentReason ?? ''}
+                    className={inputClass}
+                  />
+                </label>
+                <div className="sm:col-span-2">
+                  <FormSubmitButton idleLabel="확정 금액 저장" pendingLabel="저장 중..." className={submitClass} />
                 </div>
               </form>
             </div>
@@ -859,6 +979,33 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                   <FormSubmitButton idleLabel="상태 저장" pendingLabel="저장 중..." className={submitClass} />
                 </div>
               </form>
+              <div className="space-y-2 rounded-lg border border-[#f0f0f0] bg-[#fafafa] p-3 text-xs text-[#666]">
+                <p className="font-semibold text-[#444]">제안 예산 대비 캠페인 금액 연결</p>
+                <p>
+                  제안 예산:{' '}
+                  {selectedProposal.requestedBudget != null
+                    ? `NZD ${Number(selectedProposal.requestedBudget).toFixed(2)}`
+                    : '-'}
+                </p>
+                {selectedProposalCampaigns.length === 0 ? (
+                  <p>해당 광고주에 연결된 캠페인이 아직 없습니다.</p>
+                ) : (
+                  <ul className="space-y-1">
+                    {selectedProposalCampaigns.map((campaign) => (
+                      <li key={campaign.id} className="rounded border border-[#ececec] bg-white px-2 py-1">
+                        {campaign.adContent?.title ?? campaign.post?.title ?? campaign.id.slice(0, 8)} · 견적{' '}
+                        {campaign.estimatedAmount != null
+                          ? `NZD ${Number(campaign.estimatedAmount).toFixed(2)}`
+                          : '-'}{' '}
+                        · 확정{' '}
+                        {campaign.finalAmount != null
+                          ? `NZD ${Number(campaign.finalAmount).toFixed(2)}`
+                          : '미확정'}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           ) : null}
         </div>

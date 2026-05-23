@@ -240,6 +240,7 @@ model User {
   adContentsCreated AdContent[] @relation("AdContentCreatedBy")
   adContentsReviewed AdContent[] @relation("AdContentReviewedBy")
   reviewedAdCampaigns AdCampaign[] @relation("AdCampaignReviewedBy")
+  priceConfirmedAdCampaigns AdCampaign[] @relation("AdCampaignPriceConfirmedBy")
   adAuditLogs AdAuditLog[] @relation("AdAuditActor")
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
@@ -740,6 +741,10 @@ model AdCampaign {
   finalAmount     Decimal?          @db.Decimal(10, 2)
   billingStatus   AdBillingStatus   @default(DRAFT)
   pricingSnapshot Json?
+  pricingConfirmationSnapshot Json?
+  priceAdjustmentReason String?
+  priceConfirmedByUserId String?
+  priceConfirmedAt DateTime?
   landingUrl      String?
   notes           String?
   reviewNotes     String?
@@ -752,6 +757,7 @@ model AdCampaign {
   targetCountry   Country?         @relation("AdCampaignTargetCountry", fields: [targetCountryId], references: [id])
   targetCity      City?            @relation("AdCampaignTargetCity", fields: [targetCityId], references: [id])
   reviewedByUser  User?            @relation("AdCampaignReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  priceConfirmedByUser User?       @relation("AdCampaignPriceConfirmedBy", fields: [priceConfirmedByUserId], references: [id], onDelete: SetNull)
   impressions     AdImpression[]
   clicks          AdClick[]
   dailyStats      AdDailyStat[]
