@@ -2,6 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import {
+  Prisma,
+} from '@prisma/client';
 import type {
   AdBillingStatus,
   AdBillingUnit,
@@ -9,7 +12,6 @@ import type {
   AdContentStatus,
   AdPlacementType,
   AdProposalStatus,
-  Prisma,
 } from '@prisma/client';
 
 import { getCurrentUser } from '@/lib/auth/session';
@@ -18,6 +20,7 @@ import { dispatchAdCampaignReviewRequestedNotification } from '@/lib/notificatio
 import {
   buildPricingSnapshot,
   calculateEstimatedAmount,
+  calculateFinalAmount,
   resolveGeoMultiplier,
   resolvePlacementMultiplier,
 } from '@/lib/ads/pricing';
@@ -99,6 +102,32 @@ function parseNullableInt(value: string): number | null {
 
   const parsed = parseInt(value, 10);
   return Number.isNaN(parsed) ? null : parsed;
+}
+
+function parseNullableDecimal(value: string): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function readNumericFromJsonSnapshot(snapshot: Prisma.JsonValue | null, key: string): number | null {
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
+    return null;
+  }
+
+  const value = (snapshot as Record<string, unknown>)[key];
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  return null;
 }
 
 const VALID_BILLING_UNITS: AdBillingUnit[] = ['DAY', 'WEEK', 'MONTH', 'IMPRESSION_1000'];
@@ -632,6 +661,8 @@ export async function createAdCampaignAction(formData: FormData) {
   const endAt = parseNullableLocalDateStartOfDay(normalizeText(formData.get('endAt')) || null);
   const maxImpressions = normalizeText(formData.get('maxImpressions'));
   const maxImpressionsValue = parseNullableInt(maxImpressions);
+  const proposedAmountRaw = normalizeText(formData.get('proposedAmount'));
+  const proposedAmountValue = parseNullableDecimal(proposedAmountRaw);
   const targetCountryId = normalizeText(formData.get('targetCountryId')) || null;
   const targetCityId = normalizeText(formData.get('targetCityId')) || null;
   const landingUrl = normalizeText(formData.get('landingUrl')) || null;
@@ -639,6 +670,9 @@ export async function createAdCampaignAction(formData: FormData) {
 
   if (!adProductId || (!adContentId && !legacyPostId)) {
     redirectAdsManager('campaigns', { error: '광고 콘텐츠 ID(또는 legacy 게시글 ID)와 광고 상품은 필수입니다.' });
+  }
+  if (proposedAmountRaw && (proposedAmountValue == null || proposedAmountValue < 0)) {
+    redirectAdsManager('campaigns', { error: '제안 금액은 0 이상 숫자로 입력해 주세요.' });
   }
 
   const adProduct = await prisma.adProduct.findUnique({
@@ -741,6 +775,7 @@ export async function createAdCampaignAction(formData: FormData) {
       targetCountryId,
       targetCityId,
       estimatedAmount: estimated.amount,
+      proposedAmount: proposedAmountValue,
       billingStatus: 'ESTIMATED',
       pricingSnapshot,
       landingUrl,
@@ -767,6 +802,7 @@ export async function createAdCampaignAction(formData: FormData) {
         billableDays: estimated.billableDays,
         billableQuantity: estimated.billableQuantity,
         estimatedAmount: estimated.amount,
+        proposedAmount: proposedAmountValue,
       },
     },
   });
@@ -801,11 +837,24 @@ export async function updateAdCampaignStatusAction(formData: FormData) {
 
   const existing = await prisma.adCampaign.findUnique({
     where: { id },
-    select: { status: true, advertiserId: true, adContentId: true },
+    select: {
+      status: true,
+      advertiserId: true,
+      adContentId: true,
+      finalAmount: true,
+      billingStatus: true,
+    },
   });
 
   if (!existing) {
     redirectAdsManager('campaigns', { error: '캠페인을 찾을 수 없습니다.' });
+  }
+
+  if (status === 'ACTIVE' && existing.finalAmount == null) {
+    redirectAdsManager('campaigns', {
+      error: '캠페인 집행 시작 전 확정 금액을 먼저 입력해 주세요.',
+      campaignId: id,
+    });
   }
 
   await prisma.$transaction(async (tx) => {
@@ -845,6 +894,8 @@ export async function updateAdCampaignAction(formData: FormData) {
   const endAt = parseNullableLocalDateStartOfDay(normalizeText(formData.get('endAt')) || null);
   const maxImpressions = normalizeText(formData.get('maxImpressions'));
   const maxImpressionsValue = parseNullableInt(maxImpressions);
+  const proposedAmountRaw = normalizeText(formData.get('proposedAmount'));
+  const proposedAmountValue = parseNullableDecimal(proposedAmountRaw);
   const targetCountryId = normalizeText(formData.get('targetCountryId')) || null;
   const targetCityId = normalizeText(formData.get('targetCityId')) || null;
   const landingUrl = normalizeText(formData.get('landingUrl')) || null;
@@ -852,6 +903,9 @@ export async function updateAdCampaignAction(formData: FormData) {
 
   if (!id) {
     redirectAdsManager('campaigns', { error: '캠페인 ID가 없습니다.' });
+  }
+  if (proposedAmountRaw && (proposedAmountValue == null || proposedAmountValue < 0)) {
+    redirectAdsManager('campaigns', { error: '제안 금액은 0 이상 숫자로 입력해 주세요.', campaignId: id });
   }
 
   const existing = await prisma.adCampaign.findUnique({
@@ -861,6 +915,12 @@ export async function updateAdCampaignAction(formData: FormData) {
       adContentId: true,
       status: true,
       billingStatus: true,
+      startAt: true,
+      endAt: true,
+      maxImpressions: true,
+      targetCountryId: true,
+      targetCityId: true,
+      finalAmount: true,
       adProduct: {
         select: {
           billingUnit: true,
@@ -912,6 +972,16 @@ export async function updateAdCampaignAction(formData: FormData) {
   });
   const nextBillingStatus: AdBillingStatus =
     existing.billingStatus === 'DRAFT' ? 'ESTIMATED' : existing.billingStatus;
+  const pricingInputsChanged =
+    (existing.startAt?.getTime() ?? null) !== (startAt?.getTime() ?? null) ||
+    (existing.endAt?.getTime() ?? null) !== (endAt?.getTime() ?? null) ||
+    existing.maxImpressions !== maxImpressionsValue ||
+    existing.targetCountryId !== targetCountryId ||
+    existing.targetCityId !== targetCityId;
+  const requiresReconfirmation = pricingInputsChanged && existing.finalAmount != null;
+  const nextBillingStatusAfterUpdate: AdBillingStatus = requiresReconfirmation
+    ? 'ESTIMATED'
+    : nextBillingStatus;
 
   await prisma.$transaction(async (tx) => {
     await tx.adCampaign.update({
@@ -924,8 +994,18 @@ export async function updateAdCampaignAction(formData: FormData) {
         targetCountryId,
         targetCityId,
         estimatedAmount: estimated.amount,
-        billingStatus: nextBillingStatus,
+        proposedAmount: proposedAmountValue,
+        billingStatus: nextBillingStatusAfterUpdate,
         pricingSnapshot,
+        ...(requiresReconfirmation
+          ? {
+              finalAmount: null,
+              pricingConfirmationSnapshot: Prisma.JsonNull,
+              priceAdjustmentReason: null,
+              priceConfirmedByUserId: null,
+              priceConfirmedAt: null,
+            }
+          : {}),
         landingUrl,
         notes,
         ...(existing.status === 'REQUEST_CHANGES' ? { status: 'REVIEW' } : {}),
@@ -948,12 +1028,30 @@ export async function updateAdCampaignAction(formData: FormData) {
         billableDays: estimated.billableDays,
         billableQuantity: estimated.billableQuantity,
         estimatedAmount: estimated.amount,
+        proposedAmount: proposedAmountValue,
+        pricingInputsChanged,
+        requiresReconfirmation,
         campaignStatusTransition:
           existing.status === 'REQUEST_CHANGES'
             ? { from: 'REQUEST_CHANGES', to: 'REVIEW' }
             : null,
       },
     });
+
+    if (requiresReconfirmation) {
+      await logAdAudit(tx, {
+        actorId: currentUser.id,
+        advertiserId: existing.advertiserId,
+        adContentId: existing.adContentId,
+        campaignId: id,
+        actionType: 'PRICE_ESTIMATED',
+        message: '가격 영향 항목 변경으로 확정 금액이 해제되고 견적 상태로 전환되었습니다.',
+        metadata: {
+          previousFinalAmount: Number(existing.finalAmount),
+          estimatedAmount: estimated.amount,
+        },
+      });
+    }
   });
 
   if (existing.status === 'REQUEST_CHANGES' && existing.advertiserId) {
@@ -968,6 +1066,118 @@ export async function updateAdCampaignAction(formData: FormData) {
 
   revalidatePath(ADS_MANAGER_SECTION_PATH.campaigns);
   redirectAdsManager('campaigns');
+}
+
+export async function confirmAdCampaignPricingAction(formData: FormData) {
+  const currentUser = await requireAdsUser();
+
+  const id = normalizeText(formData.get('id'));
+  const finalAmountRaw = normalizeText(formData.get('finalAmount'));
+  const priceAdjustmentReason = normalizeText(formData.get('priceAdjustmentReason')) || null;
+
+  if (!id || !finalAmountRaw) {
+    redirectAdsManager('campaigns', { error: '캠페인 ID와 확정 금액은 필수입니다.' });
+  }
+
+  const finalAmountValue = parseNullableDecimal(finalAmountRaw);
+  if (finalAmountValue == null || finalAmountValue < 0) {
+    redirectAdsManager('campaigns', {
+      error: '확정 금액은 0 이상 숫자로 입력해 주세요.',
+      campaignId: id,
+    });
+  }
+
+  const existing = await prisma.adCampaign.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      advertiserId: true,
+      adContentId: true,
+      status: true,
+      billingStatus: true,
+      estimatedAmount: true,
+      finalAmount: true,
+      pricingSnapshot: true,
+      adProduct: {
+        select: {
+          billingUnit: true,
+          basePrice: true,
+          currency: true,
+        },
+      },
+      startAt: true,
+      endAt: true,
+      maxImpressions: true,
+    },
+  });
+
+  if (!existing) {
+    redirectAdsManager('campaigns', { error: '캠페인을 찾을 수 없습니다.' });
+  }
+
+  const pricingFromCurrent = calculateFinalAmount({
+    billingUnit: existing.adProduct.billingUnit,
+    basePrice: Number(existing.adProduct.basePrice),
+    geoMultiplier: readNumericFromJsonSnapshot(existing.pricingSnapshot, 'geoMultiplier') ?? 1,
+    placementMultiplier:
+      readNumericFromJsonSnapshot(existing.pricingSnapshot, 'placementMultiplier') ?? 1,
+    startAt: existing.startAt,
+    endAt: existing.endAt,
+    impressions: existing.maxImpressions ?? 0,
+  });
+  const amountDelta = Math.round((finalAmountValue - pricingFromCurrent.amount) * 100) / 100;
+  const confirmationSnapshot: Prisma.InputJsonValue = {
+    estimatedAmountAtConfirmation: pricingFromCurrent.amount,
+    enteredFinalAmount: finalAmountValue,
+    amountDelta,
+    reason: priceAdjustmentReason,
+    confirmedByUserId: currentUser.id,
+    confirmedAt: new Date().toISOString(),
+    currency: existing.adProduct.currency,
+    billingUnit: existing.adProduct.billingUnit,
+    pricingSnapshot: existing.pricingSnapshot ?? null,
+  };
+
+  await prisma.$transaction(async (tx) => {
+    await tx.adCampaign.update({
+      where: { id },
+      data: {
+        finalAmount: finalAmountValue,
+        billingStatus: 'INVOICED',
+        pricingConfirmationSnapshot: confirmationSnapshot,
+        priceAdjustmentReason,
+        priceConfirmedByUserId: currentUser.id,
+        priceConfirmedAt: new Date(),
+      },
+    });
+
+    await logAdAudit(tx, {
+      actorId: currentUser.id,
+      advertiserId: existing.advertiserId,
+      adContentId: existing.adContentId,
+      campaignId: id,
+      actionType:
+        existing.finalAmount == null
+          ? amountDelta === 0
+            ? 'PRICE_CONFIRMED'
+            : 'PRICE_ADJUSTED'
+          : 'PRICE_CONFIRMED',
+      message:
+        existing.finalAmount == null
+          ? '캠페인 확정 금액이 입력되었습니다.'
+          : '캠페인 확정 금액이 갱신되었습니다.',
+      metadata: {
+        previousFinalAmount: existing.finalAmount != null ? Number(existing.finalAmount) : null,
+        estimatedAmount: pricingFromCurrent.amount,
+        finalAmount: finalAmountValue,
+        amountDelta,
+        previousBillingStatus: existing.billingStatus,
+      },
+    });
+  });
+
+  revalidatePath(ADS_MANAGER_SECTION_PATH.campaigns);
+  redirectAdsManager('campaigns', { success: '캠페인 확정 금액이 저장되었습니다.', campaignId: id });
 }
 
 // ─── AdPlacementRule ──────────────────────────────────────────────────────────
