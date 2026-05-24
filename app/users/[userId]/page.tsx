@@ -48,8 +48,7 @@ const getUserProfile = cache(async (userId: string) => {
       country: { select: { name: true } },
       staffAssignments: {
         where: { isActive: true },
-        select: { id: true },
-        take: 1,
+        select: { id: true, role: true },
       },
       _count: {
         select: {
@@ -154,6 +153,8 @@ export default async function UserProfilePage({ params, searchParams }: UserProf
   const hasNextPage = posts.length > PAGE_SIZE;
   const visiblePosts = hasNextPage ? posts.slice(0, PAGE_SIZE) : posts;
   const countryName = user.country?.name ?? user.city?.country?.name ?? null;
+  const hasAdminStaffRole = user.staffAssignments.some((assignment) => assignment.role === 'ADMIN');
+  const shouldShowStaffBadge = user.staffAssignments.length > 0 && !hasAdminStaffRole;
 
   return (
     <section className="space-y-4">
@@ -167,12 +168,12 @@ export default async function UserProfilePage({ params, searchParams }: UserProf
           />
           <div>
             <p className="text-base font-semibold">{user.displayName}</p>
-            {shouldShowOperatorBadge(user) ? (
+            {shouldShowOperatorBadge(user) && !hasAdminStaffRole ? (
               <p className="text-sm text-[#666]">
                 <span className="rounded bg-[#3c1e1e] px-1 py-0.5 text-[10px] font-bold text-white">운영자</span>
               </p>
             ) : null}
-            {user.staffAssignments.length > 0 ? (
+            {shouldShowStaffBadge ? (
               <p className="text-sm text-[#666]">
                 <span className="rounded bg-blue-700 px-1 py-0.5 text-[10px] font-bold text-white">운영진</span>
               </p>

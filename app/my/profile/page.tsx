@@ -80,6 +80,7 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
     ? new Date(lastLocationChange.createdAt.getTime() + LOCATION_COOLDOWN_DAYS * 24 * 60 * 60 * 1000)
     : null;
   const isLocationCooldown = !isAdminUser && nextLocationChangeAt != null;
+  const shouldShowStaffBadge = user.staffAssignments.some((assignment) => assignment.role !== 'ADMIN');
 
   return (
     <section className="space-y-4 rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
@@ -93,7 +94,7 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
         />
         <div>
           <p className="text-sm font-medium">{user.displayName}</p>
-          {user.staffAssignments.length > 0 ? (
+          {shouldShowStaffBadge ? (
             <p className="mt-0.5">
               <span className="rounded bg-blue-700 px-1 py-0.5 text-[10px] font-bold text-white">운영진</span>
             </p>
