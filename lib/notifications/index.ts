@@ -4,7 +4,6 @@ import type {
   Prisma,
 } from '@prisma/client';
 
-import { isMissingStaffAssignmentTableError } from '@/lib/auth/staff-assignments';
 import { prisma } from '@/lib/db/prisma';
 
 const NOTIFICATIONS_PER_PAGE = 30;
@@ -203,27 +202,15 @@ async function canOpenNotificationHref(userId: string, href: string) {
 }
 
 async function hasAdManagerAccess(userId: string) {
-  try {
-    const count = await prisma.staffAssignment.count({
-      where: {
-        userId,
-        isActive: true,
-        role: { in: ['AD_MANAGER', 'ADMIN'] },
-      },
-    });
+  const count = await prisma.staffAssignment.count({
+    where: {
+      userId,
+      isActive: true,
+      role: { in: ['AD_MANAGER', 'ADMIN'] },
+    },
+  });
 
-    return count > 0;
-  } catch (error) {
-    if (!isMissingStaffAssignmentTableError(error)) {
-      throw error;
-    }
-
-    const legacyUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { role: true },
-    });
-    return legacyUser?.role === 'ADMIN';
-  }
+  return count > 0;
 }
 
 async function canAccessAdvertiserMemberArea(userId: string) {

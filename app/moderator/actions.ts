@@ -5,10 +5,6 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { requireUser } from '@/lib/auth/session';
-import {
-  isMissingStaffAssignmentTableError,
-  toLegacyStaffAssignments,
-} from '@/lib/auth/staff-assignments';
 import { prisma } from '@/lib/db/prisma';
 import { retryKakaoMessageDelivery } from '@/lib/kakao/message';
 import {
@@ -550,7 +546,6 @@ export async function requestUserReviewAction(formData: FormData) {
       select: {
         id: true,
         status: true,
-        role: true,
         countryId: true,
         cityId: true,
         staffAssignments: {
@@ -558,35 +553,6 @@ export async function requestUserReviewAction(formData: FormData) {
           select: { id: true, role: true, countryId: true, cityId: true },
         },
       },
-    })
-    .catch(async (error) => {
-      if (!isMissingStaffAssignmentTableError(error)) {
-        throw error;
-      }
-
-      const legacyTargetUser = await prisma.user.findUnique({
-        where: { id: targetUserId },
-        select: {
-          id: true,
-          status: true,
-          role: true,
-          countryId: true,
-          cityId: true,
-        },
-      });
-
-      if (!legacyTargetUser) {
-        return null;
-      }
-
-      return {
-        ...legacyTargetUser,
-        staffAssignments: toLegacyStaffAssignments(
-          legacyTargetUser.role,
-          legacyTargetUser.countryId,
-          legacyTargetUser.cityId,
-        ),
-      };
     });
 
   if (!targetUser) {

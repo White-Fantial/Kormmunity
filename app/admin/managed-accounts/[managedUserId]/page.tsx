@@ -47,7 +47,6 @@ export default async function AdminManagedAccountDetailPage({
       select: {
         id: true,
         displayName: true,
-        role: true,
         accountType: true,
         isManagedAccount: true,
         isActive: true,
@@ -164,7 +163,6 @@ export default async function AdminManagedAccountDetailPage({
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#888]">
             <span>생성: <DateTimeText value={managed.createdAt} /></span>
-            <span>역할: {managed.role}</span>
           </div>
           <div className="flex flex-wrap gap-2">
             <FormSubmitButton

@@ -3,7 +3,6 @@ import {
   AccountType,
   CategoryType,
   CategoryVisibilityMode,
-  UserRole,
 } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -1002,7 +1001,6 @@ async function main() {
           activityNotes: managedAccount.activityNotes ?? null,
           countryId,
           cityId,
-          role: UserRole.USER,
           accountType: managedAccount.accountType,
           isManagedAccount: true,
           isActive: true,
@@ -1018,7 +1016,6 @@ async function main() {
           activityNotes: managedAccount.activityNotes ?? null,
           countryId,
           cityId,
-          role: UserRole.USER,
           accountType: managedAccount.accountType,
           isManagedAccount: true,
           isActive: true,
@@ -1034,7 +1031,6 @@ async function main() {
   await prisma.user.upsert({
     where: { kakaoId: adminKakaoId },
     update: {
-      role: UserRole.ADMIN,
       accountType: AccountType.REAL_USER,
       isManagedAccount: false,
       isActive: true,
@@ -1044,7 +1040,6 @@ async function main() {
       kakaoId: adminKakaoId,
       displayName: adminDisplayName,
       profileImageUrl,
-      role: UserRole.ADMIN,
       accountType: AccountType.REAL_USER,
       isManagedAccount: false,
       isActive: true,
