@@ -3,7 +3,7 @@ import type { AdBillingUnit, Prisma } from '@prisma/client';
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 export const PRICING_VERSION = 1;
 
-export const DEFAULT_COUNTRY_MULTIPLIER = 1;
+export const DEFAULT_COUNTRY_MULTIPLIER = 1.5;
 export const DEFAULT_CITY_MULTIPLIER = 1;
 
 export type GeoMultiplierResult = {
