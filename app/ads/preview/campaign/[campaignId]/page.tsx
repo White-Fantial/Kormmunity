@@ -44,17 +44,6 @@ async function getCampaign(campaignId: string) {
             cityName: true,
           },
         },
-        post: {
-          select: {
-            id: true,
-            title: true,
-            body: true,
-            images: { orderBy: { sortOrder: 'asc' }, take: 1, select: { url: true } },
-            category: { select: { name: true } },
-            city: { select: { name: true } },
-            author: { select: { displayName: true } },
-          },
-        },
         advertiser: {
           select: { name: true },
         },
@@ -97,22 +86,16 @@ export default async function CampaignPreviewPage({ params }: CampaignPreviewPag
   }
 
   const content = campaign.adContent;
-  const post = campaign.post;
-
-  const adTitle = content?.title ?? post?.title ?? null;
-  const adBody = content?.body ?? post?.body ?? '';
+  const adTitle = content?.title ?? null;
+  const adBody = content?.body ?? '';
   const advertiserName =
-    content?.displayName ?? campaign.advertiser?.name ?? post?.author.displayName ?? '광고';
-  const categoryName = content?.categoryName ?? post?.category.name ?? null;
-  const cityName = content?.cityName ?? post?.city?.name ?? null;
-  const thumbnailUrl = content?.thumbnailUrl ?? post?.images[0]?.url ?? null;
+    content?.displayName ?? campaign.advertiser?.name ?? '광고';
+  const categoryName = content?.categoryName ?? null;
+  const cityName = content?.cityName ?? null;
+  const thumbnailUrl = content?.thumbnailUrl ?? null;
   const effectiveLandingUrl =
     campaign.landingUrl ?? content?.landingUrl ?? null;
-  const fallbackHref = content
-    ? `/ads/${content.id}`
-    : post
-      ? `/posts/${post.id}`
-      : null;
+  const fallbackHref = content ? `/ads/${content.id}` : null;
 
   const layout = (campaign.adProduct.layout ?? 'THUMBNAIL') as AdLayout;
   const size = (campaign.adProduct.size ?? 'M') as AdSize;
@@ -212,7 +195,7 @@ export default async function CampaignPreviewPage({ params }: CampaignPreviewPag
           </>
         ) : (
           <p className="rounded-lg border border-[#e8e8e8] bg-white px-4 py-3 text-sm text-[#888]">
-            연결된 콘텐츠 또는 게시글이 없습니다.
+            연결된 콘텐츠가 없습니다.
           </p>
         )}
       </section>

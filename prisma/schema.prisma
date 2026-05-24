@@ -197,7 +197,6 @@ model User {
   openChatUrl          String?
   cityId               String?
   countryId            String?
-  role                 UserRole           @default(USER)
   accountType          AccountType        @default(REAL_USER)
   isManagedAccount     Boolean            @default(false)
   isActive             Boolean            @default(true)
@@ -378,7 +377,6 @@ model Post {
   savedBy         SavedPost[]
   views           PostView[]
   scoreEvents     CommunityScoreEvent[]
-  adCampaigns     AdCampaign[]
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   publishedAt     DateTime?    @default(now())
@@ -727,7 +725,6 @@ model AdProduct {
 model AdCampaign {
   id              String           @id @default(cuid())
   advertiserId    String?
-  postId          String?
   adContentId     String?
   adProductId     String
   status          AdCampaignStatus @default(DRAFT)
@@ -751,7 +748,6 @@ model AdCampaign {
   reviewNotes     String?
   reviewedByUserId String?
   reviewedAt      DateTime?
-  post            Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
   adContent       AdContent?       @relation(fields: [adContentId], references: [id], onDelete: Cascade)
   advertiser      Advertiser?      @relation(fields: [advertiserId], references: [id], onDelete: SetNull)
   adProduct       AdProduct        @relation(fields: [adProductId], references: [id])
@@ -770,7 +766,6 @@ model AdCampaign {
   @@index([status, startAt, endAt, targetCountryId, targetCityId])
   @@index([adProductId, status])
   @@index([advertiserId, status])
-  @@index([postId, status])
   @@index([adContentId, status])
   @@index([targetCountryId, status])
   @@index([targetCityId, status])
@@ -790,8 +785,7 @@ model AdPlacementRule {
 model AdImpression {
   id                String          @id @default(cuid())
   campaignId        String
-  postId            String?
-  adContentId       String?
+  adContentId       String
   placementType     AdPlacementType
   pageKey           String
   positionIndex     Int
@@ -799,9 +793,7 @@ model AdImpression {
   viewerFingerprint String?
   viewedAt          DateTime        @default(now())
   campaign          AdCampaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-
   @@index([campaignId, viewedAt])
-  @@index([postId, viewedAt])
   @@index([adContentId, viewedAt])
   @@index([viewedAt])
 }
@@ -809,16 +801,13 @@ model AdImpression {
 model AdClick {
   id                String     @id @default(cuid())
   campaignId        String
-  postId            String?
-  adContentId       String?
+  adContentId       String
   impressionId      String?
   viewerUserId      String?
   viewerFingerprint String?
   clickedAt         DateTime   @default(now())
   campaign          AdCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-
   @@index([campaignId, clickedAt])
-  @@index([postId, clickedAt])
   @@index([adContentId, clickedAt])
   @@index([clickedAt])
 }

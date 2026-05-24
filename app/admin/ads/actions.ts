@@ -652,8 +652,7 @@ export async function updateAdContentStatusAction(formData: FormData) {
 export async function createAdCampaignAction(formData: FormData) {
   const currentUser = await requireAdsUser();
 
-  const adContentId = normalizeText(formData.get('adContentId')) || null;
-  const legacyPostId = normalizeText(formData.get('postId')) || null;
+  const adContentId = normalizeText(formData.get('adContentId'));
   const adProductId = normalizeText(formData.get('adProductId'));
   const priority = parseInt(normalizeText(formData.get('priority')) || '0', 10);
   const startAt = parseNullableLocalDateStartOfDay(normalizeText(formData.get('startAt')) || null);
@@ -667,8 +666,8 @@ export async function createAdCampaignAction(formData: FormData) {
   const landingUrl = normalizeText(formData.get('landingUrl')) || null;
   const notes = normalizeText(formData.get('notes')) || null;
 
-  if (!adProductId || (!adContentId && !legacyPostId)) {
-    redirectAdsManager('campaigns', { error: '광고 콘텐츠 ID(또는 legacy 게시글 ID)와 광고 상품은 필수입니다.' });
+  if (!adProductId || !adContentId) {
+    redirectAdsManager('campaigns', { error: '광고 콘텐츠 ID와 광고 상품은 필수입니다.' });
   }
   if (proposedAmountRaw && (proposedAmountValue == null || proposedAmountValue < 0)) {
     redirectAdsManager('campaigns', { error: '제안 금액은 0 이상 숫자로 입력해 주세요.' });
@@ -689,41 +688,19 @@ export async function createAdCampaignAction(formData: FormData) {
     redirectAdsManager('campaigns', { error: '광고 상품을 찾을 수 없습니다.' });
   }
 
-  let advertiserId: string | null = null;
+  const adContent = await prisma.adContent.findUnique({
+    where: { id: adContentId },
+    select: { id: true, status: true, advertiserId: true },
+  });
 
-  if (adContentId) {
-    const adContent = await prisma.adContent.findUnique({
-      where: { id: adContentId },
-      select: { id: true, status: true, advertiserId: true },
-    });
-
-    if (!adContent) {
-      redirectAdsManager('campaigns', { error: '광고 콘텐츠를 찾을 수 없습니다.' });
-    }
-
-    if (adContent.status !== 'APPROVED') {
-      redirectAdsManager('campaigns', { error: '승인된 광고 콘텐츠만 캠페인에 연결할 수 있습니다.' });
-    }
-
-    advertiserId = adContent.advertiserId;
+  if (!adContent) {
+    redirectAdsManager('campaigns', { error: '광고 콘텐츠를 찾을 수 없습니다.' });
   }
 
-  if (legacyPostId) {
-    const post = await prisma.post.findUnique({
-      where: { id: legacyPostId },
-      select: { id: true, category: { select: { type: true } } },
-    });
-
-    if (!post) {
-      redirectAdsManager('campaigns', { error: 'legacy 게시글을 찾을 수 없습니다.' });
-    }
-
-    if (post.category.type !== 'ADVERTISEMENT') {
-      redirectAdsManager('campaigns', {
-        error: 'legacy 게시글은 광고 카테고리만 연결 가능합니다.',
-      });
-    }
+  if (adContent.status !== 'APPROVED') {
+    redirectAdsManager('campaigns', { error: '승인된 광고 콘텐츠만 캠페인에 연결할 수 있습니다.' });
   }
+  const advertiserId = adContent.advertiserId;
 
   const pricingAt = startAt ?? new Date();
   const geoMultiplier = await resolveGeoMultiplier(prisma, {
@@ -758,7 +735,6 @@ export async function createAdCampaignAction(formData: FormData) {
     data: {
       advertiserId,
       adContentId,
-      postId: legacyPostId,
       adProductId,
       status: 'DRAFT',
       priority: Number.isNaN(priority) ? 0 : priority,
@@ -786,7 +762,6 @@ export async function createAdCampaignAction(formData: FormData) {
       actionType: 'CAMPAIGN_CREATED',
       message: '광고 캠페인이 생성되었습니다.',
       metadata: {
-        legacyPostId,
         billingUnit,
         currency: adProduct.currency,
         basePrice,

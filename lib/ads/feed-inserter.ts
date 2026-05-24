@@ -1,13 +1,11 @@
 import { prisma } from '@/lib/db/prisma';
-import { shouldShowOperatorBadge } from '@/lib/account-type';
 import type { AdFeedItem, AdLayout, AdSize, AdPlacementType } from './types';
 
 const BODY_PREVIEW_LENGTH = 220;
 
 type RawCampaign = {
   id: string;
-  postId: string | null;
-  adContentId: string | null;
+  adContentId: string;
   landingUrl: string | null;
   priority: number;
   advertiser: {
@@ -29,56 +27,29 @@ type RawCampaign = {
     categoryName: string | null;
     cityName: string | null;
     createdAt: Date;
-  } | null;
-  post: {
-    id: string;
-    title: string | null;
-    body: string;
-    status: string;
-    createdAt: Date;
-    images: { url: string }[];
-    category: { name: string; type: string; color: string | null };
-    city: { name: string } | null;
-    author: {
-      displayName: string;
-      profileImageUrl: string | null;
-      accountType: 'REAL_USER' | 'PERSONA' | 'OPERATOR' | 'SYSTEM';
-      neighbourWarmth: number;
-    };
-  } | null;
+  };
 };
 
 function toAdFeedItem(campaign: RawCampaign): AdFeedItem {
-  const title = campaign.adContent?.title ?? campaign.post?.title ?? null;
-  const body = campaign.adContent?.body ?? campaign.post?.body ?? '';
-  const fallbackHref = campaign.adContent
-    ? `/ads/${campaign.adContent.id}`
-    : campaign.post
-      ? `/posts/${campaign.post.id}`
-      : '/posts';
-  const href = campaign.landingUrl ?? campaign.adContent?.landingUrl ?? fallbackHref;
-  const createdAt =
-    campaign.adContent?.createdAt ??
-    campaign.post?.createdAt ??
-    new Date();
+  const title = campaign.adContent.title ?? null;
+  const body = campaign.adContent.body;
+  const fallbackHref = `/ads/${campaign.adContent.id}`;
+  const href = campaign.landingUrl ?? campaign.adContent.landingUrl ?? fallbackHref;
+  const createdAt = campaign.adContent.createdAt;
   const authorDisplayName =
-    campaign.adContent?.displayName ??
+    campaign.adContent.displayName ??
     campaign.advertiser?.name ??
-    campaign.post?.author.displayName ??
     '광고';
-  const category = campaign.adContent?.categoryName
+  const category = campaign.adContent.categoryName
     ? { name: campaign.adContent.categoryName }
-    : campaign.post?.category ?? null;
-  const city = campaign.adContent?.cityName
+    : null;
+  const city = campaign.adContent.cityName
     ? { name: campaign.adContent.cityName }
-    : campaign.post?.city ?? null;
-  const thumbnailUrl =
-    campaign.adContent?.thumbnailUrl ??
-    campaign.post?.images[0]?.url ??
-    null;
+    : null;
+  const thumbnailUrl = campaign.adContent.thumbnailUrl ?? null;
 
   return {
-    id: campaign.adContent?.id ?? campaign.post?.id ?? campaign.id,
+    id: campaign.adContent.id,
     title,
     bodyPreview: body.slice(0, BODY_PREVIEW_LENGTH),
     href,
@@ -88,15 +59,12 @@ function toAdFeedItem(campaign: RawCampaign): AdFeedItem {
     city,
     author: {
       displayName: authorDisplayName,
-      profileImageUrl: campaign.post?.author.profileImageUrl ?? null,
-      isOperator: campaign.post?.author
-        ? shouldShowOperatorBadge(campaign.post.author)
-        : false,
+      profileImageUrl: null,
+      isOperator: false,
     },
     isAd: true,
     adCampaignId: campaign.id,
-    adContentId: campaign.adContent?.id ?? null,
-    adPostId: campaign.post?.id ?? null,
+    adContentId: campaign.adContent.id,
     adLayout: campaign.adProduct.layout as AdLayout,
     adSize: campaign.adProduct.size as AdSize,
     adPlacementType: campaign.adProduct.placementType as AdPlacementType,
@@ -119,6 +87,8 @@ export async function fetchActiveAdSlots(options: {
     campaigns = (await prisma.adCampaign.findMany({
       where: {
         status: 'ACTIVE',
+        adContentId: { not: null },
+        adContent: { is: { status: 'APPROVED' } },
         OR: [{ startAt: null }, { startAt: { lte: now } }],
         AND: [
           { OR: [{ endAt: null }, { endAt: { gt: now } }] },
@@ -139,7 +109,6 @@ export async function fetchActiveAdSlots(options: {
       orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
       select: {
         id: true,
-        postId: true,
         adContentId: true,
         landingUrl: true,
         priority: true,
@@ -167,30 +136,6 @@ export async function fetchActiveAdSlots(options: {
             createdAt: true,
           },
         },
-        post: {
-          select: {
-            id: true,
-            title: true,
-            body: true,
-            status: true,
-            createdAt: true,
-            images: {
-              select: { url: true },
-              orderBy: { sortOrder: 'asc' },
-              take: 1,
-            },
-            category: { select: { name: true, type: true, color: true } },
-            city: { select: { name: true } },
-            author: {
-              select: {
-                displayName: true,
-                profileImageUrl: true,
-                accountType: true,
-                neighbourWarmth: true,
-              },
-            },
-          },
-        },
       },
     })) as RawCampaign[];
   } catch (error) {
@@ -201,12 +146,7 @@ export async function fetchActiveAdSlots(options: {
     throw error;
   }
 
-  // Only show ads for published posts
-  const activeCampaigns = campaigns.filter(
-    (c) =>
-      (c.adContent && c.adContent.status === 'APPROVED') ||
-      (c.post && c.post.status === 'PUBLISHED'),
-  ) as RawCampaign[];
+  const activeCampaigns = campaigns as RawCampaign[];
 
   const campaignsByPriority = sortByPriorityWithRandomTies(activeCampaigns);
 
