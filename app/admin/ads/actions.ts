@@ -378,6 +378,24 @@ export async function updateAdProposalStatusAction(formData: FormData) {
       },
     });
 
+    // When NEGOTIATED, auto-set sourcedByUserId on related campaigns if actor is PARTNER_MANAGER
+    if (status === 'NEGOTIATED') {
+      const isPartnerManager = currentUser.staffAssignments.some(
+        (a) => a.role === 'PARTNER_MANAGER',
+      );
+      if (isPartnerManager) {
+        await tx.adCampaign.updateMany({
+          where: {
+            advertiserId: proposal.advertiserId,
+            sourcedByUserId: null,
+          },
+          data: {
+            sourcedByUserId: currentUser.id,
+          },
+        });
+      }
+    }
+
     await logAdAudit(tx, {
       actorId: currentUser.id,
       advertiserId: proposal.advertiserId,
@@ -867,6 +885,7 @@ export async function updateAdCampaignAction(formData: FormData) {
   const targetCityId = normalizeText(formData.get('targetCityId')) || null;
   const landingUrl = normalizeText(formData.get('landingUrl')) || null;
   const notes = normalizeText(formData.get('notes')) || null;
+  const sourcedByUserId = normalizeText(formData.get('sourcedByUserId')) || null;
 
   if (!id) {
     redirectAdsManager('campaigns', { error: '캠페인 ID가 없습니다.' });
@@ -889,6 +908,7 @@ export async function updateAdCampaignAction(formData: FormData) {
       targetCountryId: true,
       targetCityId: true,
       finalAmount: true,
+      sourcedByUserId: true,
       adProduct: {
         select: {
           billingUnit: true,
@@ -974,6 +994,7 @@ export async function updateAdCampaignAction(formData: FormData) {
           : {}),
         landingUrl,
         notes,
+        sourcedByUserId,
         ...(existing.status === 'REQUEST_CHANGES' ? { status: 'REVIEW' } : {}),
       },
     });

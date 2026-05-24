@@ -184,6 +184,12 @@ enum AdContentStatus {
   REJECTED
 }
 
+enum PartnerIncentiveStatus {
+  DRAFT
+  CONFIRMED
+  PAID
+}
+
 model User {
   id                   String             @id @default(cuid())
   kakaoId              String             @unique
@@ -240,7 +246,11 @@ model User {
   adContentsReviewed AdContent[] @relation("AdContentReviewedBy")
   reviewedAdCampaigns AdCampaign[] @relation("AdCampaignReviewedBy")
   priceConfirmedAdCampaigns AdCampaign[] @relation("AdCampaignPriceConfirmedBy")
+  sourcedAdCampaigns AdCampaign[] @relation("AdCampaignSourcedBy")
   adAuditLogs AdAuditLog[] @relation("AdAuditActor")
+  partnerIncentives PartnerIncentive[] @relation("PartnerIncentivePartner")
+  confirmedIncentives PartnerIncentive[] @relation("PartnerIncentiveConfirmedBy")
+  paidIncentives PartnerIncentive[] @relation("PartnerIncentivePaidBy")
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 }
@@ -748,6 +758,7 @@ model AdCampaign {
   reviewNotes     String?
   reviewedByUserId String?
   reviewedAt      DateTime?
+  sourcedByUserId String?
   adContent       AdContent?       @relation(fields: [adContentId], references: [id], onDelete: Cascade)
   advertiser      Advertiser?      @relation(fields: [advertiserId], references: [id], onDelete: SetNull)
   adProduct       AdProduct        @relation(fields: [adProductId], references: [id])
@@ -755,6 +766,7 @@ model AdCampaign {
   targetCity      City?            @relation("AdCampaignTargetCity", fields: [targetCityId], references: [id])
   reviewedByUser  User?            @relation("AdCampaignReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
   priceConfirmedByUser User?       @relation("AdCampaignPriceConfirmedBy", fields: [priceConfirmedByUserId], references: [id], onDelete: SetNull)
+  sourcedByUser   User?            @relation("AdCampaignSourcedBy", fields: [sourcedByUserId], references: [id], onDelete: SetNull)
   impressions     AdImpression[]
   clicks          AdClick[]
   dailyStats      AdDailyStat[]
@@ -769,6 +781,7 @@ model AdCampaign {
   @@index([adContentId, status])
   @@index([targetCountryId, status])
   @@index([targetCityId, status])
+  @@index([sourcedByUserId, status])
 }
 
 model AdPlacementRule {
@@ -979,4 +992,30 @@ model AdAuditLog {
   @@index([proposalId, createdAt])
   @@index([adContentId, createdAt])
   @@index([advertiserId, createdAt])
+}
+
+model PartnerIncentive {
+  id                String                 @id @default(cuid())
+  partnerUserId     String
+  periodStart       DateTime
+  periodEnd         DateTime
+  totalSalesAmount  Decimal                @db.Decimal(10, 2)
+  incentiveRate     Decimal                @db.Decimal(8, 4)
+  incentiveAmount   Decimal                @db.Decimal(10, 2)
+  currency          String                 @default("NZD")
+  status            PartnerIncentiveStatus @default(DRAFT)
+  notes             String?
+  paidAt            DateTime?
+  confirmedByUserId String?
+  paidByUserId      String?
+  campaignSnapshots Json?
+  partnerUser       User                   @relation("PartnerIncentivePartner", fields: [partnerUserId], references: [id])
+  confirmedByUser   User?                  @relation("PartnerIncentiveConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+  paidByUser        User?                  @relation("PartnerIncentivePaidBy", fields: [paidByUserId], references: [id], onDelete: SetNull)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  @@index([partnerUserId, status])
+  @@index([partnerUserId, periodStart, periodEnd])
+  @@index([status, createdAt(sort: Desc)])
 }
