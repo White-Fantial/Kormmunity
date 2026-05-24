@@ -236,7 +236,14 @@ export async function reviewAdvertiserMemberCampaignAction(formData: FormData) {
 
   const campaign = await prisma.adCampaign.findUnique({
     where: { id: campaignId },
-    select: { id: true, advertiserId: true, status: true },
+    select: {
+      id: true,
+      advertiserId: true,
+      status: true,
+      proposedAmount: true,
+      finalAmount: true,
+      billingStatus: true,
+    },
   });
 
   if (!campaign) {
@@ -249,6 +256,13 @@ export async function reviewAdvertiserMemberCampaignAction(formData: FormData) {
   if (campaign.status !== 'REVIEW') {
     redirectAdvertiserMemberTo(ADVERTISER_MEMBER_CAMPAIGNS_PATH, {
       error: '리뷰 대기 상태의 캠페인만 처리할 수 있습니다.',
+      campaignId,
+    });
+  }
+
+  if (action === 'APPROVE' && campaign.proposedAmount == null) {
+    redirectAdvertiserMemberTo(ADVERTISER_MEMBER_CAMPAIGNS_PATH, {
+      error: '승인 전 제안 금액이 먼저 입력되어야 합니다.',
       campaignId,
     });
   }
@@ -283,6 +297,15 @@ export async function reviewAdvertiserMemberCampaignAction(formData: FormData) {
         reviewNotes,
         reviewedByUserId: currentUser.id,
         reviewedAt: new Date(),
+        ...(action === 'APPROVE'
+          ? {
+              finalAmount: campaign.proposedAmount,
+              billingStatus: 'INVOICED',
+              priceAdjustmentReason: null,
+              priceConfirmedByUserId: currentUser.id,
+              priceConfirmedAt: new Date(),
+            }
+          : {}),
       },
     });
 
@@ -303,6 +326,16 @@ export async function reviewAdvertiserMemberCampaignAction(formData: FormData) {
           from: campaign.status,
           to: action === 'APPROVE' ? 'APPROVED' : 'REQUEST_CHANGES',
           reviewNotes,
+          ...(action === 'APPROVE'
+            ? {
+                previousFinalAmount:
+                  campaign.finalAmount != null ? Number(campaign.finalAmount) : null,
+                finalAmount:
+                  campaign.proposedAmount != null ? Number(campaign.proposedAmount) : null,
+                previousBillingStatus: campaign.billingStatus,
+                nextBillingStatus: 'INVOICED',
+              }
+            : {}),
         },
       },
     });
@@ -323,7 +356,7 @@ export async function reviewAdvertiserMemberCampaignAction(formData: FormData) {
   redirectAdvertiserMemberTo(ADVERTISER_MEMBER_CAMPAIGNS_PATH, {
     success:
       action === 'APPROVE'
-        ? '캠페인을 승인했습니다. 광고 매니저가 집행을 진행합니다.'
+        ? '캠페인을 승인했고, 제안 금액이 확정 금액으로 반영되었습니다.'
         : '수정 요청을 전달했습니다.',
     campaignId,
   });
