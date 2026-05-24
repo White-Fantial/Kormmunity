@@ -5,10 +5,6 @@ import { unstable_cache, revalidateTag } from 'next/cache';
 
 import { prisma } from '@/lib/db/prisma';
 import type { SessionUser } from '@/lib/auth/types';
-import {
-  isMissingStaffAssignmentTableError,
-  toLegacyStaffAssignments,
-} from '@/lib/auth/staff-assignments';
 
 const SESSION_COOKIE = 'session_token';
 const SESSION_CACHE_TTL_SECONDS = 30;
@@ -33,77 +29,40 @@ export function invalidateSessionCache(token: string) {
 async function fetchSessionUserByToken(token: string): Promise<SessionUser | null> {
   return unstable_cache(
     async () => {
-      try {
-        const session = await prisma.session.findUnique({
-          where: { token },
-          select: {
-            expiresAt: true,
-            user: {
-              select: {
-                id: true,
-                kakaoId: true,
-                displayName: true,
-                accountType: true,
-                isManagedAccount: true,
-                isActive: true,
-                status: true,
-                countryId: true,
-                cityId: true,
-                staffAssignments: {
-                  where: { isActive: true },
-                  select: {
-                    id: true,
-                    role: true,
-                    countryId: true,
-                    cityId: true,
-                  },
+      const session = await prisma.session.findUnique({
+        where: { token },
+        select: {
+          expiresAt: true,
+          user: {
+            select: {
+              id: true,
+              kakaoId: true,
+              displayName: true,
+              accountType: true,
+              isManagedAccount: true,
+              isActive: true,
+              status: true,
+              countryId: true,
+              cityId: true,
+              staffAssignments: {
+                where: { isActive: true },
+                select: {
+                  id: true,
+                  role: true,
+                  countryId: true,
+                  cityId: true,
                 },
               },
             },
           },
-        });
+        },
+      });
 
-        if (!session || session.expiresAt <= new Date()) {
-          return null;
-        }
-
-        return session.user;
-      } catch (error) {
-        if (!isMissingStaffAssignmentTableError(error)) {
-          throw error;
-        }
-
-        const session = await prisma.session.findUnique({
-          where: { token },
-          select: {
-            expiresAt: true,
-            user: {
-              select: {
-                id: true,
-                kakaoId: true,
-                displayName: true,
-                accountType: true,
-                isManagedAccount: true,
-                isActive: true,
-                status: true,
-                countryId: true,
-                cityId: true,
-                role: true,
-              },
-            },
-          },
-        });
-
-        if (!session || session.expiresAt <= new Date()) {
-          return null;
-        }
-
-        const { role, ...user } = session.user;
-        return {
-          ...user,
-          staffAssignments: toLegacyStaffAssignments(role, user.countryId, user.cityId),
-        };
+      if (!session || session.expiresAt <= new Date()) {
+        return null;
       }
+
+      return session.user;
     },
     ['session', token],
     { revalidate: SESSION_CACHE_TTL_SECONDS, tags: [getSessionCacheTag(token)] },

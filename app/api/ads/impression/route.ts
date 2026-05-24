@@ -26,20 +26,21 @@ export async function POST(request: NextRequest) {
     !body ||
     typeof body !== 'object' ||
     !('campaignId' in body) ||
-    typeof (body as Record<string, unknown>).campaignId !== 'string'
+    typeof (body as Record<string, unknown>).campaignId !== 'string' ||
+    !('adContentId' in body) ||
+    typeof (body as Record<string, unknown>).adContentId !== 'string'
   ) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
 
-  const { campaignId, postId, adContentId, placementType, positionIndex } = body as {
+  const { campaignId, adContentId, placementType, positionIndex } = body as {
     campaignId: string;
-    postId?: string;
     adContentId?: string;
     placementType?: string;
     positionIndex?: number;
   };
 
-  if (!postId && !adContentId) {
+  if (!adContentId) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
 
@@ -61,8 +62,7 @@ export async function POST(request: NextRequest) {
       await tx.adImpression.create({
         data: {
           campaignId,
-          postId: postId ?? null,
-          adContentId: adContentId ?? null,
+          adContentId,
           placementType: resolvedPlacementType,
           pageKey: 'feed',
           positionIndex: typeof positionIndex === 'number' ? positionIndex : 0,

@@ -63,14 +63,12 @@ export default async function AdvertiserMemberCampaignsPage({
           reviewedAt: true,
           createdAt: true,
           updatedAt: true,
-          postId: true,
           adContentId: true,
           advertiser: { select: { name: true } },
           adProduct: { select: { code: true, name: true, placementType: true } },
           targetCountry: { select: { name: true } },
           targetCity: { select: { name: true } },
           adContent: { select: { title: true } },
-          post: { select: { title: true } },
           _count: { select: { impressions: true, clicks: true } },
         },
       })
@@ -135,9 +133,7 @@ export default async function AdvertiserMemberCampaignsPage({
                         {AD_CAMPAIGN_STATUS_LABELS[campaign.status]}
                       </span>
                       <p className="text-sm font-semibold">
-                        {campaign.adContent?.title ??
-                          campaign.post?.title ??
-                          `(제목 없음) — ${campaign.id.slice(0, 8)}`}
+                        {campaign.adContent?.title ?? `(제목 없음) — ${campaign.id.slice(0, 8)}`}
                       </p>
                       <span className="text-xs text-[#888]">
                         [{campaign.adProduct.code}] {campaign.adProduct.name}
@@ -225,9 +221,7 @@ export default async function AdvertiserMemberCampaignsPage({
             <div className="sm:col-span-2">
               <dt className="text-xs text-[#888]">연결된 콘텐츠/글</dt>
               <dd className="mt-0.5">
-                {selectedCampaign.adContent?.title ??
-                  selectedCampaign.post?.title ??
-                  '(연결된 콘텐츠/글 없음)'}
+                {selectedCampaign.adContent?.title ?? '(연결된 콘텐츠/글 없음)'}
               </dd>
             </div>
             <div>

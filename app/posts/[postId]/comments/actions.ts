@@ -6,10 +6,6 @@ import { redirect } from 'next/navigation';
 import { trackServerEvent } from '@/lib/analytics/server';
 import { assertNoSpamText, enforceRateLimit } from '@/lib/abuse/guard';
 import { requireUser } from '@/lib/auth/session';
-import {
-  isMissingStaffAssignmentTableError,
-  toLegacyStaffAssignments,
-} from '@/lib/auth/staff-assignments';
 import { prisma } from '@/lib/db/prisma';
 import { notifyCommentForPost } from '@/lib/kakao/message';
 import { canCreateComment, canDeleteComment, canReportComment, isAdmin } from '@/lib/permissions';
@@ -136,7 +132,6 @@ async function createComment(
         select: {
           id: true,
           displayName: true,
-          role: true,
           staffAssignments: {
             where: { isActive: true },
             select: { id: true, role: true, countryId: true, cityId: true },
@@ -153,44 +148,6 @@ async function createComment(
             },
           },
         },
-      })
-      .catch(async (error) => {
-        if (!isMissingStaffAssignmentTableError(error)) {
-          throw error;
-        }
-
-        const legacyTargetAuthor = await prisma.user.findUnique({
-          where: { id: authorUserIdOverride },
-          select: {
-            id: true,
-            displayName: true,
-            role: true,
-            accountType: true,
-            isManagedAccount: true,
-            isActive: true,
-            status: true,
-            countryId: true,
-            cityId: true,
-            city: {
-              select: {
-                countryId: true,
-              },
-            },
-          },
-        });
-
-        if (!legacyTargetAuthor) {
-          return null;
-        }
-
-        return {
-          ...legacyTargetAuthor,
-          staffAssignments: toLegacyStaffAssignments(
-            legacyTargetAuthor.role,
-            legacyTargetAuthor.countryId,
-            legacyTargetAuthor.cityId,
-          ),
-        };
       });
 
     if (

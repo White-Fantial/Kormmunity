@@ -207,9 +207,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
         reviewedAt: true,
         targetCountryId: true,
         targetCityId: true,
-        postId: true,
         adContentId: true,
-        post: { select: { id: true, title: true, status: true } },
         adContent: { select: { id: true, title: true, status: true } },
         advertiser: { select: { name: true } },
         priceConfirmedByUser: { select: { displayName: true } },
@@ -941,9 +939,9 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
             <div className="border-t border-[#f0f0f0] px-4 pb-4 pt-3">
               <form id="campaign-create-form" action={createAdCampaignAction} className="grid gap-3 sm:grid-cols-2">
                 <label className="space-y-1 text-sm">
-                  <span className="text-[#555]">광고 콘텐츠 (legacy 게시글 ID와 둘 중 하나 필수)</span>
-                  <select name="adContentId" className={selectClass}>
-                    <option value="">콘텐츠 선택 안 함 (legacy post 사용 시)</option>
+                  <span className="text-[#555]">광고 콘텐츠 <span className="text-red-500">*</span></span>
+                  <select name="adContentId" required className={selectClass}>
+                    <option value="">콘텐츠 선택</option>
                     {adContents
                       .filter((content) => content.status === 'APPROVED')
                       .map((content) => (
@@ -952,10 +950,6 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                         </option>
                       ))}
                   </select>
-                </label>
-                <label className="space-y-1 text-sm">
-                  <span className="text-[#555]">legacy 게시글 ID (선택)</span>
-                  <input type="text" name="postId" placeholder="Legacy Post ID" className={inputClass} />
                 </label>
                 <label className="space-y-1 text-sm">
                   <span className="text-[#555]">광고 상품 <span className="text-red-500">*</span></span>
@@ -1101,9 +1095,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                             href={`/ads-manager/campaigns?campaignId=${campaign.id}`}
                             className="text-sm font-medium text-[#3c1e1e] underline-offset-2 hover:underline"
                           >
-                            {campaign.adContent?.title ??
-                              campaign.post?.title ??
-                              `(제목 없음) — ${campaign.id.slice(0, 8)}`}
+                            {campaign.adContent?.title ?? `(제목 없음) — ${campaign.id.slice(0, 8)}`}
                           </Link>
                           <span className="text-xs text-[#888]">[{campaign.adProduct.code}] {campaign.adProduct.name}</span>
                         </div>
@@ -1121,9 +1113,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                         <p className="text-xs text-[#888]">
                           과금 상태 {AD_BILLING_STATUS_LABELS[campaign.billingStatus]} · 자동 계산 {estimatedAmountText} · 제안 {proposedAmountText} · 확정 {finalAmountText}
                         </p>
-                        <p className="text-xs text-[#888]">
-                          content: {campaign.adContentId ?? '-'} / legacy post: {campaign.postId ?? '-'}
-                        </p>
+                        <p className="text-xs text-[#888]">content: {campaign.adContentId ?? '-'}</p>
                         {(campaign.startAt || campaign.endAt) && (
                           <p className="text-xs text-[#888]">
                             {campaign.startAt ? new Date(campaign.startAt).toLocaleDateString('ko-KR') : '시작일 미정'} ~{' '}
@@ -1622,7 +1612,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                   <ul className="space-y-1">
                     {selectedProposalCampaigns.map((campaign) => (
                       <li key={campaign.id} className="rounded border border-[#ececec] bg-white px-2 py-1">
-                        {campaign.adContent?.title ?? campaign.post?.title ?? campaign.id.slice(0, 8)} · 견적{' '}
+                        {campaign.adContent?.title ?? campaign.id.slice(0, 8)} · 견적{' '}
                         {campaign.estimatedAmount != null
                           ? `NZD ${Number(campaign.estimatedAmount).toFixed(2)}`
                           : '-'}{' '}

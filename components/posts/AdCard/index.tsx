@@ -85,7 +85,6 @@ export function AdCard({ ad }: AdCardProps) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         campaignId: ad.adCampaignId,
-        postId: ad.adPostId,
         adContentId: ad.adContentId,
       }),
       keepalive: true,
@@ -97,7 +96,6 @@ export function AdCard({ ad }: AdCardProps) {
       <article className={getCardClass(layout)}>
         <AdImpressionTracker
           campaignId={ad.adCampaignId}
-          postId={ad.adPostId}
           adContentId={ad.adContentId}
           placementType={ad.adPlacementType}
         />
@@ -149,7 +147,6 @@ export function AdCard({ ad }: AdCardProps) {
     <article className={getCardClass(layout)}>
       <AdImpressionTracker
         campaignId={ad.adCampaignId}
-        postId={ad.adPostId}
         adContentId={ad.adContentId}
         placementType={ad.adPlacementType}
       />

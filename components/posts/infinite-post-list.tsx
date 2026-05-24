@@ -35,7 +35,6 @@ export type InfinitePostItem = {
   isAd?: boolean;
   adCampaignId?: string;
   adContentId?: string | null;
-  adPostId?: string | null;
   adLayout?: string;
   adSize?: string;
   adPlacementType?: string;

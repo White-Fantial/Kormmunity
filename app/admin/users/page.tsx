@@ -6,15 +6,10 @@ import {
   deactivateStaffAssignmentAction,
   deleteStaffAssignmentAction,
   changeUserAccountTypeAction,
-  changeUserRoleAction,
   changeUserStatusAction,
 } from '@/app/admin/actions';
 import { adminManagementNavItems, ManagementSectionNav } from '@/components/admin/management-section-nav';
 import { getCurrentUser } from '@/lib/auth/session';
-import {
-  isMissingStaffAssignmentTableError,
-  toLegacyStaffAssignments,
-} from '@/lib/auth/staff-assignments';
 import { prisma } from '@/lib/db/prisma';
 import { canMakeFinalUserDecision } from '@/lib/permissions';
 import { DateTimeText } from '@/components/ui/date-time-text';
@@ -42,7 +37,6 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
   const userQuerySelect = {
     id: true,
     displayName: true,
-    role: true,
     accountType: true,
     isManagedAccount: true,
     isActive: true,
@@ -81,29 +75,6 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
           },
         },
       },
-    })
-    .catch(async (error) => {
-      if (!isMissingStaffAssignmentTableError(error)) {
-        throw error;
-      }
-
-      const usersWithoutAssignments = await prisma.user.findMany({
-        where: {
-          isManagedAccount: false,
-          ...(nameQuery ? { displayName: { contains: nameQuery, mode: 'insensitive' } } : {}),
-        },
-        orderBy: { createdAt: 'desc' },
-        select: userQuerySelect,
-      });
-
-      return usersWithoutAssignments.map((user) => ({
-        ...user,
-        staffAssignments: toLegacyStaffAssignments(user.role, user.countryId, user.cityId).map((assignment) => ({
-          ...assignment,
-          isActive: true,
-          createdAt: new Date(0),
-        })),
-      }));
     });
 
   const [users, countries, cities] = await Promise.all([
@@ -425,36 +396,6 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                           <p className="text-xs text-[#888]">국가를 선택하면 해당 국가 범위, 도시를 선택하면 해당 도시 범위로 권한이 부여됩니다.</p>
                           <FormSubmitButton
                             idleLabel="추가"
-                            pendingLabel="처리 중..."
-                            className="rounded-xl bg-[#fee500] px-3 py-1.5 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
-                          />
-                        </form>
-                      </details>
-
-                      <details>
-                        <summary className="cursor-pointer rounded-xl border border-[#e8e8e8] px-2 py-1 text-xs font-medium hover:bg-[#f9f9f9]">
-                          역할 변경 (레거시)
-                        </summary>
-                        <form action={changeUserRoleAction} className="mt-2 space-y-2">
-                          <input type="hidden" name="targetUserId" value={u.id} />
-                          <select
-                            name="role"
-                            defaultValue={u.role}
-                            className="w-full rounded-lg border border-[#e8e8e8] px-2 py-1 text-sm focus:border-[#fee500] focus:outline-none"
-                          >
-                            <option value="USER">일반 (USER)</option>
-                            <option value="MODERATOR">모더레이터 (MODERATOR)</option>
-                            <option value="COORDINATOR">운영 (COORDINATOR)</option>
-                            <option value="ADMIN">관리자 (ADMIN)</option>
-                          </select>
-                          <input
-                            type="text"
-                            name="reason"
-                            placeholder="사유 (선택)"
-                            className="w-full rounded-lg border border-[#e8e8e8] px-2 py-1 text-sm focus:border-[#fee500] focus:outline-none"
-                          />
-                          <FormSubmitButton
-                            idleLabel="변경"
                             pendingLabel="처리 중..."
                             className="rounded-xl bg-[#fee500] px-3 py-1.5 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00]"
                           />

@@ -1,33 +1,19 @@
 import { prisma } from '@/lib/db/prisma';
 import { createNotification } from '@/lib/notifications';
-import { isMissingStaffAssignmentTableError } from '@/lib/auth/staff-assignments';
 
 const DEFAULT_DEDUPE_WINDOW_SECONDS = 300;
 
 async function getAdsManagerRecipientIds() {
-  try {
-    const assignments = await prisma.staffAssignment.findMany({
-      where: {
-        isActive: true,
-        role: { in: ['AD_MANAGER', 'ADMIN'] },
-      },
-      select: { userId: true },
-      distinct: ['userId'],
-    });
+  const assignments = await prisma.staffAssignment.findMany({
+    where: {
+      isActive: true,
+      role: { in: ['AD_MANAGER', 'ADMIN'] },
+    },
+    select: { userId: true },
+    distinct: ['userId'],
+  });
 
-    return assignments.map((assignment) => assignment.userId);
-  } catch (error) {
-    if (!isMissingStaffAssignmentTableError(error)) {
-      throw error;
-    }
-
-    const admins = await prisma.user.findMany({
-      where: { role: 'ADMIN' },
-      select: { id: true },
-    });
-
-    return admins.map((admin) => admin.id);
-  }
+  return assignments.map((assignment) => assignment.userId);
 }
 
 async function getAdvertiserMemberRecipientIds(advertiserId: string) {

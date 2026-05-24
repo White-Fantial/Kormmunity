@@ -74,8 +74,7 @@ export type AdFeedItem = {
   } | null;
   isAd: true;
   adCampaignId: string;
-  adContentId: string | null;
-  adPostId: string | null;
+  adContentId: string;
   adLayout: AdLayout;
   adSize: AdSize;
   adPlacementType: AdPlacementType;
