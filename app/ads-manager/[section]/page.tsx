@@ -1458,7 +1458,12 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
 
           <div className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-semibold">지역 가중치 설정 (AdGeoPricing)</h2>
+              <div className="space-y-1">
+                <h2 className="font-semibold">지역 가중치 설정 (AdGeoPricing)</h2>
+                <p className="text-xs text-[#666]">
+                  국가 단위(도시 미선택) 캠페인은 국가별 설정이 없으면 기본 multiplier 1.5를 사용합니다.
+                </p>
+              </div>
               {selectedGeoPricing ? (
                 <Link href="/ads-manager/rules" className="text-xs text-[#666] underline-offset-2 hover:underline">
                   새 항목 등록으로 전환
@@ -1509,7 +1514,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                   step="0.0001"
                   min="0.0001"
                   required
-                  defaultValue={selectedGeoPricing ? Number(selectedGeoPricing.multiplier) : 1}
+                  defaultValue={selectedGeoPricing ? Number(selectedGeoPricing.multiplier) : 1.5}
                   className={inputClass}
                 />
               </label>

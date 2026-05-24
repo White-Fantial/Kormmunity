@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
+const DEFAULT_COUNTRY_MULTIPLIER = 1.5;
+
 type Product = {
   id: string;
   code: string;
@@ -125,6 +127,7 @@ function calculatePreview(input: {
       geoSource = 'city';
     }
   } else if (input.targetCountryId) {
+    geoMultiplier = DEFAULT_COUNTRY_MULTIPLIER;
     const selected = pickLatest(
       activeGeo.filter((entry) => entry.countryId === input.targetCountryId && entry.cityId == null),
     );
