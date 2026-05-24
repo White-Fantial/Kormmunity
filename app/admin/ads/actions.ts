@@ -910,6 +910,7 @@ export async function updateAdCampaignAction(formData: FormData) {
       startAt: true,
       endAt: true,
       maxImpressions: true,
+      proposedAmount: true,
       targetCountryId: true,
       targetCityId: true,
       finalAmount: true,
@@ -964,7 +965,11 @@ export async function updateAdCampaignAction(formData: FormData) {
     existing.maxImpressions !== maxImpressionsValue ||
     existing.targetCountryId !== targetCountryId ||
     existing.targetCityId !== targetCityId;
-  const requiresReconfirmation = pricingInputsChanged && existing.finalAmount != null;
+  const proposedAmountChanged =
+    (existing.proposedAmount != null ? Number(existing.proposedAmount) : null) !==
+    proposedAmountValue;
+  const requiresReconfirmation =
+    (pricingInputsChanged || proposedAmountChanged) && existing.finalAmount != null;
   const nextBillingStatusAfterUpdate: AdBillingStatus = requiresReconfirmation
     ? 'ESTIMATED'
     : nextBillingStatus;
@@ -1015,6 +1020,7 @@ export async function updateAdCampaignAction(formData: FormData) {
         estimatedAmount: estimated.amount,
         proposedAmount: proposedAmountValue,
         pricingInputsChanged,
+        proposedAmountChanged,
         requiresReconfirmation,
         campaignStatusTransition:
           existing.status === 'REQUEST_CHANGES'
@@ -1034,6 +1040,8 @@ export async function updateAdCampaignAction(formData: FormData) {
         metadata: {
           previousFinalAmount: Number(existing.finalAmount),
           estimatedAmount: estimated.amount,
+          pricingInputsChanged,
+          proposedAmountChanged,
         },
       });
     }
