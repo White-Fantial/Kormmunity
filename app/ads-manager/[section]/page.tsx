@@ -57,7 +57,7 @@ type AdminAdsPageProps = {
   }>;
 };
 
-const AD_MANAGER_SECTIONS = ['campaigns', 'products', 'proposals', 'contents', 'rules'] as const;
+const AD_MANAGER_SECTIONS = ['dashboard', 'campaigns', 'products', 'proposals', 'contents', 'rules'] as const;
 type AdManagerSection = (typeof AD_MANAGER_SECTIONS)[number];
 type StatsRangePreset = 'today' | '7d' | '30d' | 'custom';
 
@@ -653,9 +653,11 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
         <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{query.success}</p>
       ) : null}
 
-      {/* ── Campaigns tab ──────────────────────────────────────────────────── */}
-      {activeSection === 'campaigns' && (
+      {/* ── Dashboard / Campaigns tab ─────────────────────────────────────── */}
+      {(activeSection === 'dashboard' || activeSection === 'campaigns') && (
         <div className="space-y-6">
+          {activeSection === 'dashboard' && (
+            <>
           <div className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-base font-semibold">캠페인 통계 필터</h2>
@@ -663,7 +665,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                 기준 기간: {statsStartDateInput} ~ {statsEndDateInput}
               </div>
             </div>
-            <form method="get" action="/ads-manager/campaigns" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <form method="get" action="/ads-manager/dashboard" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <label className="space-y-1 text-sm">
                 <span className="text-[#555]">기간</span>
                 <select name="statsRange" defaultValue={selectedStatsRange} className={selectClass}>
@@ -736,7 +738,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
               </label>
               <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-1">
                 <button type="submit" className={submitClass}>적용</button>
-                <Link href="/ads-manager/campaigns" className="rounded-xl border border-[#e8e8e8] px-4 py-2 text-sm hover:bg-[#fafafa]">
+                <Link href="/ads-manager/dashboard" className="rounded-xl border border-[#e8e8e8] px-4 py-2 text-sm hover:bg-[#fafafa]">
                   초기화
                 </Link>
               </div>
@@ -940,7 +942,11 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
               </div>
             </div>
           </div>
+            </>
+          )}
 
+          {activeSection === 'campaigns' && (
+            <>
           <details className="group rounded-xl border border-[#e8e8e8] bg-white shadow-sm">
             <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 font-semibold">
               <span>새 캠페인 등록</span>
@@ -1425,6 +1431,8 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
               </form>
             </div>
           ) : null}
+            </>
+          )}
         </div>
       )}
 

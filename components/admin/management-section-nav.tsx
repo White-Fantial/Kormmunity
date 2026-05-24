@@ -35,6 +35,7 @@ export const adminManagementNavItems = [
 ] as const satisfies readonly ManagementNavItem[];
 
 export const adsManagerNavItems = [
+  { href: '/ads-manager/dashboard', label: '대시보드' },
   { href: '/ads-manager/campaigns', label: '캠페인' },
   { href: '/ads-manager/proposals', label: '광고 제안' },
   { href: '/ads-manager/contents', label: '광고 콘텐츠' },
