@@ -164,7 +164,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
 
   const activeSection = routeParams.section;
 
-  const [adProducts, adCampaigns, placementRules, countries, advertisers, adProposals, adContents, adGeoPricings] = await Promise.all([
+  const [adProducts, adCampaigns, placementRules, countries, advertisers, adProposals, adContents, adGeoPricings, partnerManagers] = await Promise.all([
     prisma.adProduct.findMany({
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
       select: {
@@ -208,9 +208,11 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
         targetCountryId: true,
         targetCityId: true,
         adContentId: true,
+        sourcedByUserId: true,
         adContent: { select: { id: true, title: true, status: true } },
         advertiser: { select: { name: true } },
         priceConfirmedByUser: { select: { displayName: true } },
+        sourcedByUser: { select: { displayName: true } },
         adProduct: { select: { id: true, name: true, code: true, placementType: true, size: true, layout: true } },
         targetCountry: { select: { name: true } },
         targetCity: { select: { name: true } },
@@ -290,6 +292,14 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
         country: { select: { name: true } },
         city: { select: { name: true } },
       },
+    }),
+    prisma.staffAssignment.findMany({
+      where: { role: 'PARTNER_MANAGER', isActive: true },
+      select: {
+        userId: true,
+        user: { select: { displayName: true } },
+      },
+      distinct: ['userId'],
     }),
   ]);
 
@@ -1113,8 +1123,7 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                         <p className="text-xs text-[#888]">
                           과금 상태 {AD_BILLING_STATUS_LABELS[campaign.billingStatus]} · 자동 계산 {estimatedAmountText} · 제안 {proposedAmountText} · 확정 {finalAmountText}
                         </p>
-                        <p className="text-xs text-[#888]">content: {campaign.adContentId ?? '-'}</p>
-                        {(campaign.startAt || campaign.endAt) && (
+                        <p className="text-xs text-[#888]">content: {campaign.adContentId ?? '-'}{campaign.sourcedByUser ? ` · 영업: ${campaign.sourcedByUser.displayName}` : ''}</p>                        {(campaign.startAt || campaign.endAt) && (
                           <p className="text-xs text-[#888]">
                             {campaign.startAt ? new Date(campaign.startAt).toLocaleDateString('ko-KR') : '시작일 미정'} ~{' '}
                             {campaign.endAt ? new Date(campaign.endAt).toLocaleDateString('ko-KR') : '종료일 미정'}
@@ -1306,6 +1315,24 @@ export default async function AdsManagerSectionPage({ params, searchParams }: Ad
                     defaultValue={selectedCampaign.notes ?? ''}
                     className={inputClass}
                   />
+                </label>
+                <label className="space-y-1 text-sm sm:col-span-2">
+                  <span className="text-[#555]">영업 담당 파트너 매니저</span>
+                  <select
+                    name="sourcedByUserId"
+                    defaultValue={selectedCampaign.sourcedByUserId ?? ''}
+                    className={selectClass}
+                  >
+                    <option value="">(미지정)</option>
+                    {partnerManagers.map((pm) => (
+                      <option key={pm.userId} value={pm.userId}>
+                        {pm.user.displayName}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedCampaign.sourcedByUser && (
+                    <p className="text-xs text-[#777]">현재: {selectedCampaign.sourcedByUser.displayName}</p>
+                  )}
                 </label>
                 {selectedCampaign.reviewNotes ? (
                   <div className="space-y-1 text-sm sm:col-span-2">
