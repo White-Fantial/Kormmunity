@@ -179,6 +179,7 @@ async function createComment(
 
   if (post.authorId !== resolvedAuthor.id) {
     void notifyCommentForPost({
+      commentId: comment.id,
       postId,
       postTitle: post.title,
       postBody: post.body,
