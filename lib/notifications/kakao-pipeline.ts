@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import type { NotificationEventType } from '@prisma/client';
+import type { NotificationEventType, Prisma } from '@prisma/client';
 
 import { prisma } from '@/lib/db/prisma';
 import {
@@ -110,14 +110,14 @@ function uniqueRecipientIds(recipientIds: string[], excludeUserId?: string) {
   return [...new Set(recipientIds)].filter((recipientId) => recipientId && recipientId !== excludeUserId);
 }
 
-export async function enqueueNotificationEvent<TPayload extends object>(params: {
+export async function enqueueNotificationEvent<TPayload extends Prisma.InputJsonValue>(params: {
   eventType: NotificationEventType;
   payload: TPayload;
 }) {
   return prisma.notificationEvent.create({
     data: {
       eventType: params.eventType,
-      payload: params.payload as unknown as Record<string, unknown>,
+      payload: params.payload,
     },
     select: { id: true },
   });
