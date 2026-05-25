@@ -363,54 +363,6 @@ export async function deleteStaffAssignmentAction(formData: FormData) {
   redirect('/admin/users');
 }
 
-export async function changeUserRoleAction(formData: FormData) {
-  const user = await requireUser();
-  requireAdmin(user);
-
-  const targetUserId = normalizeText(formData.get('targetUserId'));
-  const newRole = normalizeText(formData.get('role'));
-  const reason = normalizeText(formData.get('reason'));
-
-  if (!targetUserId || !newRole) {
-    redirect('/admin/users?error=잘못된 요청입니다.');
-  }
-
-  const ALL_ROLES = ['USER', 'MODERATOR', 'COORDINATOR', 'ADMIN'];
-  if (!ALL_ROLES.includes(newRole)) {
-    redirect('/admin/users?error=유효하지 않은 역할입니다.');
-  }
-
-  const targetUser = await prisma.user.findUnique({
-    where: { id: targetUserId },
-    select: { id: true, role: true },
-  });
-
-  if (!targetUser) {
-    redirect('/admin/users?error=사용자를 찾을 수 없습니다.');
-  }
-
-  await prisma.$transaction(async (tx) => {
-    await tx.user.update({
-      where: { id: targetUserId },
-      data: { role: newRole as 'USER' | 'MODERATOR' | 'COORDINATOR' | 'ADMIN' },
-    });
-
-    await tx.moderationAction.create({
-      data: {
-        actorId: user.id,
-        targetType: 'USER',
-        targetId: targetUserId,
-        actionType: `ROLE_CHANGE_TO_${newRole}`,
-        reason: reason || null,
-      },
-    });
-  });
-
-  revalidatePath('/admin/users');
-  await revalidateUserSessions(targetUserId);
-  redirect('/admin/users');
-}
-
 export async function changeUserStatusAction(formData: FormData) {
   const user = await requireUser();
   requireAdmin(user);
@@ -546,7 +498,6 @@ export async function createManagedAccountAction(formData: FormData) {
     data: {
       kakaoId: `managed-${accountType.toLowerCase()}-${randomUUID()}`,
       displayName,
-      role: 'USER',
       status: 'ACTIVE',
       accountType,
       isManagedAccount: true,

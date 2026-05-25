@@ -31,9 +31,11 @@ export const adminManagementNavItems = [
   { href: '/admin/reputation-settings', label: '점수/온기 설정' },
   { href: '/admin/categories', label: '카테고리' },
   { href: '/admin/cities', label: '국가/도시' },
+  { href: '/admin/partner-incentives', label: '파트너 인센티브' },
 ] as const satisfies readonly ManagementNavItem[];
 
 export const adsManagerNavItems = [
+  { href: '/ads-manager/dashboard', label: '대시보드' },
   { href: '/ads-manager/campaigns', label: '캠페인' },
   { href: '/ads-manager/proposals', label: '광고 제안' },
   { href: '/ads-manager/contents', label: '광고 콘텐츠' },
@@ -43,6 +45,7 @@ export const adsManagerNavItems = [
 
 export const partnerManagerNavItems = [
   { href: '/partner-manager', label: '광고주 관리' },
+  { href: '/partner-manager/sales', label: '영업 실적' },
 ] as const satisfies readonly ManagementNavItem[];
 
 export const advertiserMemberNavItems = [

@@ -39,7 +39,6 @@ export default async function AdminManagedAccountsPage({
     select: {
       id: true,
       displayName: true,
-      role: true,
       accountType: true,
       isActive: true,
       countryId: true,
@@ -157,7 +156,6 @@ export default async function AdminManagedAccountsPage({
                     <span>{managed.isActive ? '활성' : '비활성'}</span>
                     <span>{countryName ?? '국가 미지정'}</span>
                     <span>{managed.city?.name ?? '도시 미지정'}</span>
-                    <span className="text-[#999]">역할: {managed.role}</span>
                     <span className="ml-auto text-[#999]">
                       최근 사용: {lastUsedAt ? <DateTimeText value={lastUsedAt} /> : '기록 없음'}
                     </span>

@@ -2,6 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import {
+  Prisma,
+} from '@prisma/client';
 import type {
   AdBillingStatus,
   AdBillingUnit,
@@ -9,16 +12,16 @@ import type {
   AdContentStatus,
   AdPlacementType,
   AdProposalStatus,
-  Prisma,
 } from '@prisma/client';
 
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
+import { dispatchAdCampaignReviewRequestedNotification } from '@/lib/notifications/dispatcher';
 import {
   buildPricingSnapshot,
   calculateEstimatedAmount,
+  calculateFinalAmount,
   resolveGeoMultiplier,
-  resolvePlacementMultiplier,
 } from '@/lib/ads/pricing';
 import {
   canAccessAdsManagerSection,
@@ -98,6 +101,32 @@ function parseNullableInt(value: string): number | null {
 
   const parsed = parseInt(value, 10);
   return Number.isNaN(parsed) ? null : parsed;
+}
+
+function parseNullableDecimal(value: string): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function readNumericFromJsonSnapshot(snapshot: Prisma.JsonValue | null, key: string): number | null {
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
+    return null;
+  }
+
+  const value = (snapshot as Record<string, unknown>)[key];
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  return null;
 }
 
 const VALID_BILLING_UNITS: AdBillingUnit[] = ['DAY', 'WEEK', 'MONTH', 'IMPRESSION_1000'];
@@ -348,6 +377,24 @@ export async function updateAdProposalStatusAction(formData: FormData) {
             : null,
       },
     });
+
+    // When NEGOTIATED, auto-set sourcedByUserId on related campaigns if actor is PARTNER_MANAGER
+    if (status === 'NEGOTIATED') {
+      const isPartnerManager = currentUser.staffAssignments.some(
+        (a) => a.role === 'PARTNER_MANAGER',
+      );
+      if (isPartnerManager) {
+        await tx.adCampaign.updateMany({
+          where: {
+            advertiserId: proposal.advertiserId,
+            sourcedByUserId: null,
+          },
+          data: {
+            sourcedByUserId: currentUser.id,
+          },
+        });
+      }
+    }
 
     await logAdAudit(tx, {
       actorId: currentUser.id,
@@ -623,21 +670,25 @@ export async function updateAdContentStatusAction(formData: FormData) {
 export async function createAdCampaignAction(formData: FormData) {
   const currentUser = await requireAdsUser();
 
-  const adContentId = normalizeText(formData.get('adContentId')) || null;
-  const legacyPostId = normalizeText(formData.get('postId')) || null;
+  const adContentId = normalizeText(formData.get('adContentId'));
   const adProductId = normalizeText(formData.get('adProductId'));
   const priority = parseInt(normalizeText(formData.get('priority')) || '0', 10);
   const startAt = parseNullableLocalDateStartOfDay(normalizeText(formData.get('startAt')) || null);
   const endAt = parseNullableLocalDateStartOfDay(normalizeText(formData.get('endAt')) || null);
   const maxImpressions = normalizeText(formData.get('maxImpressions'));
   const maxImpressionsValue = parseNullableInt(maxImpressions);
+  const proposedAmountRaw = normalizeText(formData.get('proposedAmount'));
+  const proposedAmountValue = parseNullableDecimal(proposedAmountRaw);
   const targetCountryId = normalizeText(formData.get('targetCountryId')) || null;
   const targetCityId = normalizeText(formData.get('targetCityId')) || null;
   const landingUrl = normalizeText(formData.get('landingUrl')) || null;
   const notes = normalizeText(formData.get('notes')) || null;
 
-  if (!adProductId || (!adContentId && !legacyPostId)) {
-    redirectAdsManager('campaigns', { error: '광고 콘텐츠 ID(또는 legacy 게시글 ID)와 광고 상품은 필수입니다.' });
+  if (!adProductId || !adContentId) {
+    redirectAdsManager('campaigns', { error: '광고 콘텐츠 ID와 광고 상품은 필수입니다.' });
+  }
+  if (proposedAmountRaw && (proposedAmountValue == null || proposedAmountValue < 0)) {
+    redirectAdsManager('campaigns', { error: '제안 금액은 0 이상 숫자로 입력해 주세요.' });
   }
 
   const adProduct = await prisma.adProduct.findUnique({
@@ -655,50 +706,24 @@ export async function createAdCampaignAction(formData: FormData) {
     redirectAdsManager('campaigns', { error: '광고 상품을 찾을 수 없습니다.' });
   }
 
-  let advertiserId: string | null = null;
+  const adContent = await prisma.adContent.findUnique({
+    where: { id: adContentId },
+    select: { id: true, status: true, advertiserId: true },
+  });
 
-  if (adContentId) {
-    const adContent = await prisma.adContent.findUnique({
-      where: { id: adContentId },
-      select: { id: true, status: true, advertiserId: true },
-    });
-
-    if (!adContent) {
-      redirectAdsManager('campaigns', { error: '광고 콘텐츠를 찾을 수 없습니다.' });
-    }
-
-    if (adContent.status !== 'APPROVED') {
-      redirectAdsManager('campaigns', { error: '승인된 광고 콘텐츠만 캠페인에 연결할 수 있습니다.' });
-    }
-
-    advertiserId = adContent.advertiserId;
+  if (!adContent) {
+    redirectAdsManager('campaigns', { error: '광고 콘텐츠를 찾을 수 없습니다.' });
   }
 
-  if (legacyPostId) {
-    const post = await prisma.post.findUnique({
-      where: { id: legacyPostId },
-      select: { id: true, category: { select: { type: true } } },
-    });
-
-    if (!post) {
-      redirectAdsManager('campaigns', { error: 'legacy 게시글을 찾을 수 없습니다.' });
-    }
-
-    if (post.category.type !== 'ADVERTISEMENT') {
-      redirectAdsManager('campaigns', {
-        error: 'legacy 게시글은 광고 카테고리만 연결 가능합니다.',
-      });
-    }
+  if (adContent.status !== 'APPROVED') {
+    redirectAdsManager('campaigns', { error: '승인된 광고 콘텐츠만 캠페인에 연결할 수 있습니다.' });
   }
+  const advertiserId = adContent.advertiserId;
 
   const pricingAt = startAt ?? new Date();
   const geoMultiplier = await resolveGeoMultiplier(prisma, {
     targetCityId,
     targetCountryId,
-    at: pricingAt,
-  });
-  const placementMultiplier = await resolvePlacementMultiplier(prisma, {
-    placementType: adProduct.placementType,
     at: pricingAt,
   });
   const basePrice = Number(adProduct.basePrice);
@@ -707,7 +732,6 @@ export async function createAdCampaignAction(formData: FormData) {
     billingUnit,
     basePrice,
     geoMultiplier: geoMultiplier.multiplier,
-    placementMultiplier: placementMultiplier.multiplier,
     startAt,
     endAt,
     impressions: maxImpressionsValue ?? 0,
@@ -717,7 +741,6 @@ export async function createAdCampaignAction(formData: FormData) {
     currency: adProduct.currency,
     basePrice,
     geoMultiplier,
-    placementMultiplier,
     startAt,
     endAt,
     maxImpressions: maxImpressionsValue,
@@ -730,7 +753,6 @@ export async function createAdCampaignAction(formData: FormData) {
     data: {
       advertiserId,
       adContentId,
-      postId: legacyPostId,
       adProductId,
       status: 'DRAFT',
       priority: Number.isNaN(priority) ? 0 : priority,
@@ -740,6 +762,7 @@ export async function createAdCampaignAction(formData: FormData) {
       targetCountryId,
       targetCityId,
       estimatedAmount: estimated.amount,
+      proposedAmount: proposedAmountValue,
       billingStatus: 'ESTIMATED',
       pricingSnapshot,
       landingUrl,
@@ -757,15 +780,14 @@ export async function createAdCampaignAction(formData: FormData) {
       actionType: 'CAMPAIGN_CREATED',
       message: '광고 캠페인이 생성되었습니다.',
       metadata: {
-        legacyPostId,
         billingUnit,
         currency: adProduct.currency,
         basePrice,
         geoMultiplier: geoMultiplier.multiplier,
-        placementMultiplier: placementMultiplier.multiplier,
         billableDays: estimated.billableDays,
         billableQuantity: estimated.billableQuantity,
         estimatedAmount: estimated.amount,
+        proposedAmount: proposedAmountValue,
       },
     },
   });
@@ -800,11 +822,24 @@ export async function updateAdCampaignStatusAction(formData: FormData) {
 
   const existing = await prisma.adCampaign.findUnique({
     where: { id },
-    select: { status: true, advertiserId: true, adContentId: true },
+    select: {
+      status: true,
+      advertiserId: true,
+      adContentId: true,
+      finalAmount: true,
+      billingStatus: true,
+    },
   });
 
   if (!existing) {
     redirectAdsManager('campaigns', { error: '캠페인을 찾을 수 없습니다.' });
+  }
+
+  if (status === 'ACTIVE' && existing.finalAmount == null) {
+    redirectAdsManager('campaigns', {
+      error: '캠페인 집행 시작 전 확정 금액을 먼저 입력해 주세요.',
+      campaignId: id,
+    });
   }
 
   await prisma.$transaction(async (tx) => {
@@ -821,6 +856,16 @@ export async function updateAdCampaignStatusAction(formData: FormData) {
     });
   });
 
+  if (status === 'REVIEW' && existing.status !== 'REVIEW' && existing.advertiserId) {
+    void dispatchAdCampaignReviewRequestedNotification({
+      campaignId: id,
+      advertiserId: existing.advertiserId,
+      actorId: currentUser.id,
+    }).catch((error) => {
+      console.error('[updateAdCampaignStatusAction] notification dispatch failed', error);
+    });
+  }
+
   revalidatePath(ADS_MANAGER_SECTION_PATH.campaigns);
   redirectAdsManager('campaigns');
 }
@@ -834,13 +879,19 @@ export async function updateAdCampaignAction(formData: FormData) {
   const endAt = parseNullableLocalDateStartOfDay(normalizeText(formData.get('endAt')) || null);
   const maxImpressions = normalizeText(formData.get('maxImpressions'));
   const maxImpressionsValue = parseNullableInt(maxImpressions);
+  const proposedAmountRaw = normalizeText(formData.get('proposedAmount'));
+  const proposedAmountValue = parseNullableDecimal(proposedAmountRaw);
   const targetCountryId = normalizeText(formData.get('targetCountryId')) || null;
   const targetCityId = normalizeText(formData.get('targetCityId')) || null;
   const landingUrl = normalizeText(formData.get('landingUrl')) || null;
   const notes = normalizeText(formData.get('notes')) || null;
+  const sourcedByUserId = normalizeText(formData.get('sourcedByUserId')) || null;
 
   if (!id) {
     redirectAdsManager('campaigns', { error: '캠페인 ID가 없습니다.' });
+  }
+  if (proposedAmountRaw && (proposedAmountValue == null || proposedAmountValue < 0)) {
+    redirectAdsManager('campaigns', { error: '제안 금액은 0 이상 숫자로 입력해 주세요.', campaignId: id });
   }
 
   const existing = await prisma.adCampaign.findUnique({
@@ -850,6 +901,14 @@ export async function updateAdCampaignAction(formData: FormData) {
       adContentId: true,
       status: true,
       billingStatus: true,
+      startAt: true,
+      endAt: true,
+      maxImpressions: true,
+      proposedAmount: true,
+      targetCountryId: true,
+      targetCityId: true,
+      finalAmount: true,
+      sourcedByUserId: true,
       adProduct: {
         select: {
           billingUnit: true,
@@ -871,17 +930,12 @@ export async function updateAdCampaignAction(formData: FormData) {
     targetCountryId,
     at: pricingAt,
   });
-  const placementMultiplier = await resolvePlacementMultiplier(prisma, {
-    placementType: existing.adProduct.placementType,
-    at: pricingAt,
-  });
   const basePrice = Number(existing.adProduct.basePrice);
   const billingUnit = existing.adProduct.billingUnit;
   const estimated = calculateEstimatedAmount({
     billingUnit,
     basePrice,
     geoMultiplier: geoMultiplier.multiplier,
-    placementMultiplier: placementMultiplier.multiplier,
     startAt,
     endAt,
     impressions: maxImpressionsValue ?? 0,
@@ -891,7 +945,6 @@ export async function updateAdCampaignAction(formData: FormData) {
     currency: existing.adProduct.currency,
     basePrice,
     geoMultiplier,
-    placementMultiplier,
     startAt,
     endAt,
     maxImpressions: maxImpressionsValue,
@@ -901,6 +954,20 @@ export async function updateAdCampaignAction(formData: FormData) {
   });
   const nextBillingStatus: AdBillingStatus =
     existing.billingStatus === 'DRAFT' ? 'ESTIMATED' : existing.billingStatus;
+  const pricingInputsChanged =
+    (existing.startAt?.getTime() ?? null) !== (startAt?.getTime() ?? null) ||
+    (existing.endAt?.getTime() ?? null) !== (endAt?.getTime() ?? null) ||
+    existing.maxImpressions !== maxImpressionsValue ||
+    existing.targetCountryId !== targetCountryId ||
+    existing.targetCityId !== targetCityId;
+  const proposedAmountChanged =
+    (existing.proposedAmount != null ? Number(existing.proposedAmount) : null) !==
+    proposedAmountValue;
+  const requiresReconfirmation =
+    (pricingInputsChanged || proposedAmountChanged) && existing.finalAmount != null;
+  const nextBillingStatusAfterUpdate: AdBillingStatus = requiresReconfirmation
+    ? 'ESTIMATED'
+    : nextBillingStatus;
 
   await prisma.$transaction(async (tx) => {
     await tx.adCampaign.update({
@@ -913,10 +980,21 @@ export async function updateAdCampaignAction(formData: FormData) {
         targetCountryId,
         targetCityId,
         estimatedAmount: estimated.amount,
-        billingStatus: nextBillingStatus,
+        proposedAmount: proposedAmountValue,
+        billingStatus: nextBillingStatusAfterUpdate,
         pricingSnapshot,
+        ...(requiresReconfirmation
+          ? {
+              finalAmount: null,
+              pricingConfirmationSnapshot: Prisma.JsonNull,
+              priceAdjustmentReason: null,
+              priceConfirmedByUserId: null,
+              priceConfirmedAt: null,
+            }
+          : {}),
         landingUrl,
         notes,
+        sourcedByUserId,
         ...(existing.status === 'REQUEST_CHANGES' ? { status: 'REVIEW' } : {}),
       },
     });
@@ -933,20 +1011,160 @@ export async function updateAdCampaignAction(formData: FormData) {
         currency: existing.adProduct.currency,
         basePrice,
         geoMultiplier: geoMultiplier.multiplier,
-        placementMultiplier: placementMultiplier.multiplier,
         billableDays: estimated.billableDays,
         billableQuantity: estimated.billableQuantity,
         estimatedAmount: estimated.amount,
+        proposedAmount: proposedAmountValue,
+        pricingInputsChanged,
+        proposedAmountChanged,
+        requiresReconfirmation,
         campaignStatusTransition:
           existing.status === 'REQUEST_CHANGES'
             ? { from: 'REQUEST_CHANGES', to: 'REVIEW' }
             : null,
       },
     });
+
+    if (requiresReconfirmation) {
+      await logAdAudit(tx, {
+        actorId: currentUser.id,
+        advertiserId: existing.advertiserId,
+        adContentId: existing.adContentId,
+        campaignId: id,
+        actionType: 'PRICE_ESTIMATED',
+        message: '가격 영향 항목 변경으로 확정 금액이 해제되고 견적 상태로 전환되었습니다.',
+        metadata: {
+          previousFinalAmount: Number(existing.finalAmount),
+          estimatedAmount: estimated.amount,
+          pricingInputsChanged,
+          proposedAmountChanged,
+        },
+      });
+    }
   });
+
+  if (existing.status === 'REQUEST_CHANGES' && existing.advertiserId) {
+    void dispatchAdCampaignReviewRequestedNotification({
+      campaignId: id,
+      advertiserId: existing.advertiserId,
+      actorId: currentUser.id,
+    }).catch((error) => {
+      console.error('[updateAdCampaignAction] notification dispatch failed', error);
+    });
+  }
 
   revalidatePath(ADS_MANAGER_SECTION_PATH.campaigns);
   redirectAdsManager('campaigns');
+}
+
+export async function confirmAdCampaignPricingAction(formData: FormData) {
+  const currentUser = await requireAdsUser();
+
+  const id = normalizeText(formData.get('id'));
+  const finalAmountRaw = normalizeText(formData.get('finalAmount'));
+  const priceAdjustmentReason = normalizeText(formData.get('priceAdjustmentReason')) || null;
+
+  if (!id || !finalAmountRaw) {
+    redirectAdsManager('campaigns', { error: '캠페인 ID와 확정 금액은 필수입니다.' });
+  }
+
+  const finalAmountValue = parseNullableDecimal(finalAmountRaw);
+  if (finalAmountValue == null || finalAmountValue < 0) {
+    redirectAdsManager('campaigns', {
+      error: '확정 금액은 0 이상 숫자로 입력해 주세요.',
+      campaignId: id,
+    });
+  }
+
+  const existing = await prisma.adCampaign.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      advertiserId: true,
+      adContentId: true,
+      status: true,
+      billingStatus: true,
+      estimatedAmount: true,
+      finalAmount: true,
+      pricingSnapshot: true,
+      adProduct: {
+        select: {
+          billingUnit: true,
+          basePrice: true,
+          currency: true,
+        },
+      },
+      startAt: true,
+      endAt: true,
+      maxImpressions: true,
+    },
+  });
+
+  if (!existing) {
+    redirectAdsManager('campaigns', { error: '캠페인을 찾을 수 없습니다.' });
+  }
+
+  const pricingFromCurrent = calculateFinalAmount({
+    billingUnit: existing.adProduct.billingUnit,
+    basePrice: Number(existing.adProduct.basePrice),
+    geoMultiplier: readNumericFromJsonSnapshot(existing.pricingSnapshot, 'geoMultiplier') ?? 1,
+    startAt: existing.startAt,
+    endAt: existing.endAt,
+    impressions: existing.maxImpressions ?? 0,
+  });
+  const amountDelta = Math.round((finalAmountValue - pricingFromCurrent.amount) * 100) / 100;
+  const confirmationSnapshot: Prisma.InputJsonValue = {
+    estimatedAmountAtConfirmation: pricingFromCurrent.amount,
+    enteredFinalAmount: finalAmountValue,
+    amountDelta,
+    reason: priceAdjustmentReason,
+    confirmedByUserId: currentUser.id,
+    confirmedAt: new Date().toISOString(),
+    currency: existing.adProduct.currency,
+    billingUnit: existing.adProduct.billingUnit,
+    pricingSnapshot: existing.pricingSnapshot ?? null,
+  };
+
+  await prisma.$transaction(async (tx) => {
+    await tx.adCampaign.update({
+      where: { id },
+      data: {
+        finalAmount: finalAmountValue,
+        billingStatus: 'INVOICED',
+        pricingConfirmationSnapshot: confirmationSnapshot,
+        priceAdjustmentReason,
+        priceConfirmedByUserId: currentUser.id,
+        priceConfirmedAt: new Date(),
+      },
+    });
+
+    await logAdAudit(tx, {
+      actorId: currentUser.id,
+      advertiserId: existing.advertiserId,
+      adContentId: existing.adContentId,
+      campaignId: id,
+      actionType:
+        existing.finalAmount == null
+          ? amountDelta === 0
+            ? 'PRICE_CONFIRMED'
+            : 'PRICE_ADJUSTED'
+          : 'PRICE_CONFIRMED',
+      message:
+        existing.finalAmount == null
+          ? '캠페인 확정 금액이 입력되었습니다.'
+          : '캠페인 확정 금액이 갱신되었습니다.',
+      metadata: {
+        previousFinalAmount: existing.finalAmount != null ? Number(existing.finalAmount) : null,
+        estimatedAmount: pricingFromCurrent.amount,
+        finalAmount: finalAmountValue,
+        amountDelta,
+        previousBillingStatus: existing.billingStatus,
+      },
+    });
+  });
+
+  revalidatePath(ADS_MANAGER_SECTION_PATH.campaigns);
+  redirectAdsManager('campaigns', { success: '캠페인 확정 금액이 저장되었습니다.', campaignId: id });
 }
 
 // ─── AdPlacementRule ──────────────────────────────────────────────────────────
@@ -1041,54 +1259,4 @@ export async function upsertAdGeoPricingAction(formData: FormData) {
 
   revalidatePath(ADS_MANAGER_SECTION_PATH.rules);
   redirectAdsManager('rules', { success: '지역 가중치 설정이 저장되었습니다.' });
-}
-
-export async function upsertAdPlacementPricingAction(formData: FormData) {
-  await requireAdsUser();
-
-  const id = normalizeText(formData.get('id'));
-  const placementType = normalizeText(formData.get('placementType')) as AdPlacementType;
-  const multiplierRaw = normalizeText(formData.get('multiplier'));
-  const effectiveFrom = parseNullableDateTime(normalizeText(formData.get('effectiveFrom')) || null);
-  const effectiveTo = parseNullableDateTime(normalizeText(formData.get('effectiveTo')) || null);
-  const isActive = parseCheckboxBoolean(formData.get('isActive'));
-
-  if (!placementType) {
-    redirectAdsManager('rules', { error: '노출 위치를 선택해 주세요.' });
-  }
-
-  const multiplier = Number(multiplierRaw);
-  if (!multiplierRaw || Number.isNaN(multiplier) || multiplier <= 0) {
-    redirectAdsManager('rules', { error: '유효한 노출 위치 가중치(multiplier)를 입력해 주세요.' });
-  }
-
-  if (effectiveFrom && effectiveTo && effectiveTo <= effectiveFrom) {
-    redirectAdsManager('rules', { error: '종료 시각은 시작 시각보다 늦어야 합니다.' });
-  }
-
-  if (id) {
-    await prisma.adPlacementPricing.update({
-      where: { id },
-      data: {
-        placementType,
-        multiplier,
-        effectiveFrom,
-        effectiveTo,
-        isActive,
-      },
-    });
-  } else {
-    await prisma.adPlacementPricing.create({
-      data: {
-        placementType,
-        multiplier,
-        effectiveFrom,
-        effectiveTo,
-        isActive,
-      },
-    });
-  }
-
-  revalidatePath(ADS_MANAGER_SECTION_PATH.rules);
-  redirectAdsManager('rules', { success: '노출 위치 가중치 설정이 저장되었습니다.' });
 }

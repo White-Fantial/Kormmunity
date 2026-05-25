@@ -1,6 +1,6 @@
 'use server';
 
-import { AccountType, UserRole, UserStatus, StaffRole } from '@prisma/client';
+import { AccountType, UserStatus, StaffRole } from '@prisma/client';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { randomUUID } from 'node:crypto';
@@ -44,10 +44,6 @@ export async function loginWithKakaoPlaceholder(formData: FormData) {
   const staffRole: StaffRole | null = STAFF_ROLES.has(roleInput as StaffRole)
     ? (roleInput as StaffRole)
     : null;
-  const legacyUserRole: UserRole =
-    staffRole === 'MODERATOR' || staffRole === 'COORDINATOR' || staffRole === 'ADMIN'
-      ? staffRole
-      : UserRole.USER;
 
   const existingUser = await prisma.user.findUnique({
     where: { kakaoId },
@@ -62,7 +58,6 @@ export async function loginWithKakaoPlaceholder(formData: FormData) {
     where: { kakaoId },
     update: {
       displayName,
-      role: legacyUserRole,
       accountType: AccountType.REAL_USER,
       isManagedAccount: false,
       isActive: true,
@@ -70,7 +65,6 @@ export async function loginWithKakaoPlaceholder(formData: FormData) {
     create: {
       kakaoId,
       displayName,
-      role: legacyUserRole,
       accountType: AccountType.REAL_USER,
       isManagedAccount: false,
       isActive: true,

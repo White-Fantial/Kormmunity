@@ -80,6 +80,18 @@ enum NotificationType {
   BEST_COMMENT_SELECTED
   POST_HELD
   COMMENT_HELD
+  AD_PROPOSAL_SUBMITTED
+  AD_CAMPAIGN_REVIEW_REQUESTED
+  AD_CAMPAIGN_APPROVED
+  AD_CAMPAIGN_CHANGES_REQUESTED
+}
+
+enum NotificationTargetType {
+  POST
+  COMMENT
+  AD_PROPOSAL
+  AD_CAMPAIGN
+  SYSTEM
 }
 
 enum KakaoMessageDeliveryStatus {
@@ -172,6 +184,12 @@ enum AdContentStatus {
   REJECTED
 }
 
+enum PartnerIncentiveStatus {
+  DRAFT
+  CONFIRMED
+  PAID
+}
+
 model User {
   id                   String             @id @default(cuid())
   kakaoId              String             @unique
@@ -185,7 +203,6 @@ model User {
   openChatUrl          String?
   cityId               String?
   countryId            String?
-  role                 UserRole           @default(USER)
   accountType          AccountType        @default(REAL_USER)
   isManagedAccount     Boolean            @default(false)
   isActive             Boolean            @default(true)
@@ -228,7 +245,12 @@ model User {
   adContentsCreated AdContent[] @relation("AdContentCreatedBy")
   adContentsReviewed AdContent[] @relation("AdContentReviewedBy")
   reviewedAdCampaigns AdCampaign[] @relation("AdCampaignReviewedBy")
+  priceConfirmedAdCampaigns AdCampaign[] @relation("AdCampaignPriceConfirmedBy")
+  sourcedAdCampaigns AdCampaign[] @relation("AdCampaignSourcedBy")
   adAuditLogs AdAuditLog[] @relation("AdAuditActor")
+  partnerIncentives PartnerIncentive[] @relation("PartnerIncentivePartner")
+  confirmedIncentives PartnerIncentive[] @relation("PartnerIncentiveConfirmedBy")
+  paidIncentives PartnerIncentive[] @relation("PartnerIncentivePaidBy")
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 }
@@ -365,7 +387,6 @@ model Post {
   savedBy         SavedPost[]
   views           PostView[]
   scoreEvents     CommunityScoreEvent[]
-  adCampaigns     AdCampaign[]
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   publishedAt     DateTime?    @default(now())
@@ -637,15 +658,19 @@ model CommunityScoreEvent {
 }
 
 model Notification {
-  id              String           @id @default(cuid())
-  recipientId     String
-  type            NotificationType
-  isRead          Boolean          @default(false)
-  relatedPostId   String?
+  id               String                 @id @default(cuid())
+  recipientId      String
+  type             NotificationType
+  isRead           Boolean                @default(false)
+  relatedPostId    String?
   relatedCommentId String?
-  actorId         String?
-  createdAt       DateTime         @default(now())
-  recipient       User             @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  targetType       NotificationTargetType @default(SYSTEM)
+  targetId         String?
+  targetUrl        String?
+  metadata         Json?
+  actorId          String?
+  createdAt        DateTime               @default(now())
+  recipient        User                   @relation(fields: [recipientId], references: [id], onDelete: Cascade)
 
   @@index([recipientId, isRead, createdAt(sort: Desc)])
   @@index([recipientId, createdAt(sort: Desc)])
@@ -710,7 +735,6 @@ model AdProduct {
 model AdCampaign {
   id              String           @id @default(cuid())
   advertiserId    String?
-  postId          String?
   adContentId     String?
   adProductId     String
   status          AdCampaignStatus @default(DRAFT)
@@ -721,21 +745,28 @@ model AdCampaign {
   targetCountryId String?
   targetCityId    String?
   estimatedAmount Decimal?          @db.Decimal(10, 2)
+  proposedAmount  Decimal?          @db.Decimal(10, 2)
   finalAmount     Decimal?          @db.Decimal(10, 2)
   billingStatus   AdBillingStatus   @default(DRAFT)
   pricingSnapshot Json?
+  pricingConfirmationSnapshot Json?
+  priceAdjustmentReason String?
+  priceConfirmedByUserId String?
+  priceConfirmedAt DateTime?
   landingUrl      String?
   notes           String?
   reviewNotes     String?
   reviewedByUserId String?
   reviewedAt      DateTime?
-  post            Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  sourcedByUserId String?
   adContent       AdContent?       @relation(fields: [adContentId], references: [id], onDelete: Cascade)
   advertiser      Advertiser?      @relation(fields: [advertiserId], references: [id], onDelete: SetNull)
   adProduct       AdProduct        @relation(fields: [adProductId], references: [id])
   targetCountry   Country?         @relation("AdCampaignTargetCountry", fields: [targetCountryId], references: [id])
   targetCity      City?            @relation("AdCampaignTargetCity", fields: [targetCityId], references: [id])
   reviewedByUser  User?            @relation("AdCampaignReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  priceConfirmedByUser User?       @relation("AdCampaignPriceConfirmedBy", fields: [priceConfirmedByUserId], references: [id], onDelete: SetNull)
+  sourcedByUser   User?            @relation("AdCampaignSourcedBy", fields: [sourcedByUserId], references: [id], onDelete: SetNull)
   impressions     AdImpression[]
   clicks          AdClick[]
   dailyStats      AdDailyStat[]
@@ -747,10 +778,10 @@ model AdCampaign {
   @@index([status, startAt, endAt, targetCountryId, targetCityId])
   @@index([adProductId, status])
   @@index([advertiserId, status])
-  @@index([postId, status])
   @@index([adContentId, status])
   @@index([targetCountryId, status])
   @@index([targetCityId, status])
+  @@index([sourcedByUserId, status])
 }
 
 model AdPlacementRule {
@@ -767,8 +798,7 @@ model AdPlacementRule {
 model AdImpression {
   id                String          @id @default(cuid())
   campaignId        String
-  postId            String?
-  adContentId       String?
+  adContentId       String
   placementType     AdPlacementType
   pageKey           String
   positionIndex     Int
@@ -776,9 +806,7 @@ model AdImpression {
   viewerFingerprint String?
   viewedAt          DateTime        @default(now())
   campaign          AdCampaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-
   @@index([campaignId, viewedAt])
-  @@index([postId, viewedAt])
   @@index([adContentId, viewedAt])
   @@index([viewedAt])
 }
@@ -786,16 +814,13 @@ model AdImpression {
 model AdClick {
   id                String     @id @default(cuid())
   campaignId        String
-  postId            String?
-  adContentId       String?
+  adContentId       String
   impressionId      String?
   viewerUserId      String?
   viewerFingerprint String?
   clickedAt         DateTime   @default(now())
   campaign          AdCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-
   @@index([campaignId, clickedAt])
-  @@index([postId, clickedAt])
   @@index([adContentId, clickedAt])
   @@index([clickedAt])
 }
@@ -830,18 +855,6 @@ model AdGeoPricing {
   @@index([countryId, isActive, effectiveFrom, effectiveTo])
 }
 
-model AdPlacementPricing {
-  id            String          @id @default(cuid())
-  placementType AdPlacementType
-  multiplier    Decimal         @db.Decimal(8, 4)
-  isActive      Boolean         @default(true)
-  effectiveFrom DateTime?
-  effectiveTo   DateTime?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-
-  @@index([placementType, isActive, effectiveFrom, effectiveTo])
-}
 
 model StaffAssignment {
   id        String    @id @default(cuid())
@@ -979,4 +992,30 @@ model AdAuditLog {
   @@index([proposalId, createdAt])
   @@index([adContentId, createdAt])
   @@index([advertiserId, createdAt])
+}
+
+model PartnerIncentive {
+  id                String                 @id @default(cuid())
+  partnerUserId     String
+  periodStart       DateTime
+  periodEnd         DateTime
+  totalSalesAmount  Decimal                @db.Decimal(10, 2)
+  incentiveRate     Decimal                @db.Decimal(8, 4)
+  incentiveAmount   Decimal                @db.Decimal(10, 2)
+  currency          String                 @default("NZD")
+  status            PartnerIncentiveStatus @default(DRAFT)
+  notes             String?
+  paidAt            DateTime?
+  confirmedByUserId String?
+  paidByUserId      String?
+  campaignSnapshots Json?
+  partnerUser       User                   @relation("PartnerIncentivePartner", fields: [partnerUserId], references: [id])
+  confirmedByUser   User?                  @relation("PartnerIncentiveConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+  paidByUser        User?                  @relation("PartnerIncentivePaidBy", fields: [paidByUserId], references: [id], onDelete: SetNull)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  @@index([partnerUserId, status])
+  @@index([partnerUserId, periodStart, periodEnd])
+  @@index([status, createdAt(sort: Desc)])
 }
