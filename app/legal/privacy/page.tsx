@@ -89,7 +89,7 @@ export default function PrivacyPage() {
           <ul className="list-disc space-y-1 pl-5">
             <li><strong>카카오</strong>: OAuth 로그인, 카카오톡 알림 메시지 발송</li>
             <li><strong>Cloudinary 또는 유사 이미지 저장 서비스</strong>: 게시글 이미지 업로드 및 저장</li>
-            <li><strong>AWS Amplify 또는 유사 호스팅 서비스</strong>: 서버 및 데이터베이스 운영</li>
+            <li><strong>AWS Amplify + Amazon RDS (PostgreSQL)</strong>: 웹 애플리케이션 및 데이터베이스 운영</li>
           </ul>
         </section>
 

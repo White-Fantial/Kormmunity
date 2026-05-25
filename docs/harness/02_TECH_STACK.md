@@ -4,17 +4,17 @@
 - Framework: Next.js App Router
 - Language: TypeScript
 - Styling: Tailwind CSS
-- Database: PostgreSQL
+- Database: Amazon RDS for PostgreSQL
 - ORM: Prisma
 - Auth: NextAuth/Auth.js with Kakao provider, or custom Kakao OAuth flow
 - Image Upload: Cloudinary free tier, UploadThing, Supabase Storage, or S3-compatible storage
-- Hosting: AWS Amplify (권장), or similar
+- Hosting: AWS Amplify
 
 ## Suggested MVP Choices
 초기 MVP에서는 다음 조합을 권장한다:
 
 - Next.js App Router
-- Prisma + PostgreSQL
+- Prisma + Amazon RDS for PostgreSQL
 - Kakao OAuth login
 - Cloudinary free tier for image upload
 - Tailwind CSS
