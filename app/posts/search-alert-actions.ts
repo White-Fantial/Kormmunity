@@ -8,6 +8,7 @@ import { prisma } from '@/lib/db/prisma';
 import { normalizeInternalPath } from '@/lib/posts/profile-city';
 
 const MAX_QUERY_LENGTH = 100;
+const MAX_SAVED_SEARCH_ALERTS_PER_USER = 20;
 
 function normalizeText(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value.trim() : '';
@@ -50,6 +51,32 @@ export async function saveSearchAlertAction(formData: FormData) {
 
   if (queryValidationMessage) {
     redirect(buildRedirectUrl(returnTo, 'error', queryValidationMessage));
+  }
+
+  const existingAlert = await prisma.searchAlert.findUnique({
+    where: {
+      userId_query: {
+        userId: user.id,
+        query,
+      },
+    },
+    select: { id: true },
+  });
+
+  if (!existingAlert) {
+    const savedAlertCount = await prisma.searchAlert.count({
+      where: { userId: user.id },
+    });
+
+    if (savedAlertCount >= MAX_SAVED_SEARCH_ALERTS_PER_USER) {
+      redirect(
+        buildRedirectUrl(
+          returnTo,
+          'error',
+          `검색 조건은 최대 ${MAX_SAVED_SEARCH_ALERTS_PER_USER}개까지 저장할 수 있어요.`,
+        ),
+      );
+    }
   }
 
   await prisma.searchAlert.upsert({
