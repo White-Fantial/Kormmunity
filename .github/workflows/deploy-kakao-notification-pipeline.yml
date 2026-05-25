@@ -1,0 +1,70 @@
+name: Deploy Kakao notification pipeline
+
+on:
+  push:
+    branches:
+      - staging
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Deploy target environment (staging or main)
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      AWS_REGION: ap-southeast-2
+      PROJECT_NAME: kormmunity
+      DEPLOY_ENV: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || github.ref_name }}
+    environment: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build SAM app
+        run: sam build --template-file infrastructure/sam/kakao-notification-pipeline.yaml
+
+      - name: Deploy SAM stack
+        run: |
+          sam deploy \
+            --template-file .aws-sam/build/template.yaml \
+            --stack-name "${PROJECT_NAME}-${DEPLOY_ENV}-kakao-notification-pipeline" \
+            --capabilities CAPABILITY_IAM \
+            --resolve-s3 \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+              ProjectName="${PROJECT_NAME}" \
+              EnvironmentName="${DEPLOY_ENV}" \
+              DatabaseUrl="${{ secrets.DATABASE_URL }}" \
+              SiteBaseUrl="${{ secrets.NEXT_PUBLIC_SITE_URL }}" \
+              KakaoClientId="${{ secrets.KAKAO_CLIENT_ID }}" \
+              KakaoClientSecret="${{ secrets.KAKAO_CLIENT_SECRET }}"
