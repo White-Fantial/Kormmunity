@@ -71,6 +71,10 @@ enum PermissionSubjectType {
 enum KakaoMessageDeliveryType {
   SEARCH_ALERT
   COMMENT_NOTIFICATION
+  AD_PROPOSAL_SUBMITTED
+  AD_CAMPAIGN_REVIEW_REQUESTED
+  AD_CAMPAIGN_APPROVED
+  AD_CAMPAIGN_CHANGES_REQUESTED
 }
 
 enum NotificationType {
@@ -617,6 +621,7 @@ model KakaoMessageDelivery {
   id               String                     @id @default(cuid())
   deliveryType     KakaoMessageDeliveryType
   recipientUserId  String
+  dedupeKey        String?                    @unique
   messageText      String
   targetUrl        String?
   status           KakaoMessageDeliveryStatus @default(PENDING)
