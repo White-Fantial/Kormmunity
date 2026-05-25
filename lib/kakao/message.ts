@@ -380,7 +380,11 @@ export async function processSearchMatchPostCreatedEvent(post: NotifyPostInput) 
   let cursorId: string | null = null;
 
   while (true) {
-    const alerts = await prisma.searchAlert.findMany({
+    const alerts: Array<{
+      id: string;
+      query: string;
+      user: DeliveryRecipient;
+    }> = await prisma.searchAlert.findMany({
       where: {
         user: { notifyOnKakaoForSearchAlert: true },
       },
@@ -410,9 +414,11 @@ export async function processSearchMatchPostCreatedEvent(post: NotifyPostInput) 
       break;
     }
 
-    const matchingAlerts = alerts.filter((alert) => matchesAlertQuery(post, alert.query));
+    const matchingAlerts = alerts.filter((alert: { query: string }) =>
+      matchesAlertQuery(post, alert.query),
+    );
     const results = await Promise.allSettled(
-      matchingAlerts.map(async (alert) => {
+      matchingAlerts.map(async (alert: { query: string; user: DeliveryRecipient }) => {
         const dedupeKey = `SEARCH_ALERT:${post.id}:${alert.user.id}:${normalizeText(alert.query)}`;
         const delivery = await findOrCreateDeliveryByDedupeKey({
           dedupeKey,
