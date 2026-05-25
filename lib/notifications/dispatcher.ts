@@ -1,5 +1,11 @@
 import { prisma } from '@/lib/db/prisma';
 import { createNotification } from '@/lib/notifications';
+import {
+  enqueueAdCampaignApprovedNotificationEvent,
+  enqueueAdCampaignChangesRequestedNotificationEvent,
+  enqueueAdCampaignReviewRequestedNotificationEvent,
+  enqueueAdProposalSubmittedNotificationEvent,
+} from '@/lib/notifications/kakao-pipeline';
 
 const DEFAULT_DEDUPE_WINDOW_SECONDS = 300;
 
@@ -84,6 +90,12 @@ export async function dispatchAdProposalSubmittedNotification(params: {
     actorId: params.actorId,
     metadata: { advertiserId: params.advertiserId },
   });
+
+  await enqueueAdProposalSubmittedNotificationEvent({
+    proposalId: params.proposalId,
+    advertiserId: params.advertiserId,
+    actorId: params.actorId,
+  });
 }
 
 export async function dispatchAdCampaignReviewRequestedNotification(params: {
@@ -102,6 +114,12 @@ export async function dispatchAdCampaignReviewRequestedNotification(params: {
     targetUrl: `/advertiser-member/campaigns?campaignId=${params.campaignId}`,
     actorId: params.actorId,
     metadata: { advertiserId: params.advertiserId },
+  });
+
+  await enqueueAdCampaignReviewRequestedNotificationEvent({
+    campaignId: params.campaignId,
+    advertiserId: params.advertiserId,
+    actorId: params.actorId,
   });
 }
 
@@ -125,5 +143,20 @@ export async function dispatchAdCampaignReviewedByMemberNotification(params: {
     targetUrl: `/ads-manager/campaigns?campaignId=${params.campaignId}`,
     actorId: params.actorId,
     metadata: { advertiserId: params.advertiserId, action: params.action },
+  });
+
+  if (params.action === 'APPROVE') {
+    await enqueueAdCampaignApprovedNotificationEvent({
+      campaignId: params.campaignId,
+      advertiserId: params.advertiserId,
+      actorId: params.actorId,
+    });
+    return;
+  }
+
+  await enqueueAdCampaignChangesRequestedNotificationEvent({
+    campaignId: params.campaignId,
+    advertiserId: params.advertiserId,
+    actorId: params.actorId,
   });
 }

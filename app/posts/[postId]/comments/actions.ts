@@ -7,7 +7,6 @@ import { trackServerEvent } from '@/lib/analytics/server';
 import { assertNoSpamText, enforceRateLimit } from '@/lib/abuse/guard';
 import { requireUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
-import { notifyCommentForPost } from '@/lib/kakao/message';
 import { canCreateComment, canDeleteComment, canReportComment, isAdmin } from '@/lib/permissions';
 import {
   adjustNeighbourWarmth,
@@ -16,6 +15,7 @@ import {
   applyCommunityScoreChange,
 } from '@/lib/community-score';
 import { createNotification } from '@/lib/notifications';
+import { enqueueCommentCreatedNotificationEvent } from '@/lib/notifications/kakao-pipeline';
 import { getWarmthConfig } from '@/lib/reputation-settings';
 import { canActorUseAuthorForScope } from '@/lib/posts/author-account-options';
 
@@ -178,14 +178,17 @@ async function createComment(
   });
 
   if (post.authorId !== resolvedAuthor.id) {
-    void notifyCommentForPost({
+    void enqueueCommentCreatedNotificationEvent({
       postId,
+      commentId: comment.id,
       postTitle: post.title,
       postBody: post.body,
+      postAuthorId: post.authorId,
+      commentAuthorId: resolvedAuthor.id,
       commenterDisplayName: resolvedAuthor.displayName,
       commentBody: body,
     }).catch((error) => {
-      console.error('[createCommentAction] failed to send comment notification', error);
+      console.error('[createCommentAction] failed to enqueue comment-created notification event', error);
     });
 
     void createNotification({

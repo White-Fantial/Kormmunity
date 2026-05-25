@@ -15,6 +15,15 @@ import { canModerate } from '@/lib/permissions';
 
 export const dynamic = 'force-dynamic';
 
+const DELIVERY_TYPE_LABEL: Record<string, string> = {
+  SEARCH_ALERT: '검색 알림',
+  COMMENT_NOTIFICATION: '댓글 알림',
+  AD_PROPOSAL_SUBMITTED: '광고 제안 알림',
+  AD_CAMPAIGN_REVIEW_REQUESTED: '광고 리뷰 요청',
+  AD_CAMPAIGN_APPROVED: '광고 승인 알림',
+  AD_CAMPAIGN_CHANGES_REQUESTED: '광고 수정요청 알림',
+};
+
 type CoordinatorKakaoMessagesPageProps = {
   searchParams: Promise<{ status?: string; error?: string; success?: string }>;
 };
@@ -113,7 +122,7 @@ export default async function CoordinatorKakaoMessagesPage({
               <li key={delivery.id} className="space-y-2 rounded-xl border border-[#e8e8e8] p-3">
                 <div className="flex flex-wrap gap-2 text-xs">
                   <span className="rounded-full bg-[#eef2ff] px-2 py-0.5 text-[#3730a3]">
-                    {delivery.deliveryType === 'SEARCH_ALERT' ? '검색 알림' : '댓글 알림'}
+                    {DELIVERY_TYPE_LABEL[delivery.deliveryType] ?? delivery.deliveryType}
                   </span>
                   <span
                     className={`rounded-full px-2 py-0.5 ${

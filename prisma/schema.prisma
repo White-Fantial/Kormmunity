@@ -71,6 +71,37 @@ enum PermissionSubjectType {
 enum KakaoMessageDeliveryType {
   SEARCH_ALERT
   COMMENT_NOTIFICATION
+  AD_PROPOSAL_SUBMITTED
+  AD_CAMPAIGN_REVIEW_REQUESTED
+  AD_CAMPAIGN_APPROVED
+  AD_CAMPAIGN_CHANGES_REQUESTED
+}
+
+enum NotificationEventType {
+  POST_CREATED
+  COMMENT_CREATED
+  AD_PROPOSAL_SUBMITTED
+  AD_CAMPAIGN_REVIEW_REQUESTED
+  AD_CAMPAIGN_APPROVED
+  AD_CAMPAIGN_CHANGES_REQUESTED
+}
+
+enum NotificationEventStatus {
+  PENDING
+  PROCESSING
+  RESOLVED
+  FAILED
+}
+
+enum NotificationDeliveryChannel {
+  KAKAO
+}
+
+enum NotificationDeliveryIntentStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
 }
 
 enum NotificationType {
@@ -232,6 +263,7 @@ model User {
   commentLikes         CommentLike[]
   postPermissions      PostPermission[]
   kakaoMessageDeliveries KakaoMessageDelivery[]
+  notificationDeliveryIntents NotificationDeliveryIntent[] @relation("DeliveryIntentRecipient")
   notifications        Notification[]
   reviewedPostReports  PostReport[]         @relation("PostReportReviewer")
   reviewedCommentReports CommentReport[]    @relation("CommentReportReviewer")
@@ -634,6 +666,52 @@ model KakaoMessageDelivery {
   @@index([status, createdAt(sort: Desc)])
   @@index([recipientUserId, createdAt(sort: Desc)])
   @@index([deliveryType, createdAt(sort: Desc)])
+}
+
+model NotificationEvent {
+  id                String                 @id @default(cuid())
+  eventType         NotificationEventType
+  payload           Json
+  status            NotificationEventStatus @default(PENDING)
+  processingStartedAt DateTime?
+  resolvedAt        DateTime?
+  failedAt          DateTime?
+  errorMessage      String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  deliveryIntents   NotificationDeliveryIntent[]
+
+  @@index([status, createdAt(sort: Asc)])
+  @@index([eventType, createdAt(sort: Desc)])
+}
+
+model NotificationDeliveryIntent {
+  id                String                           @id @default(cuid())
+  eventId           String
+  channel           NotificationDeliveryChannel      @default(KAKAO)
+  recipientUserId   String
+  templateType      KakaoMessageDeliveryType
+  messageText       String
+  targetUrl         String?
+  relatedPostId     String?
+  searchQuery       String?
+  dedupeKey         String
+  status            NotificationDeliveryIntentStatus @default(PENDING)
+  attemptCount      Int                              @default(0)
+  processingStartedAt DateTime?
+  sentAt            DateTime?
+  failedAt          DateTime?
+  errorMessage      String?
+  kakaoDeliveryId   String?
+  createdAt         DateTime                         @default(now())
+  updatedAt         DateTime                         @updatedAt
+  event             NotificationEvent                @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  recipientUser     User                             @relation("DeliveryIntentRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  @@unique([dedupeKey])
+  @@index([status, createdAt(sort: Asc)])
+  @@index([recipientUserId, createdAt(sort: Desc)])
+  @@index([eventId, createdAt(sort: Desc)])
 }
 
 model CommunityScoreEvent {

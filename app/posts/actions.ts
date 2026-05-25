@@ -9,7 +9,7 @@ import { requireUser } from '@/lib/auth/session';
 import { trackServerEvent } from '@/lib/analytics/server';
 import { assertNoSpamText, enforceRateLimit } from '@/lib/abuse/guard';
 import { prisma } from '@/lib/db/prisma';
-import { notifySearchAlertsForPost } from '@/lib/kakao/message';
+import { enqueuePostCreatedNotificationEvent } from '@/lib/notifications/kakao-pipeline';
 import {
   extractKakaoOpenLink,
   INVALID_KAKAO_OPEN_LINK_MESSAGE_KO,
@@ -405,14 +405,14 @@ export async function createPostAction(formData: FormData) {
     return post.id;
   });
 
-  void notifySearchAlertsForPost({
-    id: postId,
+  void enqueuePostCreatedNotificationEvent({
+    postId,
     title: title || null,
     body,
     authorDisplayName: resolvedAuthor.displayName,
     imageUrl: uploadedImages[0]?.url ?? null,
   }).catch((error) => {
-    console.error('[createPostAction] failed to send search alerts', error);
+    console.error('[createPostAction] failed to enqueue post-created notification event', error);
   });
 
   trackServerEvent('post_created', {

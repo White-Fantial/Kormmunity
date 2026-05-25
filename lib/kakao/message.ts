@@ -30,7 +30,7 @@ type NotifyCommentInput = {
   commentBody: string;
 };
 
-type DeliveryRecipient = {
+export type DeliveryRecipient = {
   id: string;
   kakaoAccessToken: string | null;
   kakaoRefreshToken: string | null;
@@ -46,7 +46,7 @@ function normalizeText(value: string) {
   return value.trim().toLowerCase();
 }
 
-function truncateText(value: string, maxLength: number) {
+export function truncateText(value: string, maxLength: number) {
   if (value.length <= maxLength) {
     return value;
   }
@@ -68,7 +68,7 @@ function normalizeSiteUrl(value: string) {
   }
 }
 
-function getSiteBaseUrl() {
+export function getSiteBaseUrl() {
   const explicitSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
   if (explicitSiteUrl) {
     return normalizeSiteUrl(explicitSiteUrl);
@@ -180,7 +180,7 @@ async function sendKakaoMemo(accessToken: string, text: string, url: string) {
   }
 }
 
-async function attemptKakaoMessageDelivery(params: {
+export async function attemptKakaoMessageDelivery(params: {
   deliveryId: string;
   recipient: DeliveryRecipient;
   messageText: string;
