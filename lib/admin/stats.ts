@@ -67,6 +67,10 @@ function getLocalDayOfMonth(date: Date, timezone: string): number {
   return parseInt(dateStr.split('-')[2], 10);
 }
 
+function formatLocalDateKey(date: Date, timezone: string): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(date);
+}
+
 export type DateRangeResult = {
   start: Date;
   end: Date;
@@ -199,6 +203,14 @@ export type DashboardStats = {
   kakao: {
     recentFailed: KakaoDeliverySummary[];
   };
+
+  // Visitor overview
+  visitors: {
+    totalViewsInRange: number;
+    totalViewsToday: number;
+    topPaths: { path: string; viewCount: number }[];
+    dailyTrend: { date: string; viewCount: number }[];
+  };
 };
 
 const POST_SELECT = {
@@ -218,11 +230,15 @@ export async function getDashboardStats(range: DashboardRange): Promise<Dashboar
 
   const now = new Date();
   const fiveMinutesAgo = new Date(now.getTime() - 5 * 60_000);
+  const oneDayMs = 86_400_000;
 
   // For Kakao today stats (always "today" regardless of selected range)
   const { start: todayStart, end: todayEnd } = buildDateRange('today');
   // For "this week" comment stats (always current week)
   const { start: weekStart, end: weekEnd } = buildDateRange('week');
+  const pageViewRangeStart = getLocalDayStart(start, SERVICE_TIMEZONE);
+  const pageViewRangeEnd = getLocalDayStart(end, SERVICE_TIMEZONE);
+  const trendStart = new Date(todayStart.getTime() - oneDayMs * 6);
 
   const [
     postsCreated,
@@ -236,6 +252,10 @@ export async function getDashboardStats(range: DashboardRange): Promise<Dashboar
     kakaoLongPending,
     kakaoFailedInRange,
     kakaoSuccessInRange,
+    pageViewsInRangeAggregate,
+    pageViewsTodayAggregate,
+    topPathsRaw,
+    dailyTrendRaw,
 
     recentPosts,
     mostViewedPosts,
@@ -274,6 +294,27 @@ export async function getDashboardStats(range: DashboardRange): Promise<Dashboar
     }),
     prisma.kakaoMessageDelivery.count({
       where: { status: 'SUCCESS', createdAt: rangeWhere(todayStart, todayEnd) },
+    }),
+    prisma.pageViewDailyStat.aggregate({
+      where: { date: { gte: pageViewRangeStart, lte: pageViewRangeEnd } },
+      _sum: { viewCount: true },
+    }),
+    prisma.pageViewDailyStat.aggregate({
+      where: { date: todayStart },
+      _sum: { viewCount: true },
+    }),
+    prisma.pageViewDailyStat.groupBy({
+      by: ['path'],
+      where: { date: { gte: pageViewRangeStart, lte: pageViewRangeEnd } },
+      _sum: { viewCount: true },
+      orderBy: { _sum: { viewCount: 'desc' } },
+      take: 10,
+    }),
+    prisma.pageViewDailyStat.groupBy({
+      by: ['date'],
+      where: { date: { gte: trendStart, lte: todayStart } },
+      _sum: { viewCount: true },
+      orderBy: { date: 'asc' },
     }),
 
     // ── Content overview ───────────────────────────────────────────────────────
@@ -563,6 +604,26 @@ export async function getDashboardStats(range: DashboardRange): Promise<Dashboar
   ];
   combinedReports.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
+  const topPaths = topPathsRaw.map((item) => ({
+    path: item.path,
+    viewCount: item._sum.viewCount ?? 0,
+  }));
+
+  const dailyTrendCountByDate = new Map(
+    dailyTrendRaw.map((item) => [
+      formatLocalDateKey(item.date, SERVICE_TIMEZONE),
+      item._sum.viewCount ?? 0,
+    ]),
+  );
+  const dailyTrend = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(trendStart.getTime() + index * oneDayMs);
+    const key = formatLocalDateKey(date, SERVICE_TIMEZONE);
+    return {
+      date: key,
+      viewCount: dailyTrendCountByDate.get(key) ?? 0,
+    };
+  });
+
   return {
     rangeLabel: label,
     rangeStart: start,
@@ -604,6 +665,12 @@ export async function getDashboardStats(range: DashboardRange): Promise<Dashboar
 
     kakao: {
       recentFailed: kakaoRecentFailed,
+    },
+    visitors: {
+      totalViewsInRange: pageViewsInRangeAggregate._sum.viewCount ?? 0,
+      totalViewsToday: pageViewsTodayAggregate._sum.viewCount ?? 0,
+      topPaths,
+      dailyTrend,
     },
   };
 }

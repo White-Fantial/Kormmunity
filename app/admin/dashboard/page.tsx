@@ -108,6 +108,8 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
           <KpiCard label="댓글 생성" value={stats.kpi.commentsCreated} />
           <KpiCard label="신규 사용자" value={stats.kpi.newUsers} />
           <KpiCard label="신고 접수" value={stats.kpi.reportsCreated} />
+          <KpiCard label={`페이지뷰 (${stats.rangeLabel})`} value={stats.visitors.totalViewsInRange} />
+          <KpiCard label="페이지뷰 (오늘)" value={stats.visitors.totalViewsToday} />
           <KpiCard
             label="미확정 신고 (전체)"
             value={stats.kpi.pendingReports}
@@ -122,6 +124,57 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
             note="5분 이상 PENDING"
           />
         </div>
+      </div>
+
+      {/* ── Visitor overview ─────────────────────────────────────────────────── */}
+      <div className="space-y-4">
+        <h2 className="text-sm font-semibold text-[#555]">방문자 현황</h2>
+
+        <SectionCard title={`상위 방문 경로 Top 10 (${stats.rangeLabel})`}>
+          {stats.visitors.topPaths.length === 0 ? (
+            <EmptyNote text="방문 경로 데이터가 없습니다." />
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-[#888]">
+                  <th className="pb-2 font-medium">경로</th>
+                  <th className="pb-2 font-medium text-right">페이지뷰</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#f0f0f0]">
+                {stats.visitors.topPaths.map((item) => (
+                  <tr key={item.path}>
+                    <td className="max-w-0 truncate py-1.5 pr-2">{item.path}</td>
+                    <td className="py-1.5 text-right tabular-nums">{item.viewCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </SectionCard>
+
+        <SectionCard title="최근 7일 일별 페이지뷰">
+          {stats.visitors.dailyTrend.length === 0 ? (
+            <EmptyNote text="방문 추이 데이터가 없습니다." />
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-[#888]">
+                  <th className="pb-2 font-medium">날짜</th>
+                  <th className="pb-2 font-medium text-right">페이지뷰</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#f0f0f0]">
+                {stats.visitors.dailyTrend.map((item) => (
+                  <tr key={item.date}>
+                    <td className="py-1.5 pr-2">{item.date}</td>
+                    <td className="py-1.5 text-right tabular-nums">{item.viewCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </SectionCard>
       </div>
 
       {/* ── Content overview ────────────────────────────────────────────────── */}

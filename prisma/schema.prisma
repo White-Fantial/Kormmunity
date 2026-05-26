@@ -458,6 +458,18 @@ model PostView {
   @@index([viewedAt, postId])
 }
 
+model PageViewDailyStat {
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date
+  path      String
+  viewCount Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([date, path])
+  @@index([date(sort: Desc)])
+}
+
 model ReportOption {
   id             String          @id @default(cuid())
   label          String          @unique
