@@ -23,7 +23,7 @@ Non-search events (comments, ad notifications) directly enqueue into `kakao-send
 - `KAKAO_USE_SEARCH_MATCHER_LAMBDA=true`
 - `KAKAO_SEARCH_MATCH_QUEUE_URL=<search match queue url>`
 - `KAKAO_SEND_QUEUE_URL=<kakao send queue url>`
-- `AWS_REGION=<aws region>`
+- `AMAZON_WEB_SERVICE_REGION=<aws region>`
 
 ## SQS Recommended Configuration
 

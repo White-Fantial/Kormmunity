@@ -23,7 +23,7 @@ jobs:
       id-token: write
       contents: read
     env:
-      AWS_REGION: ap-southeast-2
+      AMAZON_WEB_SERVICE_REGION: ap-southeast-2
       PROJECT_NAME: kormmunity
       DEPLOY_ENV: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || github.ref_name }}
     environment: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || github.ref_name }}
@@ -47,7 +47,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ env.AMAZON_WEB_SERVICE_REGION }}
 
       - name: Build SAM app
         run: sam build --template-file infrastructure/sam/kakao-notification-pipeline.yaml
