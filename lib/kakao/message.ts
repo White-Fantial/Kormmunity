@@ -439,7 +439,7 @@ export async function processSearchMatchPostCreatedEvent(post: NotifyPostInput) 
       break;
     }
 
-    const matchingAlerts = alerts.filter((alert: { query: string }) =>
+    const matchingAlerts = alerts.filter((alert: { query: string; user: DeliveryRecipient }) =>
       matchesAlertQuery(post, alert.query) &&
       !shouldSkipOwnSearchAlertNotification({
         postAuthorId: post.authorId,
