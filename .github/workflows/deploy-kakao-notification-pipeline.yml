@@ -40,6 +40,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Prepare Lambda build context
+        run: |
+          mkdir -p infrastructure/sam/kakao-notification-lambda/prisma
+          cp prisma/schema.prisma infrastructure/sam/kakao-notification-lambda/prisma/schema.prisma
+          npm ci --prefix infrastructure/sam/kakao-notification-lambda
+          npx prisma generate --schema infrastructure/sam/kakao-notification-lambda/prisma/schema.prisma
+
       - name: Setup SAM CLI
         uses: aws-actions/setup-sam@v2
 
@@ -51,6 +58,27 @@ jobs:
 
       - name: Build SAM app
         run: sam build --template-file infrastructure/sam/kakao-notification-pipeline.yaml
+
+      - name: Debug SAM build artifacts
+        run: |
+          echo "[debug] .aws-sam/build total size"
+          du -sh .aws-sam/build
+          echo "[debug] per-function size"
+          du -sh .aws-sam/build/* | sort -h
+          echo "[debug] largest files in .aws-sam/build"
+          find .aws-sam/build -type f -printf "%10s  %p\n" | sort -nr | head -n 40
+
+      - name: Verify Prisma runtime artifacts in Lambda bundles
+        run: |
+          for function_dir in SearchMatcherFunction KakaoSenderFunction; do
+            base=".aws-sam/build/${function_dir}"
+            echo "[debug] checking ${base}"
+            test -d "${base}/node_modules/@prisma/client"
+            test -d "${base}/node_modules/.prisma/client"
+            ls -lah "${base}/node_modules/@prisma/client" | head -n 20
+            ls -lah "${base}/node_modules/.prisma/client" | head -n 20
+            test -f "${base}/node_modules/.prisma/client/libquery_engine-rhel-openssl-3.0.x.so.node"
+          done
 
       - name: Deploy SAM stack
         run: |

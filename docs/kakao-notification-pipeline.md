@@ -42,6 +42,10 @@ Non-search events (comments, ad notifications) directly enqueue into `kakao-send
 SAM template:
 
 - `infrastructure/sam/kakao-notification-pipeline.yaml`
+- Lambda build context (minimal dependencies only):
+  - `infrastructure/sam/kakao-notification-lambda/`
+  - contains SAM esbuild entry points for `search-matcher.mjs` / `kakao-sender.mjs`
+  - includes only Lambda runtime dependencies (`@prisma/client`, `@aws-sdk/client-sqs`)
 
 GitHub Actions workflow:
 

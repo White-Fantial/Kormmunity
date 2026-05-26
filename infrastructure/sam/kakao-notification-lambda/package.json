@@ -1,0 +1,9 @@
+{
+  "name": "kakao-notification-lambda",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-sqs": "^3.1053.0",
+    "@prisma/client": "^6.19.3"
+  }
+}
