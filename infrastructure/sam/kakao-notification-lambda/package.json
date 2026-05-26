@@ -2,8 +2,14 @@
   "name": "kakao-notification-lambda",
   "private": true,
   "type": "module",
+  "scripts": {
+    "prisma:generate": "prisma generate --schema prisma/schema.prisma"
+  },
   "dependencies": {
     "@aws-sdk/client-sqs": "^3.1053.0",
     "@prisma/client": "^6.19.3"
+  },
+  "devDependencies": {
+    "prisma": "^6.19.3"
   }
 }
