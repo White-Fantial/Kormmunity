@@ -5,11 +5,11 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useRef,
   useState,
   useTransition,
+  type FormEvent,
   type ReactNode,
 } from 'react';
 import { useRouter } from 'next/navigation';
@@ -193,27 +193,84 @@ export function PostCommentComposer({
     unlockContact,
   } = usePostEngagement();
   const [state, setState] = useState(INITIAL_COMMENT_STATE);
-  const [isSubmitPending, startSubmitTransition] = useTransition();
+  const [commentSubmitPending, setCommentSubmitPending] = useState(false);
+  const [commentListRefreshing, setCommentListRefreshing] = useState(false);
   const [isDraftPending, startDraftTransition] = useTransition();
   const [authorUserIdOverride, setAuthorUserIdOverride] = useState('');
   const [draftMessage, setDraftMessage] = useState<string | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
-  const lastHandledCommentIdRef = useRef<string | null>(null);
+  const submitRequestSequenceRef = useRef(0);
+  const activeSubmitRequestIdRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    if (
-      state.status !== 'success' ||
-      !state.createdCommentId ||
-      state.createdCommentId === lastHandledCommentIdRef.current
-    ) {
-      return;
-    }
+  const handleSubmit = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (commentSubmitPending) {
+        return;
+      }
 
-    lastHandledCommentIdRef.current = state.createdCommentId;
-    unlockContact();
-    setCommentBody('');
-    router.refresh();
-  }, [router, setCommentBody, state.createdCommentId, state.status, unlockContact]);
+      const formData = new FormData(event.currentTarget);
+      const requestSequence = submitRequestSequenceRef.current + 1;
+      submitRequestSequenceRef.current = requestSequence;
+      const requestId = `comment-submit-${Date.now()}-${requestSequence}`;
+      activeSubmitRequestIdRef.current = requestId;
+
+      console.info(`[PostCommentComposer][${requestId}] submit started`);
+      setState(INITIAL_COMMENT_STATE);
+      setCommentSubmitPending(true);
+
+      try {
+        const result = await submitInteractiveCommentAction(formData);
+        if (activeSubmitRequestIdRef.current !== requestId) {
+          return;
+        }
+
+        console.info(
+          `[PostCommentComposer][${requestId}] API response received`,
+          result.status,
+          result.createdCommentId,
+        );
+        setState(result);
+
+        if (result.status !== 'success') {
+          console.error(`[PostCommentComposer][${requestId}] submit failed`, result.message);
+          return;
+        }
+
+        console.info(`[PostCommentComposer][${requestId}] comment created`, result.createdCommentId);
+        unlockContact();
+        setCommentBody('');
+        console.info(`[PostCommentComposer][${requestId}] refresh triggered`);
+        setCommentListRefreshing(true);
+        router.refresh();
+      } catch (error) {
+        if (activeSubmitRequestIdRef.current !== requestId) {
+          return;
+        }
+
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : '댓글 등록 중 오류가 발생했어요. 잠시 후 다시 시도해 주세요.';
+        console.error(`[PostCommentComposer][${requestId}] submit failed`, error);
+        setState({
+          status: 'error',
+          message: errorMessage,
+          createdCommentId: null,
+        });
+      } finally {
+        if (activeSubmitRequestIdRef.current !== requestId) {
+          return;
+        }
+
+        setCommentSubmitPending(false);
+        setCommentListRefreshing(false);
+        activeSubmitRequestIdRef.current = null;
+        console.info(`[PostCommentComposer][${requestId}] loading state reset`);
+      }
+    },
+    [commentSubmitPending, router, setCommentBody, unlockContact],
+  );
 
   if (!currentUserLoggedIn) {
     return (
@@ -231,16 +288,7 @@ export function PostCommentComposer({
     <form
       id={POST_COMMENT_COMPOSER_ID}
       className="space-y-2"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const formData = new FormData(event.currentTarget);
-
-        setState(INITIAL_COMMENT_STATE);
-        startSubmitTransition(async () => {
-          const result = await submitInteractiveCommentAction(formData);
-          setState(result);
-        });
-      }}
+      onSubmit={handleSubmit}
     >
       <input type="hidden" name="postId" value={postId} />
       <input type="hidden" name="authorUserIdOverride" value={authorUserIdOverride} />
@@ -351,12 +399,13 @@ export function PostCommentComposer({
 
       <button
         type="submit"
-        disabled={isSubmitPending}
-        aria-busy={isSubmitPending}
+        disabled={commentSubmitPending}
+        aria-busy={commentSubmitPending}
         className="rounded-xl bg-[#fee500] px-4 py-2 text-sm font-bold text-[#3c1e1e] hover:bg-[#f5db00] disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {isSubmitPending ? '등록 중...' : '댓글 작성'}
+        {commentSubmitPending ? '등록 중...' : '댓글 작성'}
       </button>
+      {commentListRefreshing ? <span className="sr-only">댓글 목록 새로고침 중</span> : null}
     </form>
   );
 }
