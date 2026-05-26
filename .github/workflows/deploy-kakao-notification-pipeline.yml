@@ -51,6 +51,9 @@ jobs:
           npm prune --prefix infrastructure/sam/kakao-notification-lambda --omit=dev
           rm -rf infrastructure/sam/kakao-notification-lambda/node_modules/prisma
           rm -rf infrastructure/sam/kakao-notification-lambda/node_modules/@prisma/engines
+          rm -f infrastructure/sam/kakao-notification-lambda/node_modules/.bin/prisma
+          rm -f infrastructure/sam/kakao-notification-lambda/node_modules/.bin/prisma.cmd
+          rm -f infrastructure/sam/kakao-notification-lambda/node_modules/.bin/prisma.ps1
           find infrastructure/sam/kakao-notification-lambda/node_modules/.prisma/client \
             -maxdepth 1 -type f -name 'query-engine-*' ! -name 'query-engine-rhel-openssl-3.0.x' -delete
           find infrastructure/sam/kakao-notification-lambda/node_modules/.prisma/client \
@@ -76,6 +79,15 @@ jobs:
           cp -R infrastructure/sam/kakao-notification-lambda/node_modules .aws-sam/build/SearchMatcherFunction/node_modules
           cp -R infrastructure/sam/kakao-notification-lambda/node_modules .aws-sam/build/KakaoSenderFunction/node_modules
 
+      - name: Sanitize Lambda runtime artifacts
+        run: |
+          for function_dir in SearchMatcherFunction KakaoSenderFunction; do
+            base=".aws-sam/build/${function_dir}"
+            rm -f "${base}/node_modules/.bin/prisma"
+            rm -f "${base}/node_modules/.bin/prisma.cmd"
+            rm -f "${base}/node_modules/.bin/prisma.ps1"
+          done
+
       - name: Debug SAM build artifacts
         run: |
           echo "[debug] .aws-sam/build total size"
@@ -90,6 +102,11 @@ jobs:
           for function_dir in SearchMatcherFunction KakaoSenderFunction; do
             base=".aws-sam/build/${function_dir}"
             echo "[debug] checking ${base}"
+            ls -la "${base}/node_modules/.bin" || true
+            ls -la "${base}/node_modules/@prisma/client" || true
+            ls -la "${base}/node_modules/.prisma/client" || true
+            find "${base}" -xtype l -print || true
+            du -sh "${base}" || true
             test -d "${base}/node_modules/@prisma/client"
             test -d "${base}/node_modules/.prisma/client"
             ls -lah "${base}/node_modules/@prisma/client" | head -n 20
