@@ -201,7 +201,7 @@ components/posts/
 - `AI_TEXT_MODEL` (선택, 기본값 `gpt-4o-mini`)
 - `AI_TEXT_API_BASE_URL` (선택, 기본값 `https://api.openai.com/v1`)
 - `AI_TEXT_TIMEOUT_MS` (선택, 기본값 20000)
-- `AWS_REGION` (SQS/Lambda 연동 시 권장)
+- `AMAZON_WEB_SERVICE_REGION` (SQS/Lambda 연동 시 권장, `AWS_REGION` 대체)
 - `KAKAO_USE_SQS_PIPELINE` (`true`면 카카오 전송을 SQS 기반으로 비동기 처리)
 - `KAKAO_USE_SEARCH_MATCHER_LAMBDA` (`true`면 게시글 검색 매칭을 별도 람다로 분리)
 - `KAKAO_SEARCH_MATCH_QUEUE_URL` (검색 매칭 큐 URL)

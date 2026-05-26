@@ -2,7 +2,12 @@ import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
-const sqs = new SQSClient({ region: process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION });
+const sqs = new SQSClient({
+  region:
+    process.env.AMAZON_WEB_SERVICE_REGION ??
+    process.env.AWS_REGION ??
+    process.env.AWS_DEFAULT_REGION,
+});
 const PREVIEW_LENGTH = 80;
 
 function normalizeText(value) {

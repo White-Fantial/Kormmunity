@@ -22,7 +22,10 @@ let sqsClient: SQSClient | null = null;
 
 function getSqsClient() {
   if (!sqsClient) {
-    const region = process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION;
+    const region =
+      process.env.AMAZON_WEB_SERVICE_REGION ??
+      process.env.AWS_REGION ??
+      process.env.AWS_DEFAULT_REGION;
     sqsClient = new SQSClient(region ? { region } : {});
   }
 
