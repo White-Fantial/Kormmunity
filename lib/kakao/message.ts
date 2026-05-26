@@ -2,6 +2,7 @@ import type { KakaoMessageDeliveryType } from '@prisma/client';
 
 import { prisma } from '@/lib/db/prisma';
 import { refreshKakaoAccessToken } from '@/lib/kakao/oauth';
+import { shouldSkipOwnSearchAlertNotification } from '@/lib/notifications/self-notification';
 import {
   enqueueKakaoSendDelivery,
   enqueueSearchMatchPostCreated,
@@ -26,7 +27,9 @@ export type NotifyPostInput = {
   id: string;
   title: string | null;
   body: string;
+  authorId: string;
   authorDisplayName: string;
+  createdByUserId: string;
   imageUrl: string | null;
 };
 
@@ -437,7 +440,12 @@ export async function processSearchMatchPostCreatedEvent(post: NotifyPostInput) 
     }
 
     const matchingAlerts = alerts.filter((alert: { query: string }) =>
-      matchesAlertQuery(post, alert.query),
+      matchesAlertQuery(post, alert.query) &&
+      !shouldSkipOwnSearchAlertNotification({
+        postAuthorId: post.authorId,
+        postCreatedByUserId: post.createdByUserId,
+        recipientUserId: alert.user.id,
+      }),
     );
     const results = await Promise.allSettled(
       matchingAlerts.map(async (alert: { query: string; user: DeliveryRecipient }) => {

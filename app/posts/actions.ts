@@ -409,7 +409,9 @@ export async function createPostAction(formData: FormData) {
     id: postId,
     title: title || null,
     body,
+    authorId: resolvedAuthor.id,
     authorDisplayName: resolvedAuthor.displayName,
+    createdByUserId: user.id,
     imageUrl: uploadedImages[0]?.url ?? null,
   }).catch((error) => {
     console.error('[createPostAction] failed to send search alerts', error);
