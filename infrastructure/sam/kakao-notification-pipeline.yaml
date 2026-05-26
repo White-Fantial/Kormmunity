@@ -71,8 +71,8 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub '${ProjectName}-${EnvironmentName}-search-matcher'
-      CodeUri: ../../
-      Handler: lambdas/search-matcher.handler
+      CodeUri: ./kakao-notification-lambda
+      Handler: search-matcher.handler
       Environment:
         Variables:
           DATABASE_URL: !Ref DatabaseUrl
@@ -95,13 +95,25 @@ Resources:
             Queue: !GetAtt SearchMatchQueue.Arn
             BatchSize: 10
             MaximumBatchingWindowInSeconds: 5
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - search-matcher.mjs
+        Format: esm
+        Target: es2022
+        Minify: true
+        Sourcemap: false
+        External:
+          - '@prisma/client'
+          - '@aws-sdk/client-sqs'
 
   KakaoSenderFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub '${ProjectName}-${EnvironmentName}-kakao-sender'
-      CodeUri: ../../
-      Handler: lambdas/kakao-sender.handler
+      CodeUri: ./kakao-notification-lambda
+      Handler: kakao-sender.handler
       Environment:
         Variables:
           DATABASE_URL: !Ref DatabaseUrl
@@ -123,6 +135,18 @@ Resources:
             Queue: !GetAtt KakaoSendQueue.Arn
             BatchSize: 10
             MaximumBatchingWindowInSeconds: 5
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - kakao-sender.mjs
+        Format: esm
+        Target: es2022
+        Minify: true
+        Sourcemap: false
+        External:
+          - '@prisma/client'
+          - '@aws-sdk/client-sqs'
 
   SearchMatchDlqAlarm:
     Type: AWS::CloudWatch::Alarm
