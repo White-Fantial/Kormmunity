@@ -343,7 +343,29 @@ async function maybeQueueOrSendDelivery(params: {
   }
 
   if (isKakaoQueuePipelineEnabled()) {
-    await enqueueKakaoSendDelivery(params.deliveryId);
+    const enqueuedAt = new Date();
+    try {
+      const { messageId } = await enqueueKakaoSendDelivery(params.deliveryId);
+      console.log('[kakao/queue] SQS enqueue success', {
+        deliveryId: params.deliveryId,
+        sqsMessageId: messageId ?? null,
+        queuedAt: enqueuedAt.toISOString(),
+      });
+    } catch (error) {
+      const errorMessage = formatErrorMessage(error);
+      console.error('[kakao/queue] SQS enqueue failed', {
+        deliveryId: params.deliveryId,
+        error: errorMessage,
+      });
+      await prisma.kakaoMessageDelivery.update({
+        where: { id: params.deliveryId },
+        data: {
+          status: 'FAILED',
+          errorMessage,
+          lastAttemptAt: enqueuedAt,
+        },
+      });
+    }
     return;
   }
 

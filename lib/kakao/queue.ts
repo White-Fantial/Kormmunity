@@ -72,7 +72,7 @@ export async function enqueueSearchMatchPostCreated(post: SearchMatchQueuePayloa
   );
 }
 
-export async function enqueueKakaoSendDelivery(deliveryId: string) {
+export async function enqueueKakaoSendDelivery(deliveryId: string): Promise<{ messageId: string | undefined }> {
   const queueUrl = getKakaoSendQueueUrl();
   if (!queueUrl) {
     throw new Error('KAKAO_SEND_QUEUE_URL is not configured.');
@@ -84,12 +84,14 @@ export async function enqueueKakaoSendDelivery(deliveryId: string) {
     createdAt: new Date().toISOString(),
   };
 
-  await getSqsClient().send(
+  const response = await getSqsClient().send(
     new SendMessageCommand({
       QueueUrl: queueUrl,
       MessageBody: JSON.stringify(payload),
     }),
   );
+
+  return { messageId: response.MessageId };
 }
 
 export type { SearchMatchQueuePayload, KakaoSendQueuePayload };
