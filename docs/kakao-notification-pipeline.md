@@ -47,6 +47,25 @@ SAM template:
   - contains SAM esbuild entry points for `search-matcher.mjs` / `kakao-sender.mjs`
   - includes only Lambda runtime dependencies (`@prisma/client`, `@aws-sdk/client-sqs`)
 
+### ES module packaging note
+
+The source Lambda files (`*.mjs`) use ES module syntax (`import`/`export`).
+SAM's esbuild build step outputs them as `*.js` (matching the Lambda handler name, e.g. `kakao-sender.handler` → `kakao-sender.js`) with `Format: esm`.
+
+Node.js treats `.js` files as CommonJS by default, which causes a
+`Runtime.UserCodeSyntaxError: Cannot use import statement outside a module` error unless
+the deployed package root includes a `package.json` with `"type": "module"`.
+
+SAM's esbuild build does **not** copy `package.json` into the build artifact directory
+automatically. The deployment workflow therefore explicitly copies
+`infrastructure/sam/kakao-notification-lambda/package.json` (which contains
+`"type": "module"`) into `.aws-sam/build/SearchMatcherFunction/` and
+`.aws-sam/build/KakaoSenderFunction/` after `sam build`.
+
+If you change the handler file extension or build format, ensure the deployed package
+root always includes `package.json` with `"type": "module"` when the bundle uses ES
+module syntax.
+
 GitHub Actions workflow:
 
 - `.github/workflows/deploy-kakao-notification-pipeline.yml`
