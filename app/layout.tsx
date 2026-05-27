@@ -5,7 +5,6 @@ import { Suspense } from 'react';
 import './globals.css';
 import { HeaderNavLink } from '@/components/ui/header-nav-link';
 import { GlobalHotNavLink } from '@/components/ui/global-hot-nav-link';
-import { HeaderNavConditional } from '@/components/ui/header-nav-conditional';
 import { NotificationBell } from '@/components/ui/notification-bell';
 import { HeaderProfileMenu } from '@/components/ui/header-profile-menu';
 import { GlobalFooter } from '@/components/ui/global-footer';
@@ -108,7 +107,6 @@ export default async function RootLayout({
               <HeaderNavLink href="/posts/new">글쓰기</HeaderNavLink>
               <HeaderNavLink href="/my/posts">내글</HeaderNavLink>
               <HeaderNavLink href="/my/saved">저장한글</HeaderNavLink>
-              <HeaderNavConditional />
             </nav>
           </header>
           <main className="flex-1 p-4">{children}</main>
