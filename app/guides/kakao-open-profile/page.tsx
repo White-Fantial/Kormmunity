@@ -28,9 +28,9 @@ const GUIDE_STEPS: GuideStep[] = [
     title: '채팅 또는 더보기에서 시작',
     screenTitle: '카카오톡 기본 화면',
     screenDescription:
-      '실제 확인 가능한 첨부 스크린샷은 채팅 목록 화면 1장입니다. 이 화면에서 하단 탭으로 이동해 오픈채팅 진입을 시작합니다.',
-    target: '하단의 더보기(···) 탭 또는 사용 중인 화면에서 오픈채팅 진입 경로를 탭',
-    nextCondition: '더보기 화면에서 오픈채팅 메뉴가 보이면 다음 단계로 이동',
+      '카카오톡을 열고 하단 탭에서 더보기(···)로 이동해 주세요. 오픈채팅 메뉴를 찾기 위한 첫 단계입니다.',
+    target: '하단의 더보기(···) 탭 누르기',
+    nextCondition: '더보기 화면에서 오픈채팅 메뉴가 보이면 다음으로 진행',
     mockType: 'chat-list',
   },
   {
@@ -38,9 +38,9 @@ const GUIDE_STEPS: GuideStep[] = [
     title: '더보기에서 오픈채팅 선택',
     screenTitle: '더보기',
     screenDescription:
-      '더보기 화면에서 카카오 서비스 메뉴 중 오픈채팅 항목을 찾습니다. 실제 스크린샷이 없는 단계는 동일한 다크 톤과 배치 규칙으로 재현했습니다.',
-    target: '오픈채팅 메뉴 카드 탭',
-    nextCondition: '오픈채팅 홈이 열리면 내 오픈프로필 영역을 확인',
+      '더보기 화면에서 카카오 서비스 항목 중 오픈채팅을 눌러 주세요. 메뉴가 아래쪽에 있으면 스크롤해서 찾으면 됩니다.',
+    target: '오픈채팅 메뉴 누르기',
+    nextCondition: '오픈채팅 홈이 열리면 내 오픈프로필 영역 확인',
     mockType: 'more-tab',
   },
   {
@@ -48,9 +48,9 @@ const GUIDE_STEPS: GuideStep[] = [
     title: '오픈채팅 홈에서 오픈프로필 만들기',
     screenTitle: '오픈채팅',
     screenDescription:
-      '오픈채팅 홈에서는 채팅방 생성이 아니라 오픈프로필 생성 경로를 선택해야 합니다. 내 오픈프로필 또는 + 버튼 근처의 생성 CTA를 사용합니다.',
-    target: '내 오픈프로필 또는 오픈프로필 만들기 버튼 탭',
-    nextCondition: '프로필 생성 폼으로 이동하면 프로필 정보 입력 시작',
+      '오픈채팅 홈에서 채팅방 만들기가 아니라 오픈프로필 만들기를 선택해 주세요. 내 오픈프로필 영역 또는 + 버튼 근처에서 찾을 수 있습니다.',
+    target: '오픈프로필 만들기 버튼 누르기',
+    nextCondition: '프로필 생성 화면이 열리면 정보 입력 시작',
     mockType: 'open-chat-home',
   },
   {
@@ -58,9 +58,9 @@ const GUIDE_STEPS: GuideStep[] = [
     title: '프로필 정보 입력과 설정',
     screenTitle: '오픈프로필 만들기',
     screenDescription:
-      '프로필 사진, 이름, 소개, 검색 허용 여부처럼 공유에 필요한 핵심 설정을 입력합니다. 공개 범위와 참여 조건도 이 단계에서 함께 점검합니다.',
-    target: '입력 필드 작성 후 완료 버튼 탭',
-    nextCondition: '프로필 미리보기/완료 화면이 열리면 생성 성공',
+      '프로필 사진, 이름, 소개를 입력하고 검색 허용/참여 조건을 설정해 주세요. 상대가 봤을 때 알아보기 쉬운 이름과 소개를 쓰는 것이 좋습니다.',
+    target: '입력 완료 후 완료 버튼 누르기',
+    nextCondition: '내 오픈프로필 화면이 열리면 생성 완료',
     mockType: 'open-profile-builder',
   },
   {
@@ -68,9 +68,9 @@ const GUIDE_STEPS: GuideStep[] = [
     title: '생성 완료 후 공유 버튼 확인',
     screenTitle: '내 오픈프로필',
     screenDescription:
-      '생성이 끝나면 내 오픈프로필 화면에서 프로필 카드와 공유 CTA를 다시 확인합니다. 여기서 프로필 상태와 문구를 최종 점검합니다.',
-    target: '공유 버튼 탭',
-    nextCondition: '공유 시트가 열리고 링크 복사 옵션이 보이면 다음 단계',
+      '오픈프로필이 만들어지면 공유 버튼이 보입니다. 공유 전에 프로필 이름과 소개가 맞는지 한 번 더 확인해 주세요.',
+    target: '공유 버튼 누르기',
+    nextCondition: '공유 시트에서 링크 복사 옵션이 보이면 다음으로 진행',
     mockType: 'open-profile-complete',
   },
   {
@@ -78,9 +78,9 @@ const GUIDE_STEPS: GuideStep[] = [
     title: '공유 시트에서 링크 복사',
     screenTitle: '공유',
     screenDescription:
-      '공유 시트에서 카카오톡 공유나 링크 복사를 선택할 수 있습니다. Kormmunity에는 보통 링크 복사로 가져온 open.kakao.com/o/... 주소를 사용합니다.',
-    target: '링크 복사 탭',
-    nextCondition: '복사한 링크를 Kormmunity 프로필에 붙여넣으면 연결 완료',
+      '공유 시트에서 링크 복사를 선택해 open.kakao.com/o/... 주소를 복사해 주세요. 복사한 링크를 Kormmunity 프로필에 붙여넣으면 연결됩니다.',
+    target: '링크 복사 누르기',
+    nextCondition: '복사한 링크를 Kormmunity 프로필에 저장하면 완료',
     mockType: 'share-sheet',
   },
 ];
@@ -507,15 +507,15 @@ function GuideDetails({ step }: { step: GuideStep }) {
         <div className="rounded-xl border border-[#efefef] bg-white px-4 py-3 text-sm text-[#4d4d4d]">
           <dl className="space-y-2">
             <div>
-              <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8b8b8b]">화면 설명</dt>
+              <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8b8b8b]">이 단계 안내</dt>
               <dd className="mt-1 leading-relaxed">{step.screenDescription}</dd>
             </div>
             <div>
-              <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8b8b8b]">탭/클릭 대상</dt>
+              <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8b8b8b]">지금 할 일</dt>
               <dd className="mt-1 leading-relaxed">{step.target}</dd>
             </div>
             <div>
-              <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8b8b8b]">다음 화면 조건</dt>
+              <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8b8b8b]">다음으로 넘어가기</dt>
               <dd className="mt-1 leading-relaxed">{step.nextCondition}</dd>
             </div>
           </dl>
@@ -533,17 +533,17 @@ export default function KakaoOpenProfileGuidePage() {
           카카오 오픈프로필 연결 가이드
         </p>
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-[#1f1f1f]">카카오 오픈프로필 만들기 · 공유 절차 정리</h1>
+          <h1 className="text-2xl font-bold text-[#1f1f1f]">카카오 오픈프로필 만들기 · 공유 따라하기</h1>
           <p className="text-sm leading-relaxed text-[#666]">
-            실제 카카오톡 사용자 흐름을 기준으로 “채팅/더보기 진입 → 오픈채팅 → 오픈프로필 만들기 → 정보 입력/설정 → 완료 →
-            공유” 순서로 정리했습니다.
+            카카오톡에서 바로 따라 할 수 있도록 “더보기 진입 → 오픈채팅 → 오픈프로필 만들기 → 정보 입력 → 공유” 순서로
+            준비했습니다.
           </p>
         </div>
       </div>
 
       <div className="rounded-2xl border border-[#ece5a5] bg-[#fffdf2] px-4 py-3 text-sm leading-relaxed text-[#5a4a00]">
-        현재 실제로 확인한 첨부본은 채팅 목록 화면 1장입니다. 아래 재현 이미지는 해당 화면의 다크 테마, 아이콘 위치, 칩/리스트 구조를 기준으로
-        만들었고, 나머지 단계는 동일한 UI 규칙으로 이어지도록 구성했습니다.
+        화면은 카카오톡 실제 흐름에 맞춰 순서대로 구성되어 있습니다. 현재 앱 화면과 조금 다르더라도 메뉴 이름(더보기, 오픈채팅, 오픈프로필,
+        공유)을 기준으로 따라가면 쉽게 찾을 수 있어요.
       </div>
 
       <div className="space-y-4">
@@ -563,12 +563,12 @@ export default function KakaoOpenProfileGuidePage() {
 
       <div className="grid gap-4 rounded-2xl border border-[#efefef] bg-[#fcfcfc] p-4 md:grid-cols-2">
         <div className="rounded-xl border border-[#e8e8e8] bg-white px-4 py-3">
-          <p className="text-sm font-semibold text-[#222]">공통 화면 분석 기준</p>
+          <p className="text-sm font-semibold text-[#222]">헷갈릴 때 확인 포인트</p>
           <ul className="mt-2 space-y-1.5 text-sm text-[#555]">
-            <li>• 상단 상태바와 다크 배경을 먼저 고정합니다.</li>
-            <li>• 헤더 타이틀과 우측 액션 아이콘을 같은 높이로 맞춥니다.</li>
-            <li>• 버튼 우선순위는 카카오 노란색 CTA로 강조합니다.</li>
-            <li>• 리스트/폼은 라운드 카드와 얇은 경계선으로 정리합니다.</li>
+            <li>• 오픈채팅 홈에서는 채팅방 만들기 대신 오픈프로필 만들기를 선택하세요.</li>
+            <li>• 소개 문구는 상대가 알아보기 쉬운 용도로 짧고 명확하게 적어주세요.</li>
+            <li>• 공유 전 이름/소개를 다시 확인하면 잘못된 링크 공유를 줄일 수 있어요.</li>
+            <li>• 공유 시트에서는 카카오톡 공유보다 링크 복사가 가장 빠릅니다.</li>
           </ul>
         </div>
         <div className="rounded-xl border border-[#e8e8e8] bg-white px-4 py-3">
@@ -577,7 +577,7 @@ export default function KakaoOpenProfileGuidePage() {
             <li>• 링크가 https://open.kakao.com/o/ 로 시작하나요?</li>
             <li>• 소개 문구에 전화번호·이메일 같은 민감정보가 없나요?</li>
             <li>• 복사한 링크를 Kormmunity 프로필에 저장했나요?</li>
-            <li>• 실제 추가 스크린샷이 생기면 해당 단계 이미지를 교체할 수 있나요?</li>
+            <li>• 링크를 저장한 뒤 Kormmunity 프로필에서 정상 노출되는지 확인했나요?</li>
           </ul>
         </div>
       </div>
