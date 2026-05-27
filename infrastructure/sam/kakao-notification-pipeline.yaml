@@ -1,0 +1,227 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Kormmunity Kakao notification SQS + Lambda pipeline
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: kormmunity
+  EnvironmentName:
+    Type: String
+    AllowedValues:
+      - staging
+      - main
+  DatabaseUrl:
+    Type: String
+    NoEcho: true
+  SiteBaseUrl:
+    Type: String
+  KakaoClientId:
+    Type: String
+    NoEcho: true
+  KakaoClientSecret:
+    Type: String
+    NoEcho: true
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    MemorySize: 512
+    Timeout: 30
+    Tracing: Active
+
+Resources:
+  SearchMatchDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${ProjectName}-${EnvironmentName}-search-match-dlq'
+      MessageRetentionPeriod: 1209600
+      KmsMasterKeyId: alias/aws/sqs
+
+  KakaoSendDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${ProjectName}-${EnvironmentName}-kakao-send-dlq'
+      MessageRetentionPeriod: 1209600
+      KmsMasterKeyId: alias/aws/sqs
+
+  SearchMatchQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${ProjectName}-${EnvironmentName}-search-match-queue'
+      VisibilityTimeout: 120
+      ReceiveMessageWaitTimeSeconds: 20
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt SearchMatchDLQ.Arn
+        maxReceiveCount: 5
+      KmsMasterKeyId: alias/aws/sqs
+
+  KakaoSendQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${ProjectName}-${EnvironmentName}-kakao-send-queue'
+      VisibilityTimeout: 120
+      ReceiveMessageWaitTimeSeconds: 20
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt KakaoSendDLQ.Arn
+        maxReceiveCount: 5
+      KmsMasterKeyId: alias/aws/sqs
+
+  SearchMatcherFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-${EnvironmentName}-search-matcher'
+      CodeUri: ./kakao-notification-lambda
+      Handler: search-matcher.handler
+      Environment:
+        Variables:
+          DATABASE_URL: !Ref DatabaseUrl
+          NEXT_PUBLIC_SITE_URL: !Ref SiteBaseUrl
+          KAKAO_SEND_QUEUE_URL: !Ref KakaoSendQueue
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt KakaoSendQueue.QueueName
+        - Statement:
+            Effect: Allow
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey
+            Resource: '*'
+      Events:
+        SearchMatchSqsEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt SearchMatchQueue.Arn
+            BatchSize: 10
+            MaximumBatchingWindowInSeconds: 5
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - search-matcher.mjs
+        Format: esm
+        Target: es2022
+        Minify: true
+        Sourcemap: false
+        External:
+          - '@prisma/client'
+          - '@aws-sdk/client-sqs'
+
+  KakaoSenderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-${EnvironmentName}-kakao-sender'
+      CodeUri: ./kakao-notification-lambda
+      Handler: kakao-sender.handler
+      Environment:
+        Variables:
+          DATABASE_URL: !Ref DatabaseUrl
+          NEXT_PUBLIC_SITE_URL: !Ref SiteBaseUrl
+          KAKAO_CLIENT_ID: !Ref KakaoClientId
+          KAKAO_CLIENT_SECRET: !Ref KakaoClientSecret
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            Effect: Allow
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey
+            Resource: '*'
+      Events:
+        KakaoSendSqsEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt KakaoSendQueue.Arn
+            BatchSize: 10
+            MaximumBatchingWindowInSeconds: 5
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - kakao-sender.mjs
+        Format: esm
+        Target: es2022
+        Minify: true
+        Sourcemap: false
+        External:
+          - '@prisma/client'
+          - '@aws-sdk/client-sqs'
+
+  SearchMatchDlqAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${EnvironmentName}-search-match-dlq-visible'
+      AlarmDescription: Search match DLQ has messages
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt SearchMatchDLQ.QueueName
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
+  KakaoSendDlqAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${EnvironmentName}-kakao-send-dlq-visible'
+      AlarmDescription: Kakao send DLQ has messages
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt KakaoSendDLQ.QueueName
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
+  SearchMatcherErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${EnvironmentName}-search-matcher-errors'
+      AlarmDescription: Search matcher Lambda errors
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref SearchMatcherFunction
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  KakaoSenderErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${EnvironmentName}-kakao-sender-errors'
+      AlarmDescription: Kakao sender Lambda errors
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref KakaoSenderFunction
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+Outputs:
+  SearchMatchQueueUrl:
+    Value: !Ref SearchMatchQueue
+  KakaoSendQueueUrl:
+    Value: !Ref KakaoSendQueue
+  SearchMatcherFunctionName:
+    Value: !Ref SearchMatcherFunction
+  KakaoSenderFunctionName:
+    Value: !Ref KakaoSenderFunction

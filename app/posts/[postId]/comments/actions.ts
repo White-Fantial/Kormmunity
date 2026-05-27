@@ -15,6 +15,7 @@ import {
 import {
   applyCommunityScoreChange,
 } from '@/lib/community-score';
+import { shouldSkipCommentNotification } from '@/lib/notifications/self-notification';
 import { createNotification } from '@/lib/notifications';
 import { getWarmthConfig } from '@/lib/reputation-settings';
 import { canActorUseAuthorForScope } from '@/lib/posts/author-account-options';
@@ -109,6 +110,7 @@ async function createComment(
       title: true,
       body: true,
       authorId: true,
+      createdByUserId: true,
     },
   });
 
@@ -177,8 +179,16 @@ async function createComment(
     select: { id: true },
   });
 
-  if (post.authorId !== resolvedAuthor.id) {
+  if (
+    !shouldSkipCommentNotification({
+      postAuthorId: post.authorId,
+      postCreatedByUserId: post.createdByUserId,
+      commenterAuthorId: resolvedAuthor.id,
+      commenterUserId: user.id,
+    })
+  ) {
     void notifyCommentForPost({
+      commentId: comment.id,
       postId,
       postTitle: post.title,
       postBody: post.body,

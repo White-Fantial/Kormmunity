@@ -1,0 +1,141 @@
+name: Deploy Kakao notification pipeline
+
+on:
+  push:
+    branches:
+      - staging
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Deploy target environment (staging or main)
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      AMAZON_WEB_SERVICE_REGION: ap-southeast-2
+      PROJECT_NAME: kormmunity
+      DEPLOY_ENV: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || github.ref_name }}
+    environment: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare Lambda build context
+        run: |
+          mkdir -p infrastructure/sam/kakao-notification-lambda/prisma
+          cp lambdas/search-matcher.mjs infrastructure/sam/kakao-notification-lambda/search-matcher.mjs
+          cp lambdas/kakao-sender.mjs infrastructure/sam/kakao-notification-lambda/kakao-sender.mjs
+          cp prisma/schema.prisma infrastructure/sam/kakao-notification-lambda/prisma/schema.prisma
+          npm ci --prefix infrastructure/sam/kakao-notification-lambda
+          npm run --prefix infrastructure/sam/kakao-notification-lambda prisma:generate
+          npm prune --prefix infrastructure/sam/kakao-notification-lambda --omit=dev
+          rm -rf infrastructure/sam/kakao-notification-lambda/node_modules/prisma
+          rm -rf infrastructure/sam/kakao-notification-lambda/node_modules/@prisma/engines
+          rm -f infrastructure/sam/kakao-notification-lambda/node_modules/.bin/prisma
+          rm -f infrastructure/sam/kakao-notification-lambda/node_modules/.bin/prisma.cmd
+          rm -f infrastructure/sam/kakao-notification-lambda/node_modules/.bin/prisma.ps1
+          find infrastructure/sam/kakao-notification-lambda/node_modules/.prisma/client \
+            -maxdepth 1 -type f -name 'query-engine-*' ! -name 'query-engine-rhel-openssl-3.0.x' -delete
+          find infrastructure/sam/kakao-notification-lambda/node_modules/.prisma/client \
+            -maxdepth 1 -type f -name 'libquery_engine-*' ! -name 'libquery_engine-rhel-openssl-3.0.x.so.node' -delete
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Install esbuild
+        run: npm install --global esbuild
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AMAZON_WEB_SERVICE_REGION }}
+
+      - name: Build SAM app
+        run: sam build --template-file infrastructure/sam/kakao-notification-pipeline.yaml
+
+      - name: Materialize external runtime dependencies
+        run: |
+          cp -R infrastructure/sam/kakao-notification-lambda/node_modules .aws-sam/build/SearchMatcherFunction/node_modules
+          cp -R infrastructure/sam/kakao-notification-lambda/node_modules .aws-sam/build/KakaoSenderFunction/node_modules
+
+      - name: Inject package.json for ES module resolution
+        run: |
+          for function_dir in SearchMatcherFunction KakaoSenderFunction; do
+            cp infrastructure/sam/kakao-notification-lambda/package.json \
+               .aws-sam/build/${function_dir}/package.json
+          done
+
+      - name: Sanitize Lambda runtime artifacts
+        run: |
+          for function_dir in SearchMatcherFunction KakaoSenderFunction; do
+            base=".aws-sam/build/${function_dir}"
+            rm -f "${base}/node_modules/.bin/prisma"
+            rm -f "${base}/node_modules/.bin/prisma.cmd"
+            rm -f "${base}/node_modules/.bin/prisma.ps1"
+          done
+
+      - name: Debug SAM build artifacts
+        run: |
+          echo "[debug] .aws-sam/build total size"
+          du -sh .aws-sam/build
+          echo "[debug] per-function size"
+          du -sh .aws-sam/build/* | sort -h
+          echo "[debug] largest files in .aws-sam/build"
+          find .aws-sam/build -type f -printf "%10s  %p\n" | sort -nr | head -n 40
+
+      - name: Verify Prisma runtime artifacts in Lambda bundles
+        run: |
+          for function_dir in SearchMatcherFunction KakaoSenderFunction; do
+            base=".aws-sam/build/${function_dir}"
+            echo "[debug] checking ${base}"
+            ls -la "${base}/node_modules/.bin" || true
+            ls -la "${base}/node_modules/@prisma/client" || true
+            ls -la "${base}/node_modules/.prisma/client" || true
+            find "${base}" -xtype l -print || true
+            du -sh "${base}" || true
+            test -d "${base}/node_modules/@prisma/client"
+            test -d "${base}/node_modules/.prisma/client"
+            ls -lah "${base}/node_modules/@prisma/client" | head -n 20
+            ls -lah "${base}/node_modules/.prisma/client" | head -n 20
+            test -f "${base}/node_modules/.prisma/client/query-engine-rhel-openssl-3.0.x"
+            test -f "${base}/package.json"
+            grep '"type"' "${base}/package.json" | grep '"module"'
+          done
+
+      - name: Deploy SAM stack
+        run: |
+          sam deploy \
+            --template-file .aws-sam/build/template.yaml \
+            --stack-name "${PROJECT_NAME}-${DEPLOY_ENV}-kakao-notification-pipeline" \
+            --capabilities CAPABILITY_IAM \
+            --resolve-s3 \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+              ProjectName="${PROJECT_NAME}" \
+              EnvironmentName="${DEPLOY_ENV}" \
+              DatabaseUrl="${{ secrets.DATABASE_URL }}" \
+              SiteBaseUrl="${{ secrets.NEXT_PUBLIC_SITE_URL }}" \
+              KakaoClientId="${{ secrets.KAKAO_CLIENT_ID }}" \
+              KakaoClientSecret="${{ secrets.KAKAO_CLIENT_SECRET }}"

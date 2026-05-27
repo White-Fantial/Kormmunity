@@ -64,6 +64,10 @@
   - 제목/본문/작성자 닉네임 통합 검색
   - 검색어 저장 및 카카오톡 알림 수신 여부 설정
   - 조건 매칭 새 글 등록 시 카카오톡 메시지 자동 발송 (글 링크/사진 링크 포함)
+  - 카카오 메시지 발송 파이프라인 분리 (SQS + Lambda)
+    - 게시글 등록 -> 검색 매칭 큐 -> 검색 매칭 람다 -> 카톡 발송 큐 -> 발송 람다
+    - 댓글/광고 알림은 카톡 발송 큐로 직접 적재
+    - 전송 로그(`KakaoMessageDelivery`) 기반 재시도/실패 추적 유지
 - Unified Post Card system
   - 공통 `PostCard` variant 시스템(`featured` / `compact` / `minimal`)으로 목록 UI 통합
   - `/posts`는 featured, `/my/posts`·`/my/saved`·`/users/[userId]`는 compact, `/my/notifications`는 minimal 적용
@@ -197,6 +201,11 @@ components/posts/
 - `AI_TEXT_MODEL` (선택, 기본값 `gpt-4o-mini`)
 - `AI_TEXT_API_BASE_URL` (선택, 기본값 `https://api.openai.com/v1`)
 - `AI_TEXT_TIMEOUT_MS` (선택, 기본값 20000)
+- `AMAZON_WEB_SERVICE_REGION` (SQS/Lambda 연동 시 권장, `AWS_REGION` 대체)
+- `KAKAO_USE_SQS_PIPELINE` (`true`면 카카오 전송을 SQS 기반으로 비동기 처리)
+- `KAKAO_USE_SEARCH_MATCHER_LAMBDA` (`true`면 게시글 검색 매칭을 별도 람다로 분리)
+- `KAKAO_SEARCH_MATCH_QUEUE_URL` (검색 매칭 큐 URL)
+- `KAKAO_SEND_QUEUE_URL` (카카오 발송 큐 URL)
 
 ## Important Notes
 - 카카오 로그인은 `KAKAO_CLIENT_ID`와 `KAKAO_REDIRECT_URI` 환경 변수가 설정된 경우 실제 OAuth 흐름을 사용합니다. 미설정 시 개발용 임시 로그인으로 폴백됩니다.
@@ -204,6 +213,8 @@ components/posts/
 - 이미지 업로드는 현재 Cloudinary API 환경 변수 설정이 필요합니다.
 - AI 환경 변수가 없으면 ADMIN 자동 생성 버튼은 보여도 생성 요청은 실패 메시지를 반환합니다.
 - AWS Amplify + Amazon RDS(PostgreSQL) 배포 시 `DATABASE_URL`은 RDS 연결 문자열로 설정하고, `NEXT_PUBLIC_SITE_URL`(권장) 또는 `NEXTAUTH_URL`을 반드시 설정해야 SEO 메타데이터와 카카오 알림 링크가 올바른 절대 URL을 사용합니다.
+- 카카오 SQS/Lambda 파이프라인은 `nodejs22.x` 런타임을 사용하며, ES module `.js` 번들 실행을 위해 배포 아티팩트 루트에 `package.json`의 `"type": "module"`이 반드시 포함되어야 합니다.
+- 카카오 SQS/Lambda 파이프라인 배포/운영 가이드는 `docs/kakao-notification-pipeline.md`를 참고하세요. Lambda 콘솔에서 수동으로 런타임을 바꿔도 다음 SAM 배포 시 워크플로우 설정값으로 덮어써질 수 있습니다.
 
 ## Next Focus
 - Near-term / Mid-term / Long-term 로드맵 기준으로 진행

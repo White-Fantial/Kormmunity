@@ -1,5 +1,7 @@
 generator client {
   provider = "prisma-client-js"
+  engineType = "binary"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
@@ -71,6 +73,10 @@ enum PermissionSubjectType {
 enum KakaoMessageDeliveryType {
   SEARCH_ALERT
   COMMENT_NOTIFICATION
+  AD_PROPOSAL_SUBMITTED
+  AD_CAMPAIGN_REVIEW_REQUESTED
+  AD_CAMPAIGN_APPROVED
+  AD_CAMPAIGN_CHANGES_REQUESTED
 }
 
 enum NotificationType {
@@ -452,6 +458,18 @@ model PostView {
   @@index([viewedAt, postId])
 }
 
+model PageViewDailyStat {
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date
+  path      String
+  viewCount Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([date, path])
+  @@index([date(sort: Desc)])
+}
+
 model ReportOption {
   id             String          @id @default(cuid())
   label          String          @unique
@@ -617,6 +635,7 @@ model KakaoMessageDelivery {
   id               String                     @id @default(cuid())
   deliveryType     KakaoMessageDeliveryType
   recipientUserId  String
+  dedupeKey        String?                    @unique
   messageText      String
   targetUrl        String?
   status           KakaoMessageDeliveryStatus @default(PENDING)
