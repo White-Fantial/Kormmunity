@@ -42,6 +42,10 @@ Non-search events (comments, ad notifications) directly enqueue into `kakao-send
 SAM template:
 
 - `infrastructure/sam/kakao-notification-pipeline.yaml`
+- Lambda runtime: `nodejs22.x`
+- Handlers:
+  - `search-matcher.handler` (`kormmunity-staging-search-matcher`)
+  - `kakao-sender.handler` (`kormmunity-staging-kakao-sender`)
 - Lambda build context (minimal dependencies only):
   - `infrastructure/sam/kakao-notification-lambda/`
   - contains SAM esbuild entry points for `search-matcher.mjs` / `kakao-sender.mjs`
@@ -71,6 +75,8 @@ GitHub Actions workflow:
 - `.github/workflows/deploy-kakao-notification-pipeline.yml`
 
 This workflow deploys on push to `staging` and `main`, and can also be run manually.
+If runtime/handler values are edited manually in the Lambda console, they can be
+overwritten by the next SAM deployment from this workflow.
 
 ## Branch-separated operation
 

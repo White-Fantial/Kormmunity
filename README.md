@@ -213,7 +213,8 @@ components/posts/
 - 이미지 업로드는 현재 Cloudinary API 환경 변수 설정이 필요합니다.
 - AI 환경 변수가 없으면 ADMIN 자동 생성 버튼은 보여도 생성 요청은 실패 메시지를 반환합니다.
 - AWS Amplify + Amazon RDS(PostgreSQL) 배포 시 `DATABASE_URL`은 RDS 연결 문자열로 설정하고, `NEXT_PUBLIC_SITE_URL`(권장) 또는 `NEXTAUTH_URL`을 반드시 설정해야 SEO 메타데이터와 카카오 알림 링크가 올바른 절대 URL을 사용합니다.
-- 카카오 SQS/Lambda 파이프라인 배포/운영 가이드는 `docs/kakao-notification-pipeline.md`를 참고하세요.
+- 카카오 SQS/Lambda 파이프라인은 `nodejs22.x` 런타임을 사용하며, ES module `.js` 번들 실행을 위해 배포 아티팩트 루트에 `package.json`의 `"type": "module"`이 반드시 포함되어야 합니다.
+- 카카오 SQS/Lambda 파이프라인 배포/운영 가이드는 `docs/kakao-notification-pipeline.md`를 참고하세요. Lambda 콘솔에서 수동으로 런타임을 바꿔도 다음 SAM 배포 시 워크플로우 설정값으로 덮어써질 수 있습니다.
 
 ## Next Focus
 - Near-term / Mid-term / Long-term 로드맵 기준으로 진행
