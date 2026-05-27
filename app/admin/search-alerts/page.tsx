@@ -127,9 +127,14 @@ export default async function AdminSearchAlertsPage({ searchParams }: SearchAler
         items={adminManagementNavItems}
       />
 
-      <div className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm space-y-3">
-        <h2 className="font-semibold">필터</h2>
-        <form className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+      <details className="group rounded-xl border border-[#e8e8e8] bg-white shadow-sm">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3">
+          <span className="font-semibold">필터</span>
+          <span className="text-xs text-[#888] group-open:hidden">펼치기</span>
+          <span className="hidden text-xs text-[#888] group-open:inline">접기</span>
+        </summary>
+        <div className="hidden border-t border-[#f0f0f0] p-4 group-open:block">
+          <form className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-2 lg:col-span-4">
             <p className="text-xs text-[#777]">기간</p>
             <div className="flex flex-wrap gap-2">
@@ -242,8 +247,9 @@ export default async function AdminSearchAlertsPage({ searchParams }: SearchAler
               초기화
             </Link>
           </div>
-        </form>
-      </div>
+          </form>
+        </div>
+      </details>
 
       <div className="flex flex-wrap gap-2">
         {TABS.map((item) => (
