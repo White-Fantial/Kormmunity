@@ -1,0 +1,42 @@
+<svg width="1200" height="675" viewBox="0 0 1200 675" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="675" fill="#FFFBE6" />
+  <rect x="48" y="40" width="1104" height="595" rx="24" fill="white" stroke="#E9E9E9" stroke-width="2" />
+  <rect x="80" y="78" width="1040" height="78" rx="16" fill="#FEE500" />
+  <text x="120" y="126" fill="#3C1E1E" font-size="34" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-weight="700">카카오 오픈프로필 링크 만드는 4단계</text>
+
+  <g>
+    <rect x="96" y="188" width="238" height="364" rx="18" fill="#FFFDF2" stroke="#F3E398" />
+    <circle cx="140" cy="232" r="20" fill="#FEE500" />
+    <text x="132" y="239" fill="#3C1E1E" font-size="22" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-weight="700">1</text>
+    <text x="96" y="282" fill="#202020" font-size="24" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-weight="700">오픈채팅 만들기</text>
+    <text x="96" y="324" fill="#4A4A4A" font-size="19" font-family="Pretendard, Apple SD Gothic Neo, sans-serif">카카오톡 오픈채팅 탭에서</text>
+    <text x="96" y="355" fill="#4A4A4A" font-size="19" font-family="Pretendard, Apple SD Gothic Neo, sans-serif">새 오픈채팅을 생성하세요.</text>
+  </g>
+
+  <g>
+    <rect x="350" y="188" width="238" height="364" rx="18" fill="#FFFDF2" stroke="#F3E398" />
+    <circle cx="394" cy="232" r="20" fill="#FEE500" />
+    <text x="386" y="239" fill="#3C1E1E" font-size="22" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-weight="700">2</text>
+    <text x="350" y="282" fill="#202020" font-size="24" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-weight="700">오픈프로필 설정</text>
+    <text x="350" y="324" fill="#4A4A4A" font-size="19" font-family="Pretendard, Apple SD Gothic Neo, sans-serif">프로필 이름/소개를 작성하고</text>
+    <text x="350" y="355" fill="#4A4A4A" font-size="19" font-family="Pretendard, Apple SD Gothic Neo, sans-serif">입장 조건을 정해 주세요.</text>
+  </g>
+
+  <g>
+    <rect x="604" y="188" width="238" height="364" rx="18" fill="#FFFDF2" stroke="#F3E398" />
+    <circle cx="648" cy="232" r="20" fill="#FEE500" />
+    <text x="640" y="239" fill="#3C1E1E" font-size="22" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-weight="700">3</text>
+    <text x="604" y="282" fill="#202020" font-size="24" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-weight="700">링크 복사</text>
+    <text x="604" y="324" fill="#4A4A4A" font-size="19" font-family="Pretendard, Apple SD Gothic Neo, sans-serif">생성 후 공유 버튼에서</text>
+    <text x="604" y="355" fill="#4A4A4A" font-size="19" font-family="Pretendard, Apple SD Gothic Neo, sans-serif">오픈채팅 링크를 복사하세요.</text>
+  </g>
+
+  <g>
+    <rect x="858" y="188" width="238" height="364" rx="18" fill="#FFFDF2" stroke="#F3E398" />
+    <circle cx="902" cy="232" r="20" fill="#FEE500" />
+    <text x="894" y="239" fill="#3C1E1E" font-size="22" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-weight="700">4</text>
+    <text x="858" y="282" fill="#202020" font-size="24" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-weight="700">프로필/글에 등록</text>
+    <text x="858" y="324" fill="#4A4A4A" font-size="19" font-family="Pretendard, Apple SD Gothic Neo, sans-serif">open.kakao.com/o/... 링크를</text>
+    <text x="858" y="355" fill="#4A4A4A" font-size="19" font-family="Pretendard, Apple SD Gothic Neo, sans-serif">입력하면 설정 완료!</text>
+  </g>
+</svg>

@@ -10,6 +10,7 @@ import {
 } from '@/lib/upload/cloudinary-client';
 import { INVALID_KAKAO_OPEN_LINK_MESSAGE_KO } from '@/lib/kakao-open-link';
 import { KakaoOpenLinkInput } from '@/components/ui/kakao-open-link-input';
+import { KakaoOpenProfileGuideLink } from '@/components/ui/kakao-open-profile-guide-link';
 import type { AuthorAccountOption } from '@/lib/posts/author-account-options';
 import {
   generatePostDraftAction,
@@ -831,9 +832,12 @@ export function PostForm({
         ) : null}
         <div className={isContactSectionExpanded ? 'space-y-3 pt-1' : 'hidden'}>
           <div className="space-y-1">
-            <label htmlFor="contactUrl" className="text-sm font-medium">
-              카카오 오픈채팅 링크
-            </label>
+            <div className="flex items-center gap-2">
+              <label htmlFor="contactUrl" className="text-sm font-medium">
+                카카오 오픈채팅 링크
+              </label>
+              <KakaoOpenProfileGuideLink />
+            </div>
             <KakaoOpenLinkInput
               id="contactUrl"
               name="contactUrl"
