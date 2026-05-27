@@ -89,6 +89,8 @@ export async function saveSearchAlertAction(formData: FormData) {
     create: {
       userId: user.id,
       query,
+      countryIdSnapshot: user.countryId ?? null,
+      cityIdSnapshot: user.cityId ?? null,
     },
     update: {}, // no-op: keep existing record as-is if already saved
   });

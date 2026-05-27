@@ -281,6 +281,7 @@ model Country {
   users       User[]
   cities      City[]
   posts       Post[]
+  searchAlertCountrySnapshots SearchAlert[] @relation("SearchAlertCountrySnapshot")
   permissions PostPermission[]
   adCampaigns AdCampaign[]    @relation("AdCampaignTargetCountry")
   adGeoPricings AdGeoPricing[]
@@ -298,6 +299,7 @@ model City {
   country   Country? @relation(fields: [countryId], references: [id])
   users     User[]
   posts     Post[]
+  searchAlertCitySnapshots SearchAlert[] @relation("SearchAlertCitySnapshot")
   permissions PostPermission[]
   adCampaigns AdCampaign[]    @relation("AdCampaignTargetCity")
   adGeoPricings AdGeoPricing[]
@@ -623,12 +625,19 @@ model SearchAlert {
   id            String   @id @default(cuid())
   userId        String
   query         String
+  countryIdSnapshot String?
+  cityIdSnapshot String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  countrySnapshot Country? @relation("SearchAlertCountrySnapshot", fields: [countryIdSnapshot], references: [id], onDelete: SetNull)
+  citySnapshot City? @relation("SearchAlertCitySnapshot", fields: [cityIdSnapshot], references: [id], onDelete: SetNull)
 
   @@unique([userId, query])
   @@index([userId, createdAt])
+  @@index([createdAt, query])
+  @@index([countryIdSnapshot, createdAt])
+  @@index([cityIdSnapshot, createdAt])
 }
 
 model KakaoMessageDelivery {
