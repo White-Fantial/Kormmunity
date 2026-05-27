@@ -24,6 +24,7 @@ export const coordinatorManagementNavItems = moderatorManagementNavItems;
 
 export const adminManagementNavItems = [
   { href: '/admin/dashboard', label: '대시보드' },
+  { href: '/admin/search-alerts', label: '검색어 통계' },
   { href: '/admin/users', label: '사용자 관리' },
   { href: '/admin/managed-accounts', label: '운영 계정 관리' },
   { href: '/admin/posts', label: '게시글' },
