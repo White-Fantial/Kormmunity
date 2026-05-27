@@ -79,6 +79,13 @@ jobs:
           cp -R infrastructure/sam/kakao-notification-lambda/node_modules .aws-sam/build/SearchMatcherFunction/node_modules
           cp -R infrastructure/sam/kakao-notification-lambda/node_modules .aws-sam/build/KakaoSenderFunction/node_modules
 
+      - name: Inject package.json for ES module resolution
+        run: |
+          for function_dir in SearchMatcherFunction KakaoSenderFunction; do
+            cp infrastructure/sam/kakao-notification-lambda/package.json \
+               .aws-sam/build/${function_dir}/package.json
+          done
+
       - name: Sanitize Lambda runtime artifacts
         run: |
           for function_dir in SearchMatcherFunction KakaoSenderFunction; do
@@ -112,6 +119,8 @@ jobs:
             ls -lah "${base}/node_modules/@prisma/client" | head -n 20
             ls -lah "${base}/node_modules/.prisma/client" | head -n 20
             test -f "${base}/node_modules/.prisma/client/query-engine-rhel-openssl-3.0.x"
+            test -f "${base}/package.json"
+            grep '"type"' "${base}/package.json" | grep '"module"'
           done
 
       - name: Deploy SAM stack
