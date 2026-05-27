@@ -10,7 +10,7 @@ Parameters:
     Type: String
     AllowedValues:
       - staging
-      - main
+      - production
   DatabaseUrl:
     Type: String
     NoEcho: true
