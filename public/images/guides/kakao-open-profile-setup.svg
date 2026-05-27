@@ -20,13 +20,13 @@
   <circle cx="238" cy="334" r="11" fill="#F26A33" />
   <text x="234" y="339" fill="white" font-size="12" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-weight="700">2</text>
   <circle cx="145" cy="398" r="20" fill="#73B9FF" />
-  <text x="177" y="392" fill="white" font-size="15" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-weight="700">크라이스트처치 벼룩시장</text>
-  <text x="177" y="414" fill="#A0A0A7" font-size="12" font-family="Pretendard, Apple SD Gothic Neo, sans-serif">안녕하세요</text>
-  <text x="177" y="434" fill="#7A7A81" font-size="11" font-family="Pretendard, Apple SD Gothic Neo, sans-serif">눈다래끼 났는데 약국에서 약을 안주고 찜질하래요...</text>
+  <text x="177" y="392" fill="white" font-size="15" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-weight="700">동네 나눔방</text>
+  <text x="177" y="414" fill="#A0A0A7" font-size="12" font-family="Pretendard, Apple SD Gothic Neo, sans-serif">오늘 저녁 물품 나눔 공지 있어요</text>
+  <text x="177" y="434" fill="#7A7A81" font-size="11" font-family="Pretendard, Apple SD Gothic Neo, sans-serif">필요한 분은 자유롭게 참여해 주세요...</text>
   <text x="290" y="392" fill="#8B8B92" font-size="11" font-family="Pretendard, Apple SD Gothic Neo, sans-serif">6:12 AM</text>
   <circle cx="145" cy="470" r="20" fill="#A36B3B" />
-  <text x="177" y="464" fill="white" font-size="15" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-weight="700">라빠</text>
-  <text x="177" y="486" fill="#A0A0A7" font-size="12" font-family="Pretendard, Apple SD Gothic Neo, sans-serif">[댓글 알림] “집담”에 새 댓글이 달렸어요.</text>
+  <text x="177" y="464" fill="white" font-size="15" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-weight="700">오픈채팅 알림봇</text>
+  <text x="177" y="486" fill="#A0A0A7" font-size="12" font-family="Pretendard, Apple SD Gothic Neo, sans-serif">[댓글 알림] “동네소식”에 새 댓글이 달렸어요.</text>
   <rect x="118" y="526" width="218" height="22" rx="11" fill="#111113" stroke="#1B1B1D" />
   <circle cx="188" cy="537" r="8" fill="#F26A33" />
   <text x="183" y="542" fill="white" font-size="10" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-weight="700">2</text>
