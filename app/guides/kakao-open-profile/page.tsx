@@ -184,13 +184,13 @@ function HeaderIcons({ label }: { label: string }) {
   );
 }
 
-function BottomTabBar({ active }: { active: 'friends' | 'chat' | 'phone' | 'more' }) {
-  const items = [
+ function BottomTabBar({ active }: { active: 'friends' | 'chat' | 'phone' | 'more' }) {
+  const items: { id: 'friends' | 'chat' | 'phone' | 'more'; label: string; badge?: string }[] = [
     { id: 'friends', label: '친구' },
     { id: 'chat', label: '채팅', badge: '2' },
     { id: 'phone', label: '통화' },
     { id: 'more', label: '더보기' },
-  ] as const;
+  ];
 
   return (
     <div className="mt-3 border-t border-[#1b1b1d] bg-[#111113] px-5 pb-4 pt-3">
