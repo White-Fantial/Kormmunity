@@ -595,7 +595,7 @@ export function PostForm({
             <option value="">내 계정으로 작성</option>
             {(authorAccountOptions ?? []).map((authorAccount) => (
               <option key={authorAccount.id} value={authorAccount.id}>
-                [{authorAccount.accountType}] {authorAccount.displayName}
+                [{authorAccount.accountType}] {authorAccount.displayName}{authorAccount.cityName ? ` (${authorAccount.cityName})` : ''}
               </option>
             ))}
           </select>

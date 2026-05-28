@@ -11,6 +11,7 @@ export type AuthorAccountOption = {
   accountType: AuthorAccountKind;
   countryId: string | null;
   cityId: string | null;
+  cityName: string | null;
 };
 
 export type AuthorScope = {
@@ -32,6 +33,7 @@ export type AuthorSelectionCandidate = {
   cityId: string | null;
   city: {
     countryId: string | null;
+    name: string;
   } | null;
 };
 
@@ -105,6 +107,7 @@ export async function getAuthorAccountOptionsForActor(
       city: {
         select: {
           countryId: true,
+          name: true,
         },
       },
     },
@@ -125,6 +128,7 @@ export async function getAuthorAccountOptionsForActor(
         accountType,
         countryId,
         cityId: candidate.cityId,
+        cityName: candidate.city?.name ?? null,
       } satisfies AuthorAccountOption;
     })
     .filter((candidate): candidate is AuthorAccountOption => candidate !== null);
