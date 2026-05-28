@@ -147,6 +147,7 @@ async function createComment(
           city: {
             select: {
               countryId: true,
+              name: true,
             },
           },
         },
