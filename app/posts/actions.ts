@@ -245,6 +245,7 @@ async function resolvePostAuthorUser(
       city: {
         select: {
           countryId: true,
+          name: true,
         },
       },
     },
