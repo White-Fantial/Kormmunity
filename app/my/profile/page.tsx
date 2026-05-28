@@ -8,6 +8,7 @@ import { NeighbourWarmthLabel } from '@/components/ui/neighbour-warmth-label';
 import { DateTimeText } from '@/components/ui/date-time-text';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { KakaoOpenLinkInput } from '@/components/ui/kakao-open-link-input';
+import { KakaoOpenProfileGuideLink } from '@/components/ui/kakao-open-profile-guide-link';
 import { updateProfileAction } from './actions';
 import { LOCATION_COOLDOWN_DAYS } from '@/lib/location-cooldown';
 import { ProfileLocationSelects } from '@/components/my/profile-location-selects';
@@ -145,9 +146,12 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
           showCooldownNote={!isAdminUser}
         />
         <div className="space-y-1">
-          <label htmlFor="openChatUrl" className="text-sm font-medium">
-            카카오 오픈채팅 링크
-          </label>
+          <div className="flex items-center gap-2">
+            <label htmlFor="openChatUrl" className="text-sm font-medium">
+              카카오 오픈채팅 링크
+            </label>
+            <KakaoOpenProfileGuideLink />
+          </div>
           <KakaoOpenLinkInput
             id="openChatUrl"
             name="openChatUrl"
