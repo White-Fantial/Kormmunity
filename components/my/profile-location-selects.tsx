@@ -42,8 +42,20 @@ export function ProfileLocationSelects({
     : [];
 
   function handleCountryChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    setSelectedCountryId(e.target.value);
-    setSelectedCityId('');
+    const nextCountryId = e.target.value;
+    setSelectedCountryId(nextCountryId);
+
+    if (!selectedCityId) {
+      return;
+    }
+
+    const isCityInNextCountry = cities.some(
+      (city) => city.id === selectedCityId && city.countryId === nextCountryId,
+    );
+
+    if (!isCityInNextCountry) {
+      setSelectedCityId('');
+    }
   }
 
   return (
@@ -83,7 +95,7 @@ export function ProfileLocationSelects({
           disabled={isCityDisabled}
           className={SELECT_CLASS}
         >
-          <option value="">지역을 선택해 주세요.</option>
+          <option value="">선택 안 함</option>
           {filteredCities.map((city) => (
             <option key={city.id} value={city.id}>
               {city.name}

@@ -16,6 +16,7 @@ import {
   deleteSearchAlertAction,
 } from '@/app/posts/search-alert-actions';
 import { isAdmin } from '@/lib/permissions';
+import { PROFILE_CITY_REQUIRED_MESSAGE } from '@/lib/posts/profile-city';
 
 
 export const dynamic = 'force-dynamic';
@@ -82,6 +83,8 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
     : null;
   const isLocationCooldown = !isAdminUser && nextLocationChangeAt != null;
   const shouldShowStaffBadge = user.staffAssignments.some((assignment) => assignment.role !== 'ADMIN');
+  const shouldShowCityRequiredNotice = !dbUser?.cityId
+    && (Boolean(params.returnTo) || params.error === PROFILE_CITY_REQUIRED_MESSAGE);
 
   return (
     <section className="space-y-4 rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
@@ -125,7 +128,7 @@ export default async function MyProfilePage({ searchParams }: MyProfilePageProps
         </p>
       ) : null}
 
-      {!dbUser?.cityId ? (
+      {shouldShowCityRequiredNotice ? (
         <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
           국가 변경 후에는 기본 지역을 다시 선택해야 글쓰기를 할 수 있어요.
         </p>
