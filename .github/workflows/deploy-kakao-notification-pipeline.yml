@@ -25,8 +25,9 @@ jobs:
     env:
       AMAZON_WEB_SERVICE_REGION: ap-southeast-2
       PROJECT_NAME: kormmunity
-      DEPLOY_ENV: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || github.ref_name }}
-    environment: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || github.ref_name }}
+      DEPLOY_TARGET: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || github.ref_name }}
+      DEPLOY_ENV: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.environment || github.ref_name) == 'main' && 'production' || 'staging' }}
+    environment: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.environment || github.ref_name) == 'main' && 'Production' || 'staging' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
