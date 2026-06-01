@@ -39,9 +39,24 @@ export async function selectCountryAction(formData: FormData) {
     redirect('/select-country?error=유효한 국가를 선택해 주세요.');
   }
 
+  let nextCityId = user.cityId;
+  if (user.cityId) {
+    const city = await prisma.city.findFirst({
+      where: { id: user.cityId, isActive: true },
+      select: { countryId: true },
+    });
+
+    if (!city || city.countryId !== country.id) {
+      nextCityId = null;
+    }
+  }
+
   await prisma.user.update({
     where: { id: user.id },
-    data: { countryId: country.id },
+    data: {
+      countryId: country.id,
+      cityId: nextCityId,
+    },
   });
 
   if (sessionToken) invalidateSessionCache(sessionToken);
